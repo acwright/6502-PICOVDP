@@ -8,5 +8,9 @@
   "engines": {
     "node": ">=22"
   },
-  "scripts": {}
+  "scripts": {
+    "sync-oracle": "node sync-oracle.mjs",
+    "check-oracle": "node sync-oracle.mjs --check",
+    "fuzz": "node fuzz.mjs"
+  }
 }

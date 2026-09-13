@@ -48,10 +48,24 @@ if(PICOVDP_PLATFORM STREQUAL "host")
         add_link_options(-fsanitize=address,undefined)
     endif()
     enable_testing()
+    add_subdirectory(core)
     add_subdirectory(tests/unit)
     add_subdirectory(spike)
+    # tests/oracle is written by tools/sync-oracle.mjs alone (rule 4), so its
+    # check is registered here rather than beside it.
+    find_program(PICOVDP_NODE node)
+    if(PICOVDP_NODE)
+        add_test(NAME oracle_pinned
+            COMMAND ${PICOVDP_NODE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/sync-oracle.mjs --check)
+    endif()
+    # An addon built with ASan cannot be loaded by a Node that was not, so the
+    # adapter is built by the plain host preset only.
+    if(NOT PICOVDP_SANITIZE)
+        add_subdirectory(host/node)
+    endif()
 else()
     pico_sdk_init()
+    add_subdirectory(core)
     add_subdirectory(firmware)
     add_subdirectory(spike)
 endif()

@@ -12,11 +12,14 @@ PRO running this firmware; every golden checkpoint the emulator holds reproduces
 byte for byte on the PRO; and the per-line budget, interrupt timing and status
 freshness are measured on the PRO and written back into SPEC.md.
 
-**Status:** Phases 0 and 1 done ([results](docs/results/)). Phase 1 measured
+**Status:** Phases 0, 1 and 2 done ([results](docs/results/)). Phase 1 measured
 the line at 2.5–4× §18's estimates, and settled SPEC.md draft 0.4 from it: the
 sprites are built on core 0 (section 3), the clock is 352 MHz, `SPRLIMIT` resets
-to 16, and a late line is specified. The PRO is on order. Part A of this plan
-needs no PRO: it runs on the host, in the emulator and on a Raspberry Pi Pico 2.
+to 16, and a late line is specified. Phase 2 exported the oracle: the fixtures'
+traces replay every golden exactly with no CPU, all fifteen checkpoints are
+static, and `Video.test.ts` runs against the core. Phase 3 is next. The PRO is
+on order. Part A of this plan needs no PRO: it runs on the host, in the emulator
+and on a Raspberry Pi Pico 2.
 
 ---
 
@@ -337,26 +340,29 @@ included.
 ### Traces
 
 A trace is a fixture's VDP port traffic, recorded from the emulator and specified
-in `docs/TRACE.md` (Phase 2). It is a header naming the fixture and emulator
-commit, then a stream of events:
+in [`docs/TRACE.md`](docs/TRACE.md). It is gzip-compressed text,
+`<fixture>.vdpt.gz`, kept beside the fixture's goldens in the emulator. It has a
+header naming the fixture and emulator commit, then one event a line, each with
+its tick delta:
 
 - a cold reset
-- run-length line starts
-- each write and read, with port, value (for a read, the value returned), display
-  line and tick within the line
+- every line start, with its screen and display line
+- each write and read, with port and value (for a read, the value returned)
 - changes of `/INT`
-- each checkpoint, with its cycle count, its **class** and its **settle point**
+- each checkpoint, with its cycle count, golden frame, **settle point**, window
+  and **class**
 
 A checkpoint's golden frame is the last one presented before it, and its VRAM and
 registers are as they stand at the checkpoint itself. These are not the same
 moment: `vdp-layers`, for one, writes the *next* frame's scroll registers in
 vertical blank, after its frame is finished and before the checkpoint is taken.
-The **settle point** is the last operation before the golden frame's first row
-was latched. A checkpoint is **static** if no operation falls between that latch
-and the latch of the frame's last row. Its frame is then a function of the state
-at the settle point alone. The emulator survey found no golden that depends on a
-split within the picture, so all fifteen are expected to be static; Phase 2
-decides.
+The **settle point** is the number of operations before the golden frame's first
+row was latched. A checkpoint is **static** if its frame is a function of the
+state at the settle point alone: replayed that far, with nothing more applied,
+the card presents the golden frame. Phase 2 found all fifteen static. It decided
+this by running a frozen replay, not by counting operations between the frame's
+first and last row latches: twelve checkpoints have status polls in that window,
+and a status poll changes no picture.
 
 ### Four executors, one oracle
 
@@ -375,9 +381,12 @@ the surface the tests use, and reproduces `Video.ts`'s per-cycle accumulator
 used: construction, `read`, `write`, `tick`, `getVramByte`/`setVramByte`,
 `frameIndices`, `buffer`, `getStatus`, `peekStatus`, `getDisplayLine`,
 `portState`, `paletteEntry`, `getRegister`/`setRegister`, `getMode`,
-`isDisplayEnabled`, `textGrid`. Any test that reaches into the TypeScript class's
-internals is listed in the config as skipped, by name, with the reason — never
-skipped silently.
+`isDisplayEnabled`, `textGrid`, `readVRAM`/`writeVRAM`, `vramSize`, and in three
+tests `serialize`/`deserialize` — snapshots, which Phase 3 decides to carry or to
+skip by name. Any test that reaches into the TypeScript class's internals is
+listed in the config as skipped, by name, with the reason — never skipped
+silently. Phase 2 found none. `PICOVDP_ADDON` names the adapter module,
+`host/node/Video.cjs`, which loads the compiled addon itself.
 
 **Fuzzing.** `tools/fuzz.mjs` loads the emulator's compiled `Video` and the
 adapter into one process. It feeds both the same seeded stream of port operations
@@ -621,12 +630,14 @@ In `6502-EMULATOR`, on `v3-vdp` only:
   unset. `Machine.onRead`/`onWrite` are unsuitable: the debugger's
   `Session.syncBusTaps` reassigns them.
 - `scripts/record-traces.mjs`: runs each fixture through `fixtures.js`'s
-  `runFixture` with the observer attached and writes `<fixture>.vdpt` to
+  `runFixture` with the observer attached and writes `<fixture>.vdpt.gz` to
   `docs/TRACE.md`'s format. Bus accesses happen on an instruction's first cycle,
-  before that cycle's video tick. Timestamps record that.
+  before that cycle's video tick. Timestamps record that. It runs the replay's
+  analysis as it records and writes each checkpoint's class and settle point
+  into the trace.
 - `scripts/replay-trace.mjs`: a fresh `Video`, no CPU, ticked to each event. It
   asserts every read, writes each checkpoint's index frame, VRAM and JSON, and
-  records each checkpoint's class and settle point into the trace.
+  checks each checkpoint's class and settle point against the trace.
 - `jest.picovdp.cjs` and `npm run test:picovdp`: `Video.test.ts`, unchanged, with
   `Video` mapped to the adapter named by `PICOVDP_ADDON`.
 - Attaching the observer moves no golden; `npm test` stays green.
@@ -838,9 +849,9 @@ is the bench.*
     `SNAPSHOT`, then plays on to the checkpoint and reads VRAM and registers there
 
 **Done when:** every static checkpoint reproduces exactly through the bus — index
-frame from the settle point, VRAM and registers from the checkpoint; dynamic
-checkpoints, if Phase 2 found any, are listed, with their Phase 10 injection
-results standing for them.
+frame from the settle point, VRAM and registers from the checkpoint. Phase 2
+found all fifteen static. A checkpoint that becomes dynamic after a re-sync is
+listed, with its Phase 10 injection result standing for it.
 
 ### Phase 13 — Raster timing, interrupts and load → **timing measured; SPEC.md updated**
 
