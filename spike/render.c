@@ -80,6 +80,9 @@ static ALWAYS_INLINE void store32(uint8_t *p, uint32_t w) { memcpy(p, &w, 4); }
 static ALWAYS_INLINE uint32_t bswap32(uint32_t w) {
     return w << 24 | (w << 8 & 0xFF0000u) | (w >> 8 & 0xFF00u) | w >> 24;
 }
+// Bytes a b c d doubled: the low half a a b b, the high half c c d d.
+static ALWAYS_INLINE uint32_t dbl_lo(uint32_t w) { return (w & 0xFF) * 0x0101u | ((w >> 8 & 0xFF) * 0x0101u) << 16; }
+static ALWAYS_INLINE uint32_t dbl_hi(uint32_t w) { return (w >> 16 & 0xFF) * 0x0101u | ((w >> 24) * 0x0101u) << 16; }
 // $01 in each byte that is non-zero.
 static ALWAYS_INLINE uint32_t nonzero_bytes(uint32_t w) {
     return ((((w & 0x7F7F7F7Fu) + 0x7F7F7F7Fu) | w) >> 7) & ONES;
@@ -312,9 +315,15 @@ typedef struct {
 } owners_t;
 static owners_t owners[12];
 
-static ALWAYS_INLINE void sprites(spike_t *v, spike_line_t *ln, int line, const unsigned depth, const bool detailed) {
+// Draws the sprites on `list` into a line. Single-core, straight into the
+// composed line: `pi` its indices, `pp` its priority classes. Split, into a
+// sprite line built alongside the layers: `pi` its indices, `pc` the class bit
+// that blocks each pixel, merged later by spike_sprite_merge.
+static ALWAYS_INLINE void sprites(const spike_t *v, const uint8_t *list, unsigned nlist, int line,
+                                  uint8_t *const pi, const uint8_t *const pp, uint8_t *const pc,
+                                  int xmin, int xmax, bool *col_out, uint64_t *map_out,
+                                  const unsigned depth, const bool detailed, const bool split) {
     const uint8_t *const vr = v->vram;
-    const int W = v->width;
     const unsigned shift = v->mag;
     const unsigned size = v->size16 ? 16 : 8;
     const int wpx = (int)(size << shift);
@@ -322,23 +331,24 @@ static ALWAYS_INLINE void sprites(spike_t *v, spike_line_t *ln, int line, const 
     const uint32_t sprpat = v->sprpat, sprattr = v->sprattr;
     const unsigned sprpal = v->sprpal;
     const bool collision = v->collision;
-    uint8_t *const pi = ln->idx_buf + SPIKE_SLACK_L + v->left;
-    const uint8_t *const pp = ln->pr_buf + SPIKE_SLACK_L + v->left;
     uint32_t claim[12] = { 0 };
+    uint32_t hit[12];             // detailed collision: pixels a sprite landed on after they were claimed
     uint32_t map_lo = 0, map_hi = 0;
     bool col = false;
     uint8_t srow[40];     // the sprite's pixels on this line as indices, by screen column, padded
 
-    if (detailed)
+    if (detailed) {
         for (unsigned w = 0; w < 12; w++) owners[w].n = 0;
+        memset(hit, 0, sizeof hit);
+    }
 
-    for (unsigned i = 0; i < ln->nlist; i++) {
-        const unsigned s = ln->list[i];
+    for (unsigned i = 0; i < nlist; i++) {
+        const unsigned s = list[i];
         const uint8_t *const e = vr + ((sprattr + 4u * s) & 0xFFFF);
         const uint8_t y = e[0], a = e[3];
         const unsigned x9 = e[1] | (a & 0x80u) << 1;
         const int sx = x9 >= 384 ? (int)x9 - 512 : (int)x9;
-        if (sx >= W || sx + wpx <= 0) continue;        // counted, not drawn
+        if (sx >= xmax || sx + wpx <= xmin) continue;  // counted, not drawn here
 
         const int top = y > 240 ? (int)y - 256 : (int)y;
         unsigned row = (unsigned)(line - top) >> shift;
@@ -391,20 +401,25 @@ static ALWAYS_INLINE void sprites(spike_t *v, spike_line_t *ln, int line, const 
                 m = rev8[m];
             }
         }
-        store32(srow, w0); store32(srow + 4, w1);
-        store32(srow + 8, w2); store32(srow + 12, w3);
         uint32_t mm = m;
-        if (shift) {
-            for (unsigned c = size; c-- > 0;) srow[2 * c] = srow[2 * c + 1] = srow[c];
+        if (shift) {        // magnified: every pixel twice, a word of four becoming two
+            store32(srow, dbl_lo(w0)); store32(srow + 4, dbl_hi(w0));
+            store32(srow + 8, dbl_lo(w1)); store32(srow + 12, dbl_hi(w1));
+            store32(srow + 16, dbl_lo(w2)); store32(srow + 20, dbl_hi(w2));
+            store32(srow + 24, dbl_lo(w3)); store32(srow + 28, dbl_hi(w3));
             mm = spread8[m & 255] | (uint32_t)spread8[m >> 8] << 16;
+        } else {
+            store32(srow, w0); store32(srow + 4, w1);
+            store32(srow + 8, w2); store32(srow + 12, w3);
         }
 
         // Clip to the picture, then claim: collision is any solid pixel
         // already claimed, and only what is newly claimed is drawn.
-        int x0 = sx;
-        if (x0 < 0) { mm >>= -x0; x0 = 0; }
-        const int x1 = sx + wpx > W ? W : sx + wpx;
-        if (sx + wpx > W) mm &= (1u << (W - x0)) - 1;  // W - x0 < wpx ≤ 32
+        // Clip to [xmin, xmax): the picture, or the part of it this core draws.
+        const int x0 = sx < xmin ? xmin : sx;
+        if (x0 > sx) mm >>= x0 - sx;                   // x0 - sx < wpx ≤ 32
+        const int x1 = sx + wpx > xmax ? xmax : sx + wpx;
+        if (x1 - x0 < 32) mm &= (1u << (x1 - x0)) - 1;
         if (!mm) continue;
 
         const unsigned k = (unsigned)x0 >> 5, b = (unsigned)x0 & 31;
@@ -417,19 +432,11 @@ static ALWAYS_INLINE void sprites(spike_t *v, spike_line_t *ln, int line, const 
         if ((mm & cw) && collision) {
             col = true;
             if (detailed) {
+                // This sprite collided. Which owners it hit is settled once, at
+                // the end of the line, from every pixel any later sprite hit.
                 const uint32_t ov = mm & cw;
-                const uint32_t ol = ov << b, oh = b ? ov >> (32 - b) : 0;
-                for (unsigned wd = 0; wd < 2; wd++) {
-                    const uint32_t o_bits = wd ? oh : ol;
-                    if (!o_bits) continue;
-                    const owners_t *o = &owners[k + wd];
-                    for (unsigned j = 0; j < o->n; j++) {
-                        if (o->bits[j] & o_bits) {
-                            if (o->who[j] < 32) map_lo |= 1u << o->who[j];
-                            else map_hi |= 1u << (o->who[j] - 32);
-                        }
-                    }
-                }
+                hit[k] |= ov << b;
+                if (b) hit[k + 1] |= ov >> (32 - b);
                 if (s < 32) map_lo |= 1u << s;
                 else map_hi |= 1u << (s - 32);
             }
@@ -445,27 +452,119 @@ static ALWAYS_INLINE void sprites(spike_t *v, spike_line_t *ln, int line, const 
         const unsigned block_shift = (a & 0x40) ? 1 : 0;   // SPIKE_PR_BLOCK_SPRP or _SPR
         const uint8_t *sp = srow + (x0 - sx);
         uint8_t *di = pi + x0;
-        const uint8_t *dp = pp + x0;
-        for (int c = 0; c < x1 - x0; c += 4, sp += 4, di += 4, dp += 4) {
-            const unsigned nib = (fresh >> c) & 15;
-            if (!nib) continue;
-            const uint32_t mask = nib_lsb_bytes[nib] & ~((load32(dp) >> block_shift & ONES) * 0xFF);
-            store32(di, (load32(di) & ~mask) | (load32(sp) & mask));
+        if (split) {
+            const uint32_t cls = (uint32_t)(SPIKE_PR_BLOCK_SPR << block_shift) * ONES;
+            uint8_t *dc = pc + x0;
+            for (int c = 0; c < x1 - x0; c += 4, sp += 4, di += 4, dc += 4) {
+                const unsigned nib = (fresh >> c) & 15;
+                if (!nib) continue;
+                const uint32_t mask = nib_lsb_bytes[nib];
+                store32(di, (load32(di) & ~mask) | (load32(sp) & mask));
+                store32(dc, load32(dc) | (cls & mask));
+            }
+        } else {
+            const uint8_t *dp = pp + x0;
+            for (int c = 0; c < x1 - x0; c += 4, sp += 4, di += 4, dp += 4) {
+                const unsigned nib = (fresh >> c) & 15;
+                if (!nib) continue;
+                const uint32_t mask = nib_lsb_bytes[nib] & ~((load32(dp) >> block_shift & ONES) * 0xFF);
+                store32(di, (load32(di) & ~mask) | (load32(sp) & mask));
+            }
         }
     }
 
+    // An owner collided exactly when a later sprite hit a pixel it owns.
+    if (detailed && col) {
+        for (unsigned w = 0; w < 12; w++) {
+            const uint32_t h = hit[w];
+            if (!h) continue;
+            const owners_t *o = &owners[w];
+            for (unsigned j = 0; j < o->n; j++) {
+                if (o->bits[j] & h) {
+                    if (o->who[j] < 32) map_lo |= 1u << o->who[j];
+                    else map_hi |= 1u << (o->who[j] - 32);
+                }
+            }
+        }
+    }
+
+    *col_out = col;
+    *map_out = (uint64_t)map_hi << 32 | map_lo;
+}
+
+#define SPRITES_VARIANTS(name, split_)                                                                      \
+    static void name(const spike_t *v, const uint8_t *list, unsigned n, int line, uint8_t *pi,              \
+                     const uint8_t *pp, uint8_t *pc, int x0, int x1, bool *col, uint64_t *map) {             \
+        const bool det = v->collision && v->detailed;                                                        \
+        switch (v->spr_depth) {                                                                              \
+        case SPIKE_1BPP: sprites(v, list, n, line, pi, pp, pc, x0, x1, col, map, SPIKE_1BPP, det, split_); break; \
+        case SPIKE_2BPP: sprites(v, list, n, line, pi, pp, pc, x0, x1, col, map, SPIKE_2BPP, det, split_); break; \
+        case SPIKE_4BPP: sprites(v, list, n, line, pi, pp, pc, x0, x1, col, map, SPIKE_4BPP, det, split_); break; \
+        default:         sprites(v, list, n, line, pi, pp, pc, x0, x1, col, map, SPIKE_8BPP, det, split_); break; \
+        }                                                                                                    \
+    }
+SPRITES_VARIANTS(sprites_direct, false)
+SPRITES_VARIANTS(sprites_split, true)
+
+void spike_sprites_range(spike_t *v, spike_line_t *ln, int line, int x0, int x1) {
+    bool col;
+    uint64_t map;
+    sprites_direct(v, ln->list, ln->nlist, line, ln->idx_buf + SPIKE_SLACK_L + v->left,
+                   ln->pr_buf + SPIKE_SLACK_L + v->left, NULL, x0, x1, &col, &map);
     if (col) v->col = true;
-    v->colmap |= (uint64_t)map_hi << 32 | map_lo;
+    v->colmap |= map;
 }
 
 void spike_sprites(spike_t *v, spike_line_t *ln, int line) {
+    spike_sprites_range(v, ln, line, 0, v->width);
+}
+
+void spike_sprites_split(const spike_t *v, const uint8_t *list, unsigned n, int line, int x0, int x1,
+                         spike_sprline_t *out) {
+    uint8_t *const pc = out->cls_buf + SPIKE_SLACK_L + v->left;
+    out->x0 = x0;
+    out->x1 = x1;
+    memset(pc + x0, 0, (size_t)(x1 - x0));
+    sprites_split(v, list, n, line, out->idx_buf + SPIKE_SLACK_L + v->left, NULL, pc, x0, x1, &out->col, &out->colmap);
+}
+
+int spike_split_choose(const spike_t *v, const spike_line_t *ln, uint32_t layer_cycles, int bias) {
+    // O(1): the sprites on the list as if spread evenly across the picture.
+    // Their estimated cost T is shared so that core 0's part, xs/W of T plus
+    // its fixed cost, balances core 1's layers, fixed cost and the rest of T.
+    // The constants are this spike's measured costs, rounded. `bias`, in
+    // pixels, is the caller's correction from lines already built.
     const bool det = v->collision && v->detailed;
-    switch (v->spr_depth) {
-    case SPIKE_1BPP: if (det) sprites(v, ln, line, SPIKE_1BPP, true); else sprites(v, ln, line, SPIKE_1BPP, false); break;
-    case SPIKE_2BPP: if (det) sprites(v, ln, line, SPIKE_2BPP, true); else sprites(v, ln, line, SPIKE_2BPP, false); break;
-    case SPIKE_4BPP: if (det) sprites(v, ln, line, SPIKE_4BPP, true); else sprites(v, ln, line, SPIKE_4BPP, false); break;
-    default:         if (det) sprites(v, ln, line, SPIKE_8BPP, true); else sprites(v, ln, line, SPIKE_8BPP, false); break;
+    const int W = v->width;
+    const uint32_t per_sprite = det ? 290 : 200, per_px = 7;
+    const uint32_t core0_fixed = 500, core1_fixed = 2000;
+    const uint32_t wpx = (v->size16 ? 16u : 8u) << v->mag;
+    const uint32_t T = ln->nlist * (per_sprite + wpx * per_px);
+    if (!T) return W;
+    // xs/W × T + core0_fixed = layer + core1_fixed + (1 − xs/W) × T
+    const int64_t num = (int64_t)layer_cycles + core1_fixed + T - core0_fixed;
+    int xs = num <= 0 ? 0 : (int)((uint64_t)num * (uint32_t)W / (2u * T));
+    xs = ((xs + 16) & ~31) + bias;
+    if (xs > W) xs = W;
+    if (xs < W / 2) xs = W / 2;
+    return xs;
+}
+
+void spike_sprite_merge(spike_t *v, spike_line_t *ln, const spike_sprline_t *sl) {
+    uint8_t *const pi = ln->idx_buf + SPIKE_SLACK_L + v->left;
+    const uint8_t *const pp = ln->pr_buf + SPIKE_SLACK_L + v->left;
+    const uint8_t *const si = sl->idx_buf + SPIKE_SLACK_L + v->left;
+    const uint8_t *const sc = sl->cls_buf + SPIKE_SLACK_L + v->left;
+    for (int x = sl->x0; x < sl->x1; x += 4) {
+        const uint32_t c = load32(sc + x);
+        if (!c) continue;
+        // A sprite pixel shows where its class bit is clear in the layers' class, §12.
+        const uint32_t d = c & ~load32(pp + x);
+        const uint32_t m = ((d | d >> 1) & ONES) * 0xFF;
+        store32(pi + x, (load32(pi + x) & ~m) | (load32(si + x) & m));
     }
+    if (sl->col) v->col = true;
+    v->colmap |= sl->colmap;
 }
 
 // ---------------------------------------------------------------------------
@@ -494,5 +593,15 @@ void spike_build_line(spike_t *v, spike_line_t *ln, int line, uint16_t *rgb) {
     spike_layer0(v, ln, line);
     spike_layer1(v, ln, line);
     spike_sprites(v, ln, line);
+    spike_finish(v, ln, rgb);
+}
+
+void spike_build_line_split(spike_t *v, spike_line_t *ln, spike_sprline_t *sl, int line, int xs, uint16_t *rgb) {
+    spike_sprite_eval(v, ln, line);
+    spike_sprites_split(v, ln->list, ln->nlist, line, 0, xs, sl);  // on core 0, alongside the next three
+    spike_layer0(v, ln, line);
+    spike_layer1(v, ln, line);
+    spike_sprites_range(v, ln, line, xs, v->width);
+    spike_sprite_merge(v, ln, sl);
     spike_finish(v, ln, rgb);
 }

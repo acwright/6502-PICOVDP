@@ -94,7 +94,31 @@ void spike_sprite_eval(spike_t *v, spike_line_t *ln, int line);
 void spike_layer0(const spike_t *v, spike_line_t *ln, int line);
 void spike_layer1(const spike_t *v, spike_line_t *ln, int line);
 void spike_sprites(spike_t *v, spike_line_t *ln, int line);
+void spike_sprites_range(spike_t *v, spike_line_t *ln, int line, int x0, int x1);  // picture columns [x0, x1)
 void spike_finish(const spike_t *v, spike_line_t *ln, uint16_t *rgb);  // border, then 320 → 640
 
 // All of the above.
 void spike_build_line(spike_t *v, spike_line_t *ln, int line, uint16_t *rgb);
+
+// The split: core 0 builds the sprites left of a boundary xs into a sprite
+// line while core 1 builds the layers and then the sprites right of xs; core 1
+// merges core 0's part. xs is a multiple of 32, so each half's claim bitmap
+// and collision are exact. Both cores read the render copy, which does not
+// change between the line start and the merge. Status stays on core 1: core 0
+// returns collision in the sprite line, and the merge publishes it.
+typedef struct {
+    uint8_t idx_buf[SPIKE_LINE_BUF];    // sprite indices
+    uint8_t cls_buf[SPIKE_LINE_BUF];    // 0, or the SPIKE_PR_BLOCK_ bit that hides this sprite pixel
+    int x0, x1;                         // the picture columns built
+    bool col;
+    uint64_t colmap;
+} spike_sprline_t;
+
+void spike_sprites_split(const spike_t *v, const uint8_t *list, unsigned n, int line, int x0, int x1,
+                         spike_sprline_t *out);
+void spike_sprite_merge(spike_t *v, spike_line_t *ln, const spike_sprline_t *sl);
+// Picks xs for a line after evaluation, balancing core 0's sprites against
+// core 1's layers (`layer_cycles`, as the last line measured them) and sprites,
+// corrected by `bias` pixels.
+int spike_split_choose(const spike_t *v, const spike_line_t *ln, uint32_t layer_cycles, int bias);
+void spike_build_line_split(spike_t *v, spike_line_t *ln, spike_sprline_t *sl, int line, int xs, uint16_t *rgb);

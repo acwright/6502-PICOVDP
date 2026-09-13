@@ -9,8 +9,8 @@ PICO9918 PRO v2.0 hardware (RP2354A).
 - [PLAN.md](PLAN.md) — how the firmware is built, proven and delivered.
 - `docs/results/` — what each phase measured and checked.
 
-Status: Phase 1 (timing spike) done; Still Open 1's remedy is to be chosen
-before Phase 3 — see `docs/results/phase-01.md`.
+Status: Phase 1 (timing spike) done, core 0 sprite split measured; Still Open
+1's remedy is to be chosen before Phase 3 — see `docs/results/phase-01.md`.
 
 Layout
 ------

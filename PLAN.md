@@ -13,12 +13,13 @@ byte for byte on the PRO; and the per-line budget, interrupt timing and status
 freshness are measured on the PRO and written back into SPEC.md.
 
 **Status:** Phases 0 and 1 done ([results](docs/results/)). Phase 1 measured
-the line at 2.5–4.5× §18's estimates: the Full mode worst case does not fit at
-either clock, so Still Open 1's remedy must be chosen before Phase 3
+the line at 2.5–4× §18's estimates. On one core the Full mode worst case does not
+fit at either clock; with the sprites built on core 0 every worst case fits at
+352 MHz, and with `SPRLIMIT` 16 as well at the plan's 25% margin. Adopting the
+split, and the threshold, must be decided before Phase 3
 ([phase-01.md](docs/results/phase-01.md#still-open-1--the-remedies-weighed)).
-The clock preset is 352 MHz. The PRO is on
-order. Part A of this plan needs no PRO: it runs on the host, in the emulator
-and on a Raspberry Pi Pico 2.
+The clock preset is 352 MHz. The PRO is on order. Part A of this plan needs no
+PRO: it runs on the host, in the emulator and on a Raspberry Pi Pico 2.
 
 ---
 

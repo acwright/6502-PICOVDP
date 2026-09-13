@@ -5,13 +5,20 @@
 // the CDC port and it runs the suite at 302.4 MHz and then 352 MHz, printing
 // one machine-readable line per result (spike/report.mjs turns them into
 // tables), and ends with "END".
+//
+// Send 's' instead for the split suite: sprites on core 0 (spike_sprites_split),
+// with the interrupts both cores will really take running for real — the bus on
+// core 1 every 2 µs, VGA on core 0 every VGA line — and each line timed from its
+// latch to its last expanded pixel.
 
 #include <stdio.h>
 #include <string.h>
 
 #include "hardware/clocks.h"
 #include "hardware/irq.h"
+#include "hardware/dma.h"
 #include "hardware/pio.h"
+#include "hardware/pwm.h"
 #include "hardware/structs/m33.h"
 #include "hardware/sync.h"
 #include "hardware/vreg.h"
@@ -126,7 +133,7 @@ static uint32_t line_start(void) {
     // the palette window snooped: v.vram is the render copy here.
     const uint32_t t0 = cyc();
     memcpy(render_registers, registers, sizeof registers);
-    const unsigned n = journal_n;
+    const unsigned n = journal_n < 1024 ? journal_n : 1024;
     for (unsigned i = 0; i < n; i++) {
         const uint32_t e = journal[i];
         const uint16_t a = (uint16_t)e;
@@ -246,10 +253,238 @@ static void run_micro(void) {
     restore_interrupts(irq);
 }
 
+// ---------------------------------------------------------------------------
+// The split suite
+
+// Interrupt load. The bus: a PWM wrap interrupt on core 1 every 2 µs — a 2 MHz
+// 6502's back-to-back sta abs, without pause — doing a data write into the
+// palette window, so every line start drains a full journal through the
+// palette cache. VGA: a PWM wrap interrupt on core 0 at the VGA line rate,
+// shaped like pico9918's dmaIrqHandler (ack, count the line, re-arm, and every
+// other line hand one to the renderer).
+#define BUS_SLICE 1
+#define VGA_SLICE 0
+#define SPLIT_PALBASE 0x3000        // clear of every table the scenes use
+
+static volatile uint32_t bus_count;
+static volatile uint32_t vga_count, vga_max;
+static unsigned vga_line;
+
+static void __not_in_flash_func(bus_pwm_isr)(void) {
+    pwm_hw->intr = 1u << BUS_SLICE;
+    const uint32_t w = bus_word++;
+    port_t *const p = &ports[0];
+    const uint16_t a = p->ptr;
+    bus_vram[a] = (uint8_t)w;
+    journal[journal_n++ & 1023] = a | (uint32_t)(uint8_t)w << 16;
+    p->prefetch = (uint8_t)w;
+    p->ptr = (uint16_t)(palbase + ((a + vinc - palbase) & 511));
+    p->flip = 0;
+    pio0->txf[3] = ports[0].prefetch | (uint32_t)stat[ports[0].statsel & 15] << 8 |
+                   (uint32_t)ports[1].prefetch << 16 | (uint32_t)stat[ports[1].statsel & 15] << 24;
+    bus_count++;
+}
+
+static void __not_in_flash_func(vga_pwm_isr)(void) {
+    const uint32_t t0 = cyc();
+    pwm_hw->intr = 1u << VGA_SLICE;
+    (void)dma_hw->ints0;
+    vga_line = vga_line + 1 == 525 ? 0 : vga_line + 1;
+    pio0->txf[2] = vga_line;
+    if (vga_line & 1) {
+        (void)sio_hw->fifo_st;
+        pio0->txf[2] = vga_line | 0x1000;
+    }
+    vga_count++;
+    const uint32_t d = cyc() - t0;
+    if (d > vga_max) vga_max = d;
+}
+
+// Start a PWM slice interrupting the calling core at about `rate` Hz.
+static void pwm_irq_start(unsigned slice, uint32_t rate, uint32_t div, bool irq1, irq_handler_t handler) {
+    pwm_config c = pwm_get_default_config();
+    pwm_config_set_clkdiv_int(&c, div);
+    pwm_config_set_wrap(&c, (uint16_t)(clock_get_hz(clk_sys) / div / rate - 1));
+    pwm_init(slice, &c, false);
+    const unsigned irq = irq1 ? PWM_IRQ_WRAP_1 : PWM_IRQ_WRAP_0;
+    irq_set_exclusive_handler(irq, handler);
+    if (irq1) pwm_set_irq1_enabled(slice, true);
+    else pwm_set_irq0_enabled(slice, true);
+    pwm_clear_irq(slice);
+    irq_set_enabled(irq, true);
+    pwm_set_enabled(slice, true);
+}
+
+static void pwm_irq_stop(unsigned slice, bool irq1) {
+    pwm_set_enabled(slice, false);
+    irq_set_enabled(irq1 ? PWM_IRQ_WRAP_1 : PWM_IRQ_WRAP_0, false);
+    if (irq1) pwm_set_irq1_enabled(slice, false);
+    else pwm_set_irq0_enabled(slice, false);
+    pwm_clear_irq(slice);
+}
+
+// Core 0's half of a line. The handoff is the inter-core FIFO, and both cores
+// wait by polling its status in SIO, which is core-local: a wait loop reading
+// SRAM would contend with the other core's work on the bus fabric.
+#define JOB_STOP 0xFFFFFFFFu
+typedef struct {
+    int line, xs;
+    uint32_t work;
+} job_t;
+static job_t job;
+static spike_sprline_t sprline;
+
+static void __not_in_flash_func(core0_worker)(void) {
+    dwt_start();
+    for (;;) {
+        while (!multicore_fifo_rvalid()) {}
+        if (multicore_fifo_pop_blocking() == JOB_STOP) return;
+        const uint32_t t0 = cyc();
+        const int xs = job.xs;
+        spike_sprites_split(&v, ln.list, ln.nlist, job.line, 0, xs, &sprline);
+        job.work = cyc() - t0;
+        multicore_fifo_push_blocking(1);
+    }
+}
+
+// Mode 0 is single-core; mode m in 1..6 splits at xs = W − 32(m − 1), down to half
+// the picture. Two diagnostics of where core 0's time goes, each with all the
+// sprites on one core: SM_C0_ALONE, on core 0 while core 1 only waits;
+// SM_C1_ALONE, the same code on core 1 with interrupts off.
+#define SM_C0_ALONE 7
+#define SM_C1_ALONE 8
+#define SM_AUTO 9           // xs chosen per line by spike_split_choose
+#define SM_COUNT 10
+static inline int split_xs(int W, unsigned mode) { return W - 32 * (int)(mode - 1); }
+
+typedef struct {
+    uint32_t lat_max, wait_max, core1_max, core0_max;
+    uint64_t lat_sum;
+    uint32_t lines, bus, late;
+    int xs;
+} split_result_t;
+static split_result_t split_results[80][SM_COUNT];
+static unsigned split_scene_count;
+static uint8_t split_scene_index[80];
+
+static void run_split(unsigned si, unsigned mode) {
+    split_result_t *r = &split_results[si][mode];
+    *r = (split_result_t){ 0 };
+    spike_scene_build(&v, &scenes[split_scene_index[si]]);
+    const int W = v.width;
+    const bool diag = mode == SM_C0_ALONE || mode == SM_C1_ALONE;
+    int xs = mode && !diag && mode != SM_AUTO ? split_xs(W, mode) : W;
+    r->xs = mode == SM_C0_ALONE ? -2 : mode == SM_C1_ALONE ? -3 : mode == SM_AUTO ? 0 : mode ? xs : -1;
+    uint32_t layer_cycles = 0;
+    int bias = 0;
+    const uint32_t budget = (uint32_t)((uint64_t)clock_get_hz(clk_sys) * 63556 / 1000000000);
+    journal_n = 0;
+    const uint32_t bus0 = bus_count;
+
+    for (unsigned frame = 0; frame < FRAMES; frame++) {
+        spike_scene_frame(&v, frame);
+        v.ovf = v.col = false;
+        v.colmap = 0;
+        for (int line = 0; line < 240; line++) {
+            const uint32_t t0 = cyc();
+            // The latch: equal priority with the bus, so nothing preempts the drain.
+            const uint32_t irq = save_and_disable_interrupts();
+            line_start();
+            restore_interrupts(irq);
+            spike_sprite_eval(&v, &ln, line);
+            uint32_t wait = 0;
+            if (mode == SM_C1_ALONE) {
+                const uint32_t irq2 = save_and_disable_interrupts();
+                const uint32_t t = cyc();
+                spike_sprites_split(&v, ln.list, ln.nlist, line, 0, W, &sprline);
+                const uint32_t d = cyc() - t;
+                restore_interrupts(irq2);
+                if (d > r->core0_max) r->core0_max = d;
+                spike_layer0(&v, &ln, line);
+                spike_layer1(&v, &ln, line);
+                spike_sprite_merge(&v, &ln, &sprline);
+            } else if (mode == 0) {
+                spike_layer0(&v, &ln, line);
+                spike_layer1(&v, &ln, line);
+                spike_sprites(&v, &ln, line);
+            } else {
+                if (mode == SM_AUTO) xs = spike_split_choose(&v, &ln, layer_cycles, bias);
+                job.line = line;
+                job.xs = xs;
+                const uint32_t tpost = cyc();
+                multicore_fifo_push_blocking(0);
+                if (mode != SM_C0_ALONE) {
+                    const uint32_t tl = cyc();
+                    spike_layer0(&v, &ln, line);
+                    spike_layer1(&v, &ln, line);
+                    layer_cycles = cyc() - tl;
+                    if (xs < W) spike_sprites_range(&v, &ln, line, xs, W);
+                }
+                const uint32_t tw = cyc();
+                const uint32_t par1 = tw - tpost;
+                while (!multicore_fifo_rvalid()) {}
+                multicore_fifo_pop_blocking();
+                wait = cyc() - tw;
+                spike_sprite_merge(&v, &ln, &sprline);
+                if (job.work > r->core0_max) r->core0_max = job.work;
+                // Feedback: move the boundary a column toward the core that finished first.
+                if (mode == SM_AUTO && ln.nlist) {
+                    if (job.work > par1 + 1000 && bias > -96) bias -= 32;
+                    else if (par1 > job.work + 1000 && bias < 96) bias += 32;
+                }
+            }
+            spike_finish(&v, &ln, rgb);
+            const uint32_t lat = cyc() - t0;
+            if (lat > r->lat_max) r->lat_max = lat;
+            if (lat > budget) r->late++;
+            if (wait > r->wait_max) r->wait_max = wait;
+            if (lat - wait > r->core1_max) r->core1_max = lat - wait;
+            r->lat_sum += lat;
+            r->lines++;
+        }
+    }
+    r->bus = bus_count - bus0;
+}
+
+static void split_suite(void) {
+    // Every depth and sprite setting, both geometries, table on, SPRLIMIT 32; and
+    // Full mode 4bpp at SPRLIMIT 16, the split with Still Open 1's second remedy.
+    split_scene_count = 0;
+    for (unsigned i = 0; i < nscenes; i++)
+        if (scenes[i].tab4 && !scenes[i].single &&
+            (scenes[i].limit == 32 || (scenes[i].limit == 16 && scenes[i].geom == SPIKE_FULL)))
+            split_scene_index[split_scene_count++] = (uint8_t)i;
+
+    palbase = SPLIT_PALBASE;
+    ports[0].ptr = SPLIT_PALBASE;
+    pwm_irq_start(BUS_SLICE, 500000, 1, true, bus_pwm_isr);
+    for (unsigned si = 0; si < split_scene_count; si++) {
+        const int W = scenes[split_scene_index[si]].geom == SPIKE_FULL ? 320 : 256;
+        for (unsigned m = 0; m < SM_COUNT; m++) {
+            if ((m == SM_C0_ALONE || m == SM_C1_ALONE) && scenes[split_scene_index[si]].depth != SPIKE_4BPP) {
+                split_results[si][m].lines = 0;
+                continue;
+            }
+            if (m && m < SM_C0_ALONE && split_xs(W, m) < W / 2) {   // (xs=0 in the output is SM_AUTO)
+                split_results[si][m].lines = 0;
+                continue;
+            }
+            run_split(si, m);
+        }
+    }
+    pwm_irq_stop(BUS_SLICE, true);
+    palbase = 0xFC00;
+}
+
 static void core1_main(void) {
     dwt_start();
     for (;;) {
-        multicore_fifo_pop_blocking();
+        const uint32_t cmd = multicore_fifo_pop_blocking();
+        if (cmd == 's') {
+            split_suite();
+            multicore_fifo_push_blocking(JOB_STOP);
+            continue;
+        }
         for (unsigned i = 0; i < nscenes; i++) run_scene(i);
         run_micro();
         multicore_fifo_push_blocking(1);
@@ -290,6 +525,22 @@ static void report(uint32_t hz) {
            (unsigned long)(drain_result.sum / 10000));
 }
 
+static void report_split(uint32_t hz) {
+    printf("CLOCK hz=%lu opt=%s budget=%lu vga_max=%lu vga_count=%lu\n", (unsigned long)hz,
+           PICOVDP_SPIKE_OPT[0] ? PICOVDP_SPIKE_OPT : "preset",
+           (unsigned long)((uint64_t)hz * 63556 / 1000000000), (unsigned long)vga_max, (unsigned long)vga_count);
+    for (unsigned si = 0; si < split_scene_count; si++) {
+        for (unsigned m = 0; m < SM_COUNT; m++) {
+            const split_result_t *r = &split_results[si][m];
+            if (!r->lines) continue;
+            printf("SPLIT hz=%lu name=%s xs=%d late=%lu lat_max=%lu lat_mean=%lu wait_max=%lu core1_max=%lu core0_max=%lu bus_per_line_x100=%lu\n",
+                   (unsigned long)hz, scenes[split_scene_index[si]].name, r->xs, (unsigned long)r->late, (unsigned long)r->lat_max,
+                   (unsigned long)(r->lat_sum / r->lines), (unsigned long)r->wait_max, (unsigned long)r->core1_max,
+                   (unsigned long)r->core0_max, (unsigned long)(100ull * r->bus / r->lines));
+        }
+    }
+}
+
 int main(void) {
     stdio_init_all();
     spike_init_tables();
@@ -297,10 +548,26 @@ int main(void) {
     multicore_launch_core1(core1_main);
 
     for (;;) {
-        printf("picovdp spike ready: send r\n");
+        printf("picovdp spike ready: send r or s\n");
         int ch;
-        do ch = getchar_timeout_us(2000000); while (ch != 'r' && ch != PICO_ERROR_TIMEOUT);
-        if (ch != 'r') continue;
+        do ch = getchar_timeout_us(2000000); while (ch != 'r' && ch != 's' && ch != PICO_ERROR_TIMEOUT);
+        if (ch == PICO_ERROR_TIMEOUT) continue;
+
+        if (ch == 's') {
+            printf("BEGIN split frames=%u lines=240\n", FRAMES);
+            for (unsigned c = 1; c < sizeof presets / sizeof presets[0]; c++) {    // 352 MHz, the preset chosen
+                set_clock(&presets[c]);
+                const uint32_t hz = clock_get_hz(clk_sys);
+                vga_max = vga_count = 0;
+                pwm_irq_start(VGA_SLICE, 31469, 16, false, vga_pwm_isr);
+                multicore_fifo_push_blocking('s');
+                core0_worker();                 // until core 1 has finished the suite
+                pwm_irq_stop(VGA_SLICE, false);
+                report_split(hz);
+            }
+            printf("END\n");
+            continue;
+        }
 
         printf("BEGIN scenes=%u frames=%u lines=240\n", nscenes, FRAMES);
         for (unsigned c = 0; c < sizeof presets / sizeof presets[0]; c++) {

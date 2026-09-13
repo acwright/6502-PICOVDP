@@ -21,7 +21,7 @@ else()
         # Flash is never touched after boot (copy_to_ram), but keep its clock
         # in range at 352 MHz, as pico9918 does.
         PICO_FLASH_SPI_CLKDIV=4)
-    target_link_libraries(picovdp_spike PRIVATE picovdp_warnings pico_stdlib pico_multicore hardware_pio)
+    target_link_libraries(picovdp_spike PRIVATE picovdp_warnings pico_stdlib pico_multicore hardware_pio hardware_pwm hardware_dma)
     pico_enable_stdio_usb(picovdp_spike 1)
     pico_enable_stdio_uart(picovdp_spike 0)
     pico_add_extra_outputs(picovdp_spike)

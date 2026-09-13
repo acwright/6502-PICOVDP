@@ -1,5 +1,6 @@
 // Phase 1 timing spike, host side: proves the renderer being timed draws
-// what SPEC.md says, by comparing every scene against a per-pixel reference
+// what SPEC.md says, by comparing every scene, built both on one core and
+// split across two, against a per-pixel reference
 // written straight from §8, §10, §12 and §13, and writes each scene's first
 // frame as a PPM for a look. Usage: spike_host [out-dir]
 
@@ -12,6 +13,7 @@
 
 static spike_t v, ref_v;
 static spike_line_t ln;
+static spike_sprline_t sprline;
 
 static uint32_t rng = 1;
 static uint32_t rnd(void) {
@@ -203,29 +205,36 @@ int main(int argc, char **argv) {
         for (unsigned frame = 0; frame < (random ? 2u : 9u); frame++) {
             spike_scene_frame(&v, frame);
             spike_scene_frame(&ref_v, frame);
-            v.ovf = v.col = false; v.colmap = 0; v.first_drop = 0;
             ref_v.ovf = ref_v.col = false; ref_v.colmap = 0; ref_v.first_drop = 0;
+            ref_frame(&ref_v, want);
+
+            // Three ways: sprites straight into the line; all on core 0 and merged;
+            // and divided at the middle of the picture, left half on core 0.
+            for (int split = 0; split < 3; split++) {
+            const char *const how = split == 2 ? " (split at half)" : split ? " (split)" : "";
+            const int xs = split == 2 ? v.width / 2 : v.width;
+            v.ovf = v.col = false; v.colmap = 0; v.first_drop = 0;
 
             for (int line = 0; line < 240; line++) {
-                spike_build_line(&v, &ln, line, rgb);
+                if (split) spike_build_line_split(&v, &ln, &sprline, line, xs, rgb);
+                else spike_build_line(&v, &ln, line, rgb);
                 memcpy(got + line * 320, SPIKE_IDX(&ln), 320);
                 for (unsigned x = 0; x < 320; x++) {
                     uint32_t want_rgb = v.pal2[got[line * 320 + x]];
                     if (memcmp(rgb + 2 * x, &want_rgb, 4) != 0) {
-                        fprintf(stderr, "%s: expansion wrong at line %d x %u\n", sc->name, line, x);
+                        fprintf(stderr, "%s%s: expansion wrong at line %d x %u\n", sc->name, how, line, x);
                         failures++;
                         break;
                     }
                 }
             }
-            ref_frame(&ref_v, want);
 
             unsigned bad = 0, first = 0;
             for (unsigned p = 0; p < sizeof got; p++)
                 if (got[p] != want[p] && bad++ == 0) first = p;
             if (bad) {
-                fprintf(stderr, "%s frame %u: %u pixels differ, first at line %u x %u (got %02X want %02X)\n",
-                        sc->name, frame, bad, first / 320, first % 320, got[first], want[first]);
+                fprintf(stderr, "%s%s frame %u: %u pixels differ, first at line %u x %u (got %02X want %02X)\n",
+                        sc->name, how, frame, bad, first / 320, first % 320, got[first], want[first]);
                 if (getenv("SPIKE_DEBUG")) {
                     fprintf(stderr, "  random %d L0 en %d op %d L1 en %d op %d spr en %d col %d det %d d0 %d 16 %d mag %d count %u limit %u left %u\n",
                             random, v.layer[0].enabled, v.layer[0].opaque, v.layer[1].enabled, v.layer[1].opaque,
@@ -245,15 +254,16 @@ int main(int argc, char **argv) {
             }
             if (v.ovf != ref_v.ovf || v.first_drop != ref_v.first_drop || v.col != ref_v.col ||
                 v.colmap != ref_v.colmap) {
-                fprintf(stderr, "%s frame %u: status differs: ovf %d/%d drop %u/%u col %d/%d map %016llX/%016llX\n",
-                        sc->name, frame, v.ovf, ref_v.ovf, v.first_drop, ref_v.first_drop, v.col, ref_v.col,
+                fprintf(stderr, "%s%s frame %u: status differs: ovf %d/%d drop %u/%u col %d/%d map %016llX/%016llX\n",
+                        sc->name, how, frame, v.ovf, ref_v.ovf, v.first_drop, ref_v.first_drop, v.col, ref_v.col,
                         (unsigned long long)v.colmap, (unsigned long long)ref_v.colmap);
                 failures++;
+            }
             }
             if (outdir && frame == 0 && !random) {
                 char path[512];
                 snprintf(path, sizeof path, "%s/%s.ppm", outdir, sc->name);
-                write_ppm(path, &v, got);
+                write_ppm(path, &v, got);   // the split path's frame, which matched
             }
         }
         if (!random && (!ref_v.ovf || !ref_v.col || (sc->detailed && ref_v.colmap == 0))) {

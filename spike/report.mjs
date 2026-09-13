@@ -140,3 +140,60 @@ for (const op of ['data-write', 'data-read', 'reg-write', 'status-read']) {
   p(`| ${op} | ${m.max} | ${m.mean} |`);
 }
 console.log(out.join('\n'));
+
+// ---------------------------------------------------------------------------
+// The split suite (capture.mjs … s): node spike/report.mjs <stages> <first pass> <split>
+if (process.argv[4]) {
+  const lines = fs.readFileSync(process.argv[4], 'utf8').split('\n');
+  const clock = Object.fromEntries(lines.find((l) => l.startsWith('CLOCK')).split(' ').slice(1).map((kv) => kv.split('=')));
+  const budget = Number(clock.budget);
+  const rows = lines.filter((l) => l.startsWith('SPLIT')).map((l) => {
+    const f = Object.fromEntries(l.split(' ').slice(1).map((kv) => kv.split('=')));
+    for (const k of Object.keys(f)) if (/^-?\d+$/.test(f[k])) f[k] = Number(f[k]);
+    return f;
+  });
+  const by = (name, xs) => rows.find((r) => r.name === name && r.xs === xs);
+  const o = [];
+  const q = (s = '') => o.push(s);
+  q(`Split suite at ${Number(clock.hz) / 1e6} MHz, budget ${n(budget)} cycles; VGA interrupt handler at most ${clock.vga_max} cycles.`);
+  q();
+  q('| Scene | One core | Best fixed split | at xs | Chosen per line | Late lines | Margin |');
+  q('|---|--:|--:|--:|--:|--:|--:|');
+  for (const geom of ['graphics', 'full']) {
+    for (const d of ['1bpp', '2bpp', '4bpp', '8bpp']) {
+      for (const spr of ['16', '16-det', '32', '32-det']) {
+        const name = `${geom}-${d}-${spr}`;
+        const single = by(name, -1), auto = by(name, 0);
+        const fixed = rows.filter((r) => r.name === name && r.xs > 0).sort((a, b) => a.lat_max - b.lat_max)[0];
+        q(`| ${name} | ${n(single.lat_max)} | ${n(fixed.lat_max)} | ${fixed.xs} | ${n(auto.lat_max)} | ${auto.late} | ${pct(auto.lat_max, budget)} |`);
+      }
+    }
+  }
+  q();
+  q('| Full mode, 4bpp, split, chosen per line | SPRLIMIT 32 | Margin | SPRLIMIT 16 | Margin |');
+  q('|---|--:|--:|--:|--:|');
+  for (const spr of ['16', '16-det', '32', '32-det']) {
+    const a = by(`full-4bpp-${spr}`, 0), b = by(`full-4bpp-${spr}-lim16`, 0);
+    q(`| full-4bpp-${spr} | ${n(a.lat_max)} | ${pct(a.lat_max, budget)} | ${n(b.lat_max)} | ${pct(b.lat_max, budget)} |`);
+  }
+  q();
+  q('| Full mode, 4bpp | xs | Latency | Late lines | Core 1 waited | Core 0 work |');
+  q('|---|--:|--:|--:|--:|--:|');
+  for (const spr of ['16', '16-det', '32', '32-det']) {
+    const name = `full-4bpp-${spr}`;
+    for (const r of rows.filter((x) => x.name === name && x.xs >= -1).sort((a, b) => (a.xs === 0 ? 1e9 : a.xs < 0 ? -1 : 1e3 - a.xs) - (b.xs === 0 ? 1e9 : b.xs < 0 ? -1 : 1e3 - b.xs))) {
+      const label = r.xs === -1 ? 'one core' : r.xs === 0 ? 'per line' : r.xs;
+      q(`| ${name} | ${label} | ${n(r.lat_max)} | ${r.late} | ${n(r.wait_max)} | ${r.xs === -1 ? '—' : n(r.core0_max)} |`);
+    }
+  }
+  q();
+  q('| 4bpp, all sprites on one core | Core 1 alone, interrupts off | Core 0, core 1 idle | Core 0, core 1 building layers |');
+  q('|---|--:|--:|--:|');
+  for (const geom of ['graphics', 'full']) {
+    for (const spr of ['16', '16-det', '32', '32-det']) {
+      const name = `${geom}-4bpp-${spr}`;
+      q(`| ${name} | ${n(by(name, -3).core0_max)} | ${n(by(name, -2).core0_max)} | ${n(by(name, 320 - (geom === 'graphics' ? 64 : 0)).core0_max)} |`);
+    }
+  }
+  console.log('\n' + o.join('\n'));
+}
