@@ -20,8 +20,9 @@ building sprites on core 0. It was spiked and measured.
   mode that takes the split *and* `SPRLIMIT` 16: margins of 25–26% for every
   sprite setting.
 
-**A decision is needed before Phase 3:** adopt the split, and choose between
-accepting a margin below 25% for `SPRLIMIT` 32 and lowering the default to 16
+**Decided:** the split is adopted, with `SPRLIMIT` reset to 16 and late lines
+specified — SPEC.md draft 0.4, in all three copies, with the emulator on
+`v3-vdp` implementing it
 ([below](#still-open-1--the-remedies-weighed)).
 
 Contents: [The spike](#the-spike) · [Method](#method) · [§18, measured](#18-measured) ·
@@ -532,7 +533,7 @@ Done when
 | Every row of §18's table has a measured figure at both clocks | ✅ [§18, measured](#18-measured). Cycle counts are identical at both clocks; margins are given for each |
 | Still Open 2 has an answer | ✅ Yes: 16% on an opaque layer, 4% merged; keep the table |
 | A clock preset is chosen | ✅ 352 MHz |
-| If the Full mode worst case leaves < 25% at 302.4 MHz, Still Open 1's remedies are weighed, in order, before Phase 3 | Triggered (−29% on one core). Weighed [above](#still-open-1--the-remedies-weighed), with the core 0 split measured. **The owner chooses the remedy and threshold; that gates Phase 3** |
+| If the Full mode worst case leaves < 25% at 302.4 MHz, Still Open 1's remedies are weighed, in order, before Phase 3 | Triggered (−29% on one core). Weighed [above](#still-open-1--the-remedies-weighed), with the core 0 split measured. The owner took the recommendation: draft 0.4 |
 | Host suite green | ✅ `host` and `host-asan`: `test_placeholder`, `spike_reference` |
 
 Differences from the plan
@@ -552,8 +553,8 @@ Differences from the plan
 - **The core 0 split was built and measured**, with real interrupt load on both
   cores. The plan's list had no such remedy.
 - **`-O3` was also measured**, for comparison.
-- **SPEC.md and PLAN.md section 3 are not yet updated** (ground rule 7). The
-  choice above rewrites both, so they change once, with it.
+- **SPEC.md draft 0.4 and PLAN.md section 3** carry the choice above (ground
+  rules 2 and 7).
 
 Reproducing
 -----------

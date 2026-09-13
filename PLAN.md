@@ -4,7 +4,7 @@
 How the video card specified in [SPEC.md](SPEC.md) gets built, proven and
 delivered as firmware for the PICO9918 PRO v2.0.
 
-**Target:** SPEC.md draft 0.3, in full, on a PICO9918 PRO v2.0 (RP2354A), fitted
+**Target:** SPEC.md draft 0.4, in full, on a PICO9918 PRO v2.0 (RP2354A), fitted
 to an AC6502.
 
 **Definition of done:** the unmodified BIOS boots to `OK` on an AC6502 with the
@@ -13,13 +13,10 @@ byte for byte on the PRO; and the per-line budget, interrupt timing and status
 freshness are measured on the PRO and written back into SPEC.md.
 
 **Status:** Phases 0 and 1 done ([results](docs/results/)). Phase 1 measured
-the line at 2.5–4× §18's estimates. On one core the Full mode worst case does not
-fit at either clock; with the sprites built on core 0 every worst case fits at
-352 MHz, and with `SPRLIMIT` 16 as well at the plan's 25% margin. Adopting the
-split, and the threshold, must be decided before Phase 3
-([phase-01.md](docs/results/phase-01.md#still-open-1--the-remedies-weighed)).
-The clock preset is 352 MHz. The PRO is on order. Part A of this plan needs no
-PRO: it runs on the host, in the emulator and on a Raspberry Pi Pico 2.
+the line at 2.5–4× §18's estimates, and settled SPEC.md draft 0.4 from it: the
+sprites are built on core 0 (section 3), the clock is 352 MHz, `SPRLIMIT` resets
+to 16, and a late line is specified. The PRO is on order. Part A of this plan
+needs no PRO: it runs on the host, in the emulator and on a Raspberry Pi Pico 2.
 
 ---
 
@@ -44,7 +41,7 @@ Contents
 
 ### In scope
 
-- Firmware for the PICO9918 PRO v2.0 implementing SPEC.md draft 0.3: four ports,
+- Firmware for the PICO9918 PRO v2.0 implementing SPEC.md draft 0.4: four ports,
   128 registers, 64 KB VRAM, the tile engine at all four depths, both layers,
   sprites, the palette, compositing, scrolling, status and interrupts, reset.
 - A portable C core holding all of that behaviour, built for the RP2350 and for
@@ -170,14 +167,19 @@ uint8_t vdp_read(vdp_t *v, unsigned port);                  // port = A1:A0, §4
 void    vdp_write(vdp_t *v, unsigned port, uint8_t value);  // §4
 void    vdp_line_start(vdp_t *v, uint16_t screen_line);     // a screen line begins, §3
 void    vdp_set_hblank(vdp_t *v, bool hblank);              // STAT3 b1, from the platform, §6
-void    vdp_build_line(vdp_t *v, uint8_t *indices);         // 320 palette indices
+int     vdp_split_choose(const vdp_t *v);                   // the column the cores divide this line at
+void    vdp_build_layers(vdp_t *v, uint8_t *indices);       // 320 palette indices, both layers
+void    vdp_build_sprites(const vdp_t *v, vdp_sprline_t *s, int x0, int x1); // columns [x0, x1), no status
+void    vdp_draw_sprites(vdp_t *v, uint8_t *indices, int x0, int x1);        // straight into the line
+void    vdp_merge_sprites(vdp_t *v, uint8_t *indices, const vdp_sprline_t *s); // and publish its collisions
+void    vdp_build_line(vdp_t *v, uint8_t *indices);         // all of the above on one core (host)
 void    vdp_expand_line(const vdp_t *v, const uint8_t *indices, uint16_t *rgb); // 12-bit 0x0BGR, ×2
 bool    vdp_int_asserted(const vdp_t *v);                   // §14
 ```
 
 The core is split into a **bus side** — ports, register file, VRAM, status and
 interrupt latches, which `vdp_read`/`vdp_write` touch — and a **render side**,
-which only `vdp_build_line` touches. `vdp_line_start` is the one place the two
+which only the build functions touch. `vdp_line_start` is the one place the two
 meet.
 
 **Why the split exists.** SPEC §3 builds display line N from the registers, VRAM
@@ -202,8 +204,17 @@ Instead:
   That gives SPEC §11's "the next line built uses it" exactly.
 - **Sprite evaluation for the line about to be built runs in `vdp_line_start`**, so `OVF` and `STAT7`
   are published at the latch, as §14 wants. Collision is only discovered while
-  compositing, so it is published from the build; its lag within the line is
-  measured in Phase 13.
+  compositing, so it is published from the build — by core 1, as it merges core
+  0's sprites; its lag within the line is measured in Phase 13.
+- **The sprites are built on two cores** (SPEC §18). `vdp_split_choose` picks a
+  column on a 32-pixel word boundary. `vdp_build_sprites` draws the sprites left of it
+  into a sprite line on core 0, reading only the render copy and writing no status,
+  while core 1 builds the layers and draws the sprites right of it. Core 1 merges the
+  sprite line and publishes its collisions. Each side's claim bitmap keeps
+  priority among sprites and collision exact. The column comes from the list's
+  length and the last line's measured costs, corrected a column a line: Phase 1
+  found a per-sprite estimate cost more than it saved. The host runs the same
+  functions on one thread, and the reference check builds each line both ways.
 - **The screen line is an input.** The raster belongs to the platform — the VGA
   driver on the RP2350, the adapter's model of `Video.ts` on the host — and
   `vdp_line_start` is told which of the 262 screen lines is beginning. The core
@@ -225,9 +236,13 @@ pico9918 sets none:
 | Core | Work | Priority |
 |---|---|---|
 | 0 | VGA sync/RGB DMA interrupt, from pico9918's driver. It now emits a line-start event for **all 262 display lines**, not only the 240 rows it asks core 1 to draw | highest on core 0 |
-| 0 | USB debug link (debug builds), watchdog feed, statistics | lowest on core 0 |
+| 0 | USB debug link (debug builds), watchdog feed, statistics | lowest interrupt on core 0 |
+| 0 | `vdp_build_sprites` for the columns left of the split, posted by core 1 through the inter-core FIFO | thread |
 | 1 | Bus PIO interrupts (read and write state machines), and the line-start latch raised from core 0 — equal priority, so they never preempt one another | highest on core 1 |
-| 1 | `vdp_build_line` then `vdp_expand_line`, in thread mode, into the buffer the RGB DMA sends next | thread |
+| 1 | `vdp_split_choose`, post to core 0, `vdp_build_layers`, `vdp_draw_sprites` for the rest, wait for core 0, `vdp_merge_sprites`, `vdp_expand_line` — in thread mode, into the buffer the RGB DMA sends next. A line not finished in time is late (SPEC §18): the DMA sends the last completed buffer again, and the build finishes for its status | thread |
+
+The clock is 352 MHz (PLL 1056 MHz ÷ 3, VREG 1.30 V), pico9918's VGA preset 2.
+Phase 1 measured the budget there: 22,371 cycles a line.
 
 The bus interface follows SPEC §2 and §18. `tmsWrite` is kept as it is: MODE1
 already arrives in bit 31 of its FIFO word. `tmsRead` is rewritten. The CPU stages
@@ -372,8 +387,8 @@ a minimised trace, which becomes a unit test.
 
 **Known, deliberate differences** the comparisons must allow:
 
-- `STAT5` — the emulator reports the spec revision (`$03`), the firmware its own
-  version. The host adapter is configured to report `$03`; the bench excludes it.
+- `STAT5` — the emulator reports the spec revision (`$04`), the firmware its own
+  version. The host adapter is configured to report `$04`; the bench excludes it.
 - Frame numbers — the emulator's 262 equal lines at exactly 60 Hz do not match
   the PRO's 59.94 Hz raster (SPEC §18). Injection addresses frames and lines by
   count, not time, so it is unaffected. The bus replay is untimed.
@@ -706,7 +721,7 @@ exactly; the Jest sprites block passes against the core.
 
 - The attribute byte: flips, priority, pattern bit 8. Palette mapping and `LxPAL`.
   Layer 1. All seven priority levels. Per-pixel scrolling with 9-bit X.
-- The 4bpp unpacking table, if Phase 1 said it earns its place.
+- The 4bpp unpacking table, which Phase 1 found earns its place.
 - `host/replay`: the pure-C replay CLI, under CTest. It compares index frames and
   VRAM exactly, plus registers and `STAT0` from the JSON. The full JSON, text grid
   included, is compared on the Node path.
@@ -721,10 +736,12 @@ frames with no divergence.
 *Everything but the bus, on the same silicon as the PRO.*
 
 - `firmware/`, `pico2` preset:
-  - clocks at Phase 1's preset
+  - clocks at Phase 1's preset, 352 MHz
   - pico9918's VGA driver, VGA-only, on GPIO 0–13 (it runs without a monitor);
     line starts for all 262 lines
-  - core 1's latch interrupt and renderer
+  - core 1's latch interrupt and renderer; core 0's sprite builds, with the
+    column chosen per line (section 3)
+  - late lines as SPEC §18 specifies them
   - explicit interrupt priorities
   - the start-up handshake fix
 - The debug link, per `docs/DEBUGLINK.md` written here. Fault records, watchdog
@@ -735,9 +752,12 @@ frames with no divergence.
 **Done when:**
 - all fifteen checkpoints reproduce exactly on the Pico 2 via `vdpctl inject`
   (index frame, VRAM, registers)
-- the worst-case scenes of Phase 1, now drawn by the real core, run for ten minutes
-  with zero late lines, while `SNAPSHOT` streams continuously over USB; measured
-  cycles are recorded against Phase 1 and §18
+- the worst-case scenes of Phase 1, now drawn by the real core on both cores, run
+  for ten minutes with zero late lines at `SPRLIMIT` 32, while `SNAPSHOT` streams
+  continuously over USB; measured cycles are recorded against Phase 1 and §18
+- a scene deliberately too heavy to build in time shows SPEC §18's late line — the
+  previous line repeated — with its status unaffected, and the late lines are
+  counted
 - `vdpctl` triggers `FAULT`, reads the record from safe mode, and reflashes, with
   no hands on the board
 
@@ -877,12 +897,15 @@ results standing for them.
 7. Risk Register
 ----------------
 
-1. **The line budget does not hold in Full mode.** §18's 55% margin is an estimate
-   from instruction counts. Phase 1 measures it before any core code is written,
-   and Phase 8 again with the real renderer. The remedies are Still Open 1's, in
-   its order: the 352 MHz preset, a lower default `SPRLIMIT`, Full mode as a
-   single-layer mode. The first two change nothing in SPEC.md's behaviour; the
-   third does.
+1. **The line budget does not hold in Full mode.** Phase 1 measured it: on one
+   core it did not, at either clock. With the sprites on core 0 at 352 MHz every
+   worst case fits, with 2% spare at `SPRLIMIT` 32 and 25% at the reset value of
+   16 — under a bus interrupt every 2 µs and a stand-in for the real handler.
+   What is left is the real PIO handler (Phase 11), USB on core 0 (risk 3), and
+   the PRO's thermals at 1.30 V (Phases 8, 10, 13). If the margin erodes,
+   `SPRLIMIT`'s reset value holds 25% and a late line is specified; beyond that
+   the renderer's magnified-sprite and detailed-collision paths are the ones with
+   most left to optimise.
 
 2. **The §3 latch cannot be exact while the bus is served on the render core.**
    The dual VRAM and journal design exists for this. Phase 3 unit-tests it; Phase
@@ -890,9 +913,10 @@ results standing for them.
    6502 can produce, which falls back to page copies and is counted.
 
 3. **The debug link disturbs the raster.** TinyUSB interrupts share core 0 with
-   the VGA DMA interrupt. USB runs at the lowest priority there; late lines are
-   counted; Phases 8, 10 and 13 load the link while measuring; and a release build
-   without USB must match. If it cannot be tamed, the link moves to snapshots taken
+   the VGA DMA interrupt and, since Phase 1, with the sprite builds, which run in
+   thread mode beneath them. USB runs at the lowest interrupt priority there; late
+   lines are counted; Phases 8, 10 and 13 load the link while measuring; and a
+   release build without USB must match. If it cannot be tamed, the link moves to snapshots taken
    only while the raster is idle — sacrificing the load test, not the oracle.
 
 4. **An image dies before USB comes up.** Then the BOOT button is the only way
@@ -944,8 +968,8 @@ results standing for them.
 
 | Item | Answered by |
 |---|---|
-| 1. Time Full mode first | Phase 1 (estimate on silicon), Phase 8 (real renderer), Phase 13 (under bus load, on the PRO) |
-| 2. Does the 4bpp table earn its 8 KB | Phase 1, confirmed in Phase 8 |
+| 1. Time Full mode first | Resolved in draft 0.4 by Phase 1. Phase 8 re-measures with the real renderer, Phase 13 under bus load on the PRO |
+| 2. Does the 4bpp table earn its 8 KB | Resolved in draft 0.4 by Phase 1: yes |
 | 3. Are the hue ramps usable | Phase 10: the palette test card, judged by the owner on a real monitor |
 | 4. How fresh the status byte can be | Phase 13 |
 
@@ -967,6 +991,19 @@ moved.
    by 24 at the next line start. A frame begins at screen line 0, and vertical
    blank fires exactly once in it however the height changes. Reset leaves the
    raster running.
+
+### Measured in Phase 1 — settled in draft 0.4
+
+SPEC.md, the emulator's `docs/VDP-SPEC.md` and the published HTML were changed
+together (rule 2). `Video.ts` on `v3-vdp` implements the result: one reset value
+and `STAT5`. The structural goldens moved by that register value, in a commit of
+their own; no index or VRAM golden moved.
+
+1. **The sprites move to core 0**, and §18's budget is measured, not estimated.
+   The design is budgeted at 352 MHz.
+2. **`SPRLIMIT` resets to 16**, not 32, which keeps 25% of the worst line spare.
+3. **A late line is specified:** it shows the most recently completed line
+   again, and its status, and everything else, are unaffected.
 
 ### Decisions this firmware records, which SPEC.md may want to state
 

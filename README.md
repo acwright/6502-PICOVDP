@@ -4,13 +4,13 @@
 Firmware for a custom Video Display Processor for the AC6502, running on
 PICO9918 PRO v2.0 hardware (RP2354A).
 
-- [SPEC.md](SPEC.md) — what the VDP does (draft 0.3). `6502-EMULATOR`'s
+- [SPEC.md](SPEC.md) — what the VDP does (draft 0.4). `6502-EMULATOR`'s
   `Video.ts` on its `v3-vdp` branch is the reference implementation.
 - [PLAN.md](PLAN.md) — how the firmware is built, proven and delivered.
 - `docs/results/` — what each phase measured and checked.
 
-Status: Phase 1 (timing spike) done, core 0 sprite split measured; Still Open
-1's remedy is to be chosen before Phase 3 — see `docs/results/phase-01.md`.
+Status: Phase 1 (timing spike) done; SPEC.md is at draft 0.4, with the sprites
+built on core 0 — see `docs/results/phase-01.md`.
 
 Layout
 ------
