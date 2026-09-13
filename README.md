@@ -9,7 +9,8 @@ PICO9918 PRO v2.0 hardware (RP2354A).
 - [PLAN.md](PLAN.md) — how the firmware is built, proven and delivered.
 - `docs/results/` — what each phase measured and checked.
 
-Status: Phase 0 (repository and toolchain).
+Status: Phase 1 (timing spike) done; Still Open 1's remedy is to be chosen
+before Phase 3 — see `docs/results/phase-01.md`.
 
 Layout
 ------
@@ -18,6 +19,7 @@ Layout
 |---|---|
 | `core/` | portable C11: all of SPEC.md's behaviour, no hardware (from Phase 3) |
 | `firmware/` | RP2350 only: main, bus PIO, VGA, debug link |
+| `spike/` | Phase 1 timing spike: renderer, worst-case scenes, Pico 2 harness (disposable) |
 | `tests/unit/` | C unit tests, run by CTest |
 | `tools/` | Node ESM host tools (`vdpctl`, `fuzz`, `sync-oracle`) |
 | `bench/nano/` | Arduino Nano bus harness (PlatformIO) |
