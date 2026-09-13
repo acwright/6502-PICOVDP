@@ -12,3 +12,4 @@ picovdp_unit_test(test_latch)     # §3's latch, the journal and its overflow
 picovdp_unit_test(test_palette    # §11
     ${CMAKE_SOURCE_DIR}/SPEC.md ${CMAKE_SOURCE_DIR}/picovdp-default.pal)
 picovdp_unit_test(test_reset)     # §15
+picovdp_unit_test(test_status)    # §3's line numbering, §6, §14

@@ -13,7 +13,7 @@ process.env.PICOVDP_NODE_BINARY = binary
 
 const core = require(binary)
 for (const name of ['create', 'reset', 'read', 'write', 'lineStart', 'setHblank', 'buildLine', 'expandLine', 'intAsserted',
-  'getRegister', 'setRegister', 'getVram', 'setVram', 'portState', 'paletteEntry', 'mode', 'stats', 'save', 'restore']) {
+  'getRegister', 'setRegister', 'getVram', 'setVram', 'portState', 'status', 'displayLine', 'paletteEntry', 'mode', 'stats', 'save', 'restore']) {
   assert.equal(typeof core[name], 'function', `the binding has no ${name}`)
 }
 assert.throws(() => core.read({}, 0), TypeError, 'a non-card is refused')

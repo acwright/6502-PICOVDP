@@ -11,17 +11,18 @@ PICO9918 PRO v2.0 hardware (RP2354A).
   are replayed from.
 - `docs/results/` — what each phase measured and checked.
 
-Status: Phase 3 (the core's ports, registers, VRAM and palette) done. The bus
-side of the card is in C and matches `Video.ts` over 10⁷ fuzzed operations;
-lines build as the backdrop until the tile engine arrives in Phase 5. See
-`docs/results/phase-03.md`.
+Status: Phase 4 (the core's line timing, status registers and interrupts)
+done. The bus side of the card — ports, registers, VRAM, palette, status and
+`/INT` — is in C and matches `Video.ts` over 10⁷ fuzzed operations; lines build
+as the backdrop until the tile engine arrives in Phase 5. See
+`docs/results/phase-04.md`.
 
 Layout
 ------
 
 | Path | Holds |
 |---|---|
-| `core/` | portable C11: all of SPEC.md's behaviour, no hardware. `vdp.h` is the card; `vdp_debug.h` inspects it. The bus side (§4, §5, §7, §11, §15) is in; status, the tile engine and sprites follow |
+| `core/` | portable C11: all of SPEC.md's behaviour, no hardware. `vdp.h` is the card; `vdp_debug.h` inspects it. The bus side (§3's line numbering, §4–§7, §11, §14, §15) is in; the tile engine and sprites follow |
 | `host/node/` | the core as a Node-API addon, and `Video.cjs`, which presents it as the emulator's `Video` |
 | `firmware/` | RP2350 only: main, bus PIO, VGA, debug link |
 | `spike/` | Phase 1 timing spike: renderer, worst-case scenes, Pico 2 harness (disposable) |
@@ -81,9 +82,9 @@ PICOVDP_ADDON=/path/to/6502-PICOVDP/host/node/Video.cjs npm run test:picovdp
 That runs the emulator's `Video.test.ts`, unchanged, against the core. Here:
 
 ```sh
-node tools/fuzz.mjs --scope bus --ops 10000000  # Video.ts against the core, over what the core has so far
-node tools/fuzz.mjs --seed 1 --ops 100000      # everything: reads, /INT and frames (diverges until Phase 7)
-node tools/fuzz.mjs --self                     # Video.ts against itself: the harness's own check
+node tools/fuzz.mjs --scope status --ops 10000000  # Video.ts against the core, over what the core has so far
+node tools/fuzz.mjs --seed 1 --ops 100000          # everything: reads, /INT and frames (diverges until Phase 7)
+node tools/fuzz.mjs --self --scope status          # Video.ts against itself: the harness's own check
 ```
 
 The fuzzer loads the emulator's compiled `Video`, so run its `npm run build:cli`

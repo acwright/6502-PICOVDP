@@ -12,9 +12,9 @@
 // line is built from the card as it stood when the line before it began, however
 // the bus interrupts the build (PLAN.md section 3, "Why the split exists").
 //
-// Phase 3: the bus side (§4, §5, §7), the palette (§11) and reset (§15). Lines
-// build as the backdrop; status (§6) and interrupts (§14) are Phase 4's, the
-// tile engine Phase 5's, sprites Phase 6's.
+// Phase 3: the bus side (§4, §5, §7), the palette (§11) and reset (§15).
+// Phase 4: the raster's line numbering (§3), status (§6) and interrupts (§14).
+// Lines build as the backdrop; the tile engine is Phase 5's, sprites Phase 6's.
 
 #pragma once
 
@@ -75,7 +75,16 @@ typedef struct vdp {
     uint32_t journal_overflows;             // latches that fell back to page copies
 
     uint16_t screen_line;                   // the screen line last begun, §3
+    uint16_t display_line;                  // its number from the picture's first line, as it began, §3
     bool hblank;                            // STAT3 b1, from the platform, §6
+
+    // §6, §14: flags, latches and the once-a-frame guards. Set at the latch,
+    // and from Phase 6 by the sprites; cleared by status reads and reset.
+    uint8_t stat0;                          // b7 F, b6 OVF, b5 COL, b4:0 the first sprite dropped
+    uint8_t irq_latch;                      // STAT1's sources, as IRQEN bits, latched while enabled
+    uint8_t frame_events;                   // IRQEN bits of the once-a-frame events spent this frame
+    uint8_t overflow_sprite;                // STAT7
+    uint8_t collision_map[8];               // STAT8-STAT15
 
     // ---- the render side: the card as it stood at the last latch ----
     uint8_t render_reg[VDP_REGISTERS];

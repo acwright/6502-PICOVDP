@@ -79,24 +79,6 @@ static void VDP_HOT(command)(vdp_t *v, vdp_port_t *p, uint8_t value) {
     }
 }
 
-// §6: the status register a port's STATSEL names. Reading any of them resets
-// the port's flip-flop (§4), which the caller has done.
-//
-// Phase 3: the three constant registers. The flags, latches, line and blanking
-// bits, overflow index and collision map are Phase 4's, and read 0 until then.
-static uint8_t status(const vdp_t *v, unsigned select) {
-    switch (select) {
-    case 4:
-        return VDP_STAT_IDENTIFICATION;
-    case 5:
-        return v->version;
-    case 6:
-        return VDP_STAT_CAPABILITIES;
-    default:
-        return 0;
-    }
-}
-
 uint8_t VDP_HOT(vdp_read)(vdp_t *v, unsigned port) {
     unsigned pair = (port >> 1) & 1;
     vdp_port_t *p = &v->port[pair];
@@ -105,8 +87,9 @@ uint8_t VDP_HOT(vdp_read)(vdp_t *v, unsigned port) {
     p->second = false;
     if (port & 1) {
         // Port A's selector is STATSEL_A at $0F, port B's STATSEL_B at $0E (§5).
-        unsigned select = v->reg[pair ? VDP_REG_STATSEL_B : VDP_REG_STATSEL_A] & VDP_STATSEL_MASK;
-        return status(v, select);
+        // Each port reads through its own, so a handler on one cannot move what
+        // the other sees (§6).
+        return vdp_status_read(v, v->reg[pair ? VDP_REG_STATSEL_B : VDP_REG_STATSEL_A]);
     }
     // Read VC_DATA: return the prefetch; fetch the byte at the pointer into it;
     // advance.

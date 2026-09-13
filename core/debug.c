@@ -30,6 +30,14 @@ uint16_t vdp_debug_palette(const vdp_t *v, unsigned entry) {
     return vdp_palette_decode(v->vram, vdp_palette_base(v->reg), entry & 0xff);
 }
 
+uint8_t vdp_debug_status(const vdp_t *v, unsigned select) {
+    return vdp_status_peek(v, select);
+}
+
+uint16_t vdp_debug_display_line(const vdp_t *v) {
+    return v->display_line;
+}
+
 vdp_debug_mode_t vdp_debug_mode(const vdp_t *v) {
     vdp_legacy_mode_t legacy;
     const vdp_geometry_t *g = vdp_geometry(v->reg, &legacy);
@@ -56,6 +64,12 @@ void vdp_debug_save(const vdp_t *v, vdp_snapshot_t *s, uint8_t *vram) {
     memcpy(s->registers, v->reg, sizeof s->registers);
     memcpy(s->port, v->port, sizeof s->port);
     s->screen_line = v->screen_line;
+    s->display_line = v->display_line;
+    s->stat0 = v->stat0;
+    s->irq_latch = v->irq_latch;
+    s->frame_events = v->frame_events;
+    s->overflow_sprite = v->overflow_sprite;
+    memcpy(s->collision_map, v->collision_map, sizeof s->collision_map);
     memcpy(vram, v->vram, VDP_VRAM_SIZE);
 }
 
@@ -66,6 +80,12 @@ void vdp_debug_restore(vdp_t *v, const vdp_snapshot_t *s, const uint8_t *vram) {
     vdp_register_write(v, VDP_REG_IRQEN, v->reg[VDP_REG_IRQEN]);
     memcpy(v->port, s->port, sizeof v->port);
     v->screen_line = s->screen_line % VDP_SCREEN_LINES;
+    v->display_line = s->display_line % VDP_SCREEN_LINES;
+    v->stat0 = s->stat0;
+    v->irq_latch = s->irq_latch & VDP_IRQ_SOURCES;
+    v->frame_events = s->frame_events & VDP_IRQ_SOURCES;
+    v->overflow_sprite = s->overflow_sprite & 0x3f;
+    memcpy(v->collision_map, s->collision_map, sizeof v->collision_map);
     memcpy(v->vram, vram, VDP_VRAM_SIZE);
 
     memcpy(v->render_vram, v->vram, sizeof v->render_vram);

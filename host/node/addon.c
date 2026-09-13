@@ -251,6 +251,22 @@ static napi_value js_port_state(napi_env env, napi_callback_info info) {
     return result;
 }
 
+// status(card, select): a status register, without acknowledging it.
+static napi_value js_status(napi_env env, napi_callback_info info) {
+    napi_value argv[2];
+    vdp_t *v = card_args(env, info, 2, argv);
+    uint32_t select;
+    if (v == NULL || !uint_arg(env, argv[1], &select)) return NULL;
+    return uint_value(env, vdp_debug_status(v, select));
+}
+
+static napi_value js_display_line(napi_env env, napi_callback_info info) {
+    napi_value argv[1];
+    vdp_t *v = card_args(env, info, 1, argv);
+    if (v == NULL) return NULL;
+    return uint_value(env, vdp_debug_display_line(v));
+}
+
 static napi_value js_palette_entry(napi_env env, napi_callback_info info) {
     napi_value argv[2];
     vdp_t *v = card_args(env, info, 2, argv);
@@ -289,7 +305,8 @@ static napi_value js_stats(napi_env env, napi_callback_info info) {
     return result;
 }
 
-// save(card, vram: Uint8Array(65536)): { registers: Uint8Array(128), ports: [2], screenLine }, VRAM into vram.
+// save(card, vram: Uint8Array(65536)): { registers: Uint8Array(128), ports: [2], screenLine, displayLine,
+// stat0, irqLatch, frameEvents, overflowSprite, collisionMap: Uint8Array(8) }, VRAM into vram.
 static napi_value js_save(napi_env env, napi_callback_info info) {
     napi_value argv[2];
     vdp_t *v = card_args(env, info, 2, argv);
@@ -319,11 +336,23 @@ static napi_value js_save(napi_env env, napi_callback_info info) {
         CHECK_STATUS(env, napi_set_element(env, ports, pair, port));
     }
     CHECK_STATUS(env, napi_set_named_property(env, result, "ports", ports));
-    if (!set_uint(env, result, "screenLine", s.screen_line)) CHECK_STATUS(env, napi_generic_failure);
+    if (!set_uint(env, result, "screenLine", s.screen_line) || !set_uint(env, result, "displayLine", s.display_line) ||
+        !set_uint(env, result, "stat0", s.stat0) || !set_uint(env, result, "irqLatch", s.irq_latch) ||
+        !set_uint(env, result, "frameEvents", s.frame_events) ||
+        !set_uint(env, result, "overflowSprite", s.overflow_sprite)) {
+        CHECK_STATUS(env, napi_generic_failure);
+    }
+    napi_value map_buffer, map;
+    void *map_bytes = NULL;
+    CHECK_STATUS(env, napi_create_arraybuffer(env, sizeof s.collision_map, &map_bytes, &map_buffer));
+    memcpy(map_bytes, s.collision_map, sizeof s.collision_map);
+    CHECK_STATUS(env, napi_create_typedarray(env, napi_uint8_array, sizeof s.collision_map, map_buffer, 0, &map));
+    CHECK_STATUS(env, napi_set_named_property(env, result, "collisionMap", map));
     return result;
 }
 
-// restore(card, { registers, ports, screenLine }, vram): save's inverse.
+// restore(card, { registers, ports, screenLine, displayLine, stat0, irqLatch, frameEvents, overflowSprite,
+// collisionMap }, vram): save's inverse.
 static napi_value js_restore(napi_env env, napi_callback_info info) {
     napi_value argv[3];
     vdp_t *v = card_args(env, info, 3, argv);
@@ -358,12 +387,26 @@ static napi_value js_restore(napi_env env, napi_callback_info info) {
             .second = (stage & 1) != 0,
         };
     }
-    uint32_t screen_line;
-    if (!get_uint(env, argv[1], "screenLine", &screen_line)) {
-        napi_throw_type_error(env, NULL, "picovdp: a snapshot needs screenLine");
+    uint32_t screen_line, display_line, stat0, irq_latch, frame_events, overflow_sprite;
+    if (!get_uint(env, argv[1], "screenLine", &screen_line) || !get_uint(env, argv[1], "displayLine", &display_line) ||
+        !get_uint(env, argv[1], "stat0", &stat0) || !get_uint(env, argv[1], "irqLatch", &irq_latch) ||
+        !get_uint(env, argv[1], "frameEvents", &frame_events) ||
+        !get_uint(env, argv[1], "overflowSprite", &overflow_sprite)) {
+        napi_throw_type_error(env, NULL,
+                              "picovdp: a snapshot needs screenLine, displayLine, stat0, irqLatch, frameEvents, overflowSprite");
         return NULL;
     }
     s.screen_line = (uint16_t)(screen_line % VDP_SCREEN_LINES);
+    s.display_line = (uint16_t)(display_line % VDP_SCREEN_LINES);
+    s.stat0 = (uint8_t)stat0;
+    s.irq_latch = (uint8_t)irq_latch;
+    s.frame_events = (uint8_t)frame_events;
+    s.overflow_sprite = (uint8_t)overflow_sprite;
+    napi_value map;
+    CHECK_STATUS(env, napi_get_named_property(env, argv[1], "collisionMap", &map));
+    uint8_t *collision_map = typed_arg(env, map, napi_uint8_array, sizeof s.collision_map);
+    if (collision_map == NULL) return NULL;
+    memcpy(s.collision_map, collision_map, sizeof s.collision_map);
     vdp_debug_restore(v, &s, vram);
     return undefined(env);
 }
@@ -386,6 +429,8 @@ static napi_value init(napi_env env, napi_value exports) {
         FUNCTION("getVram", js_get_vram),
         FUNCTION("setVram", js_set_vram),
         FUNCTION("portState", js_port_state),
+        FUNCTION("status", js_status),
+        FUNCTION("displayLine", js_display_line),
         FUNCTION("paletteEntry", js_palette_entry),
         FUNCTION("mode", js_mode),
         FUNCTION("stats", js_stats),

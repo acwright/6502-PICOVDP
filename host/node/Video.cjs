@@ -20,9 +20,8 @@
  * - **Snapshots.** `Video.ts`'s format, filled from `vdp_debug_save` and read
  *   back through `vdp_debug_restore`.
  *
- * Phase 3: ports, registers, VRAM, palette, and the debugger's view of them. The
- * status registers and the display line are Phase 4's; their methods throw,
- * naming the phase.
+ * Phase 3: ports, registers, VRAM, palette, and the debugger's view of them.
+ * Phase 4: the display line, status and interrupts.
  *
  *   PICOVDP_NODE_BINARY   the addon, if not build/host/host/node/picovdp.node
  */
@@ -74,13 +73,6 @@ const REG_L0PAL = 0x16
 /** `vdp_debug_mode_t`'s codes, as `Video.ts` names them (§9). */
 const LEGACY_NAMES = [null, 'text', 'graphics-i', 'graphics-ii', 'multicolor']
 const GEOMETRY_NAMES = ['text', 'compact', 'graphics', 'full']
-
-class NotInCore extends Error {
-  constructor(method, phase) {
-    super(`picovdp: Video.${method} needs the core's ${phase}; it is not there yet`)
-    this.name = 'NotInCore'
-  }
-}
 
 class Video {
   constructor() {
@@ -272,16 +264,20 @@ class Video {
     return lines
   }
 
+  /** `STAT0`, without acknowledging it (§6). */
   getStatus() {
-    throw new NotInCore('getStatus', 'status registers (Phase 4)')
+    return core.status(this.card, 0)
   }
 
-  peekStatus() {
-    throw new NotInCore('peekStatus', 'status registers (Phase 4)')
+  /** A status register as a program selecting it would read it, without acknowledging (§6). */
+  peekStatus(select) {
+    core.setHblank(this.card, this.horizontalBlanking())
+    return core.status(this.card, select & 0x0f)
   }
 
+  /** The display line being scanned, 0 – 261 (§3). */
   getDisplayLine() {
-    throw new NotInCore('getDisplayLine', 'line timing (Phase 4)')
+    return core.displayLine(this.card)
   }
 
   // ---- snapshots, in Video.ts's format ----
@@ -292,10 +288,16 @@ class Video {
     return {
       kind: this.kind,
       registers: Buffer.from(saved.registers).toString('base64'),
+      stat0: saved.stat0,
+      irqLatch: saved.irqLatch,
+      overflowSprite: saved.overflowSprite,
+      collisionMap: Buffer.from(saved.collisionMap).toString('base64'),
       ports: saved.ports.map((port) => ({ kind: 'video-port', ...port })),
       vram: Buffer.from(vram).toString('base64'),
+      frameEvents: saved.frameEvents,
       cycleAccumulator: this.cycleAccumulator,
       screenLine: saved.screenLine,
+      displayLine: saved.displayLine,
       frameReady: this.frameReady
     }
   }
@@ -307,8 +309,21 @@ class Video {
       if (decoded.length !== length) throw new Error(`picovdp: ${name} is ${decoded.length} bytes, not ${length}`)
       return new Uint8Array(decoded)
     }
+    // Required as `Video.ts` requires them; only `screenLine` may be absent.
+    const number = (name) => {
+      if (typeof state[name] !== 'number' || !Number.isFinite(state[name])) {
+        throw new Error(`picovdp: ${name} is ${JSON.stringify(state[name])}, not a number`)
+      }
+      return state[name]
+    }
     const snapshot = {
       registers: bytes('registers', VIDEO_REGISTER_COUNT),
+      stat0: number('stat0') & 0xff,
+      irqLatch: number('irqLatch') & 0x0f,
+      overflowSprite: number('overflowSprite') & 0x3f,
+      frameEvents: number('frameEvents') & 0x0f,
+      collisionMap: bytes('collisionMap', 8),
+      displayLine: number('displayLine') % SCREEN_LINES,
       ports: state.ports.map((port) => ({
         pointer: port.pointer & VRAM_MASK,
         readMode: Boolean(port.readMode),
@@ -323,11 +338,11 @@ class Video {
     // A snapshot from before screen lines were counted has only the display
     // line, which the restored geometry's top border turns back into one (§3).
     if (typeof state.screenLine !== 'number') {
-      snapshot.screenLine = (state.displayLine + core.mode(this.card).originY) % SCREEN_LINES
+      snapshot.screenLine = (snapshot.displayLine + core.mode(this.card).originY) % SCREEN_LINES
       core.restore(this.card, snapshot, vram)
     }
     this.screenLine = snapshot.screenLine % SCREEN_LINES
-    this.cycleAccumulator = state.cycleAccumulator
+    this.cycleAccumulator = number('cycleAccumulator')
     this.frameReady = Boolean(state.frameReady)
     this.fillBackground()
   }
@@ -335,7 +350,6 @@ class Video {
 
 module.exports = {
   Video,
-  NotInCore,
   DISPLAY_WIDTH,
   DISPLAY_HEIGHT,
   VIDEO_PALETTE_ENTRIES,

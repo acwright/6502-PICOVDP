@@ -51,6 +51,16 @@
 
 // IRQEN and STAT1 bits (§14).
 #define VDP_IRQ_VBLANK 0x01
+#define VDP_IRQ_SCANLINE 0x02
+#define VDP_IRQ_OVERFLOW 0x04
+#define VDP_IRQ_COLLISION 0x08
+#define VDP_IRQ_SOURCES 0x0f
+
+// STAT0 bits (§6).
+#define VDP_STAT0_F 0x80
+#define VDP_STAT0_OVF 0x40
+#define VDP_STAT0_COL 0x20
+#define VDP_STAT0_SPRITE 0x1f
 
 // Where a register's byte lives: $02-$06 are the same storage as $10-$12, $20
 // and $21 (§5), resolved on the way in and on the way out, so the byte has one
@@ -131,6 +141,43 @@ typedef struct vdp_geometry {
 
 // The geometry a register file selects, and the legacy mode behind it.
 const vdp_geometry_t *vdp_geometry(const uint8_t *reg, vdp_legacy_mode_t *legacy);
+
+// ---- §3, §6, §14: the raster, status and interrupts (status.c) ----
+
+// The events of a screen line's start: its display line, a frame's start,
+// vertical blank, the scanline compare, and the sprite events' new frame.
+void vdp_raster_line_start(vdp_t *v, uint16_t screen_line);
+
+// A status register as a read on a port returns it, acknowledging what STAT0
+// and STAT1 acknowledge (§6).
+uint8_t vdp_status_read(vdp_t *v, unsigned select);
+
+// The same without the acknowledgement: a debugger's look.
+uint8_t vdp_status_peek(const vdp_t *v, unsigned select);
+
+// §15: flags, latches, and at power-on the frame's spent events.
+void vdp_status_reset(vdp_t *v, bool power_on);
+
+// §3: a screen line's display line in a geometry.
+static inline uint16_t vdp_display_line_of(uint16_t screen_line, const vdp_geometry_t *g) {
+    return (uint16_t)((screen_line + VDP_SCREEN_LINES - g->origin_y) % VDP_SCREEN_LINES);
+}
+
+// §14: latch a source in STAT1 if IRQEN enables it now. A disabled source
+// leaves no trace.
+static inline void vdp_latch_interrupt(vdp_t *v, uint8_t source) {
+    v->irq_latch |= (uint8_t)(v->reg[VDP_REG_IRQEN] & source);
+}
+
+// §14: vertical blank, overflow or collision — once a frame. False, and nothing
+// latched, if the frame has spent it already, however quickly it was
+// acknowledged.
+static inline bool vdp_frame_event(vdp_t *v, uint8_t source) {
+    if (v->frame_events & source) return false;
+    v->frame_events |= source;
+    vdp_latch_interrupt(v, source);
+    return true;
+}
 
 // ---- §7: VRAM writes ----
 

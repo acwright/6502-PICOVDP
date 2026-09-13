@@ -24,6 +24,7 @@ void vdp_init(vdp_t *v, uint8_t version) {
 
 void vdp_reset(vdp_t *v, bool power_on) {
     reset_registers(v->reg);
+    vdp_status_reset(v, power_on);
     // Both port pairs: pointer 0, direction read, prefetch 0, flip-flop
     // cleared. STATSEL is in the register file, and 0 already.
     for (unsigned pair = 0; pair < 2; pair++) {
@@ -64,6 +65,10 @@ void vdp_reset(vdp_t *v, bool power_on) {
 void VDP_HOT(vdp_line_start)(vdp_t *v, uint16_t screen_line) {
     v->screen_line = screen_line % VDP_SCREEN_LINES;
 
+    // This line's events (§14), numbered and judged with the card as it stands
+    // now — the same instant the render side is about to take.
+    vdp_raster_line_start(v, v->screen_line);
+
     // VRAM, in the order it was written, snooping the palette window as the
     // render side has it placed (§11): the cache takes a write at once.
     uint16_t base = vdp_palette_base(v->render_reg);
@@ -98,9 +103,4 @@ void VDP_HOT(vdp_line_start)(vdp_t *v, uint16_t screen_line) {
 
 void vdp_set_hblank(vdp_t *v, bool hblank) {
     v->hblank = hblank;
-}
-
-bool vdp_int_asserted(const vdp_t *v) {
-    (void)v;
-    return false;  // Phase 4
 }

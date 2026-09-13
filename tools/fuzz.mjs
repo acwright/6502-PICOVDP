@@ -2,7 +2,7 @@
 
 // Fuzz the core against Video.ts (PLAN.md section 4).
 //
-//   node tools/fuzz.mjs [--seed N] [--ops N] [--check-every N] [--scope bus|all] [--out DIR] [--self]
+//   node tools/fuzz.mjs [--seed N] [--ops N] [--check-every N] [--scope bus|status|all] [--out DIR] [--self]
 //
 // Loads the emulator's compiled Video and the adapter (host/node/Video.cjs, or
 // PICOVDP_ADDON) into one process, feeds both the same seeded stream of port
@@ -19,6 +19,15 @@
 //         both port pairs, all 256 palette entries and all 64 KB of VRAM. The
 //         stream adds a debugger's register writes and VRAM pokes. Status
 //         values, /INT and frames are not compared: they are Phases 4 and 5's.
+//   status
+//         Phase 4: the bus scope's stream and state, plus §3, §6, §14. Every
+//         read, status included; /INT after every operation and every tick;
+//         and every N operations all sixteen status registers, peeked, and the
+//         display line. Frames are not compared. Sprites are held off —
+//         whenever an operation leaves Video.ts's SPRCTRL b0 set, both cards
+//         have it cleared by a debugger's register write — because overflow and
+//         collision are Phase 6's; everything else in STAT0, STAT1 and /INT is
+//         compared exactly.
 //   all   every read, /INT after every operation and every tick, and the frame
 //         every N operations.
 //
@@ -46,6 +55,7 @@ function main() {
   console.log(`stream: ${composition(ops)}`)
   const started = Date.now()
   const found = run(make, ops, options)
+  if (options.scope === 'status') console.log(`sprites held off ${held.count} time(s)`)
   if (!found) {
     console.log(`no divergence in ${((Date.now() - started) / 1000).toFixed(1)}s`)
     return
@@ -62,8 +72,10 @@ function main() {
     `${base}.json`,
     JSON.stringify({ seed: options.seed, scope: options.scope, diverged: last.what, ops: minimal }, null, 1) + '\n'
   )
-  if (minimal.some((op) => op.x !== undefined || op.p !== undefined || op.g !== undefined)) {
-    console.log(`wrote ${relative(REPO, base)}.json (it resets or pokes, which a version 1 trace cannot hold)`)
+  held.count = 0
+  run(make, minimal, options)
+  if (minimal.some((op) => op.x !== undefined || op.p !== undefined || op.g !== undefined) || held.count) {
+    console.log(`wrote ${relative(REPO, base)}.json (it resets, pokes or holds sprites off, which a version 1 trace cannot hold)`)
   } else {
     writeFileSync(`${base}.vdpt.gz`, record(Reference, minimal, `fuzz-${options.seed}`))
     console.log(`wrote ${relative(REPO, base)}.json and .vdpt.gz`)
@@ -89,11 +101,11 @@ function parseArgs(args) {
 }
 
 function usage() {
-  console.error('usage: fuzz.mjs [--seed N] [--ops N] [--check-every N] [--scope bus|all] [--out DIR] [--self]')
+  console.error('usage: fuzz.mjs [--seed N] [--ops N] [--check-every N] [--scope bus|status|all] [--out DIR] [--self]')
   process.exit(2)
 }
 
-const SCOPES = ['bus', 'all']
+const SCOPES = ['bus', 'status', 'all']
 
 // ---- the stream ----
 
@@ -147,7 +159,7 @@ function generate(seed, count, scope) {
       if (next() < 0.5) ops.push({ w: p | 1, v: Math.floor(next() * 16) }, { w: p | 1, v: p ? 0x8e : 0x8f })
       ops.push({ r: p | 1 })
     } else if (roll < 0.99) {
-      if (scope === 'bus' && next() < 0.2) {
+      if (scope !== 'all' && next() < 0.2) {
         if (next() < 0.5) {
           const address = next() < 0.7 ? pick(ADDRESSES) + Math.floor(next() * 600) : Math.floor(next() * 0x10000)
           ops.push({ p: address & 0xffff, v: byte() })
@@ -182,6 +194,26 @@ const describe = (op) =>
 /** §6: the status registers that are constants, which the bus scope compares. */
 const CONSTANT_STATUS = [4, 5, 6]
 
+/** The first difference in status (§3, §6), or null. Peeked, so nothing is acknowledged. */
+function statusDifference(a, b) {
+  if (a.getDisplayLine() !== b.getDisplayLine()) {
+    return `display line is ${b.getDisplayLine()}, Video.ts's ${a.getDisplayLine()}`
+  }
+  for (let select = 0; select < 16; select++) {
+    if (a.peekStatus(select) !== b.peekStatus(select)) {
+      return `STAT${select} peeks $${hex(b.peekStatus(select))}, Video.ts's $${hex(a.peekStatus(select))}`
+    }
+  }
+  return null
+}
+
+/** §5: SPRCTRL, and its enable bit (§10). */
+const SPRCTRL = 0x23
+const SPRCTRL_ENABLE = 0x01
+
+/** How often the status scope has held the sprites off, for the log. */
+const held = { count: 0 }
+
 /** The first difference in the card's bus-side state (§4, §5, §7, §11), or null. */
 function stateDifference(a, b) {
   for (let register = 0; register < 128; register++) {
@@ -213,6 +245,7 @@ function stateDifference(a, b) {
 function run(make, ops, { checkEvery, scope }) {
   const { a, b } = make()
   const bus = scope === 'bus'
+  const status = scope === 'status'
   a.reset(true)
   b.reset(true)
   const at = (index, what) => ({ index, what: `${describe(ops[index])}: ${what}` })
@@ -243,6 +276,12 @@ function run(make, ops, { checkEvery, scope }) {
         a.reset(op.x)
         b.reset(op.x)
       }
+      if (status && a.getRegister(SPRCTRL) & SPRCTRL_ENABLE) {
+        const value = a.getRegister(SPRCTRL) & ~SPRCTRL_ENABLE
+        a.setRegister(SPRCTRL, value)
+        b.setRegister(SPRCTRL, value)
+        held.count++
+      }
       const checkpoint = (index + 1) % checkEvery === 0 || index === ops.length - 1
       if (bus) {
         const difference = checkpoint ? stateDifference(a, b) : null
@@ -250,6 +289,11 @@ function run(make, ops, { checkEvery, scope }) {
         continue
       }
       if (interrupt(a) !== interrupt(b)) return at(index, `/INT is ${interrupt(b) ? 1 : 0}, Video.ts's ${interrupt(a) ? 1 : 0}`)
+      if (status) {
+        const difference = checkpoint ? statusDifference(a, b) ?? stateDifference(a, b) : null
+        if (difference) return at(index, difference)
+        continue
+      }
       if (checkpoint) {
         const difference = firstDifference(a.frameIndices(), b.frameIndices())
         if (difference >= 0) {

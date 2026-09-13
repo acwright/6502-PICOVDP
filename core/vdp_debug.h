@@ -32,6 +32,14 @@ vdp_port_t vdp_debug_port(const vdp_t *v, unsigned pair);
 // same value at the next vdp_line_start; tests/unit holds it to that.
 uint16_t vdp_debug_palette(const vdp_t *v, unsigned entry);
 
+// §6: a status register as a port selecting it would read it, without what
+// reading it does — no acknowledgement of STAT0 or STAT1, no flip-flop reset.
+// STAT3 b1 is the platform's last vdp_set_hblank.
+uint8_t vdp_debug_status(const vdp_t *v, unsigned select);
+
+// §3: the display line being scanned, 0-261, as it was numbered when it began.
+uint16_t vdp_debug_display_line(const vdp_t *v);
+
 // §9: what the register file selects.
 typedef struct vdp_debug_mode {
     uint8_t vmode;          // VMODE b3:0, as written
@@ -51,11 +59,17 @@ vdp_debug_stats_t vdp_debug_stats(const vdp_t *v);
 
 // A card's state, less VRAM, which travels beside it. What a snapshot restores
 // is a discontinuity, not a bus operation: both sides are loaded at once, with
-// nothing pending. Phase 4 adds status, latches and the raster's display line.
+// nothing pending.
 typedef struct vdp_snapshot {
     uint8_t registers[VDP_REGISTERS];  // raw, $02-$06 included
     vdp_port_t port[2];
     uint16_t screen_line;
+    uint16_t display_line;  // not always derivable: a mode change renumbers only at the next line start
+    uint8_t stat0;
+    uint8_t irq_latch;
+    uint8_t frame_events;
+    uint8_t overflow_sprite;
+    uint8_t collision_map[8];
 } vdp_snapshot_t;
 void vdp_debug_save(const vdp_t *v, vdp_snapshot_t *s, uint8_t *vram);
 void vdp_debug_restore(vdp_t *v, const vdp_snapshot_t *s, const uint8_t *vram);
