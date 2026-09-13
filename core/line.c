@@ -43,6 +43,7 @@ void vdp_reset(vdp_t *v, bool power_on) {
         v->journal_count = 0;
         v->dirty_pages = 0;
         vdp_palette_reload(v);
+        v->render_screen_line = (uint16_t)((v->screen_line + 1) % VDP_SCREEN_LINES);
         v->hblank = false;
         return;
     }
@@ -99,6 +100,9 @@ void VDP_HOT(vdp_line_start)(vdp_t *v, uint16_t screen_line) {
     // from the render copy just brought up to date.
     memcpy(v->render_reg, v->reg, sizeof v->render_reg);
     if (reload || vdp_palette_base(v->render_reg) != base) vdp_palette_reload(v);
+
+    // The line built now is the next one: screen line 0 as 261 begins (§3).
+    v->render_screen_line = (uint16_t)((v->screen_line + 1) % VDP_SCREEN_LINES);
 }
 
 void vdp_set_hblank(vdp_t *v, bool hblank) {

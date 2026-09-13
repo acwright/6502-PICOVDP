@@ -13,3 +13,4 @@ picovdp_unit_test(test_palette    # §11
     ${CMAKE_SOURCE_DIR}/SPEC.md ${CMAKE_SOURCE_DIR}/picovdp-default.pal)
 picovdp_unit_test(test_reset)     # §15
 picovdp_unit_test(test_status)    # §3's line numbering, §6, §14
+picovdp_unit_test(test_tiles)     # §8 at 1bpp, §9, the backdrop and border

@@ -14,7 +14,8 @@
 //
 // Phase 3: the bus side (§4, §5, §7), the palette (§11) and reset (§15).
 // Phase 4: the raster's line numbering (§3), status (§6) and interrupts (§14).
-// Lines build as the backdrop; the tile engine is Phase 5's, sprites Phase 6's.
+// Phase 5: the tile engine at 1bpp (§8), the geometries and the legacy submode
+// (§9), for both layers. Sprites are Phase 6's; 2, 4 and 8bpp Phase 7's.
 
 #pragma once
 
@@ -89,6 +90,7 @@ typedef struct vdp {
     // ---- the render side: the card as it stood at the last latch ----
     uint8_t render_reg[VDP_REGISTERS];
     uint8_t render_vram[VDP_VRAM_SIZE];
+    uint16_t render_screen_line;            // the screen line the build makes: the one after the latch's, §3
     // §11's cache: each entry's 12-bit 0x0BGR twice, x * 0x10001, so one load
     // expands a pixel to two (§18).
     uint32_t palette[VDP_PALETTE_ENTRIES];

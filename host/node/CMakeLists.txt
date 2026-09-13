@@ -38,3 +38,12 @@ endif()
 # Loads the addon and checks the binding is whole.
 add_test(NAME node_addon_loads
     COMMAND ${PICOVDP_NODE} ${CMAKE_CURRENT_SOURCE_DIR}/smoke.cjs $<TARGET_FILE:picovdp_node>)
+
+# The host executor (PLAN.md section 4): each fixture whose goldens the core
+# draws so far, replayed from tests/oracle through the addon. Needs no emulator.
+foreach(fixture bios)
+    add_test(NAME replay_${fixture}
+        COMMAND ${PICOVDP_NODE} ${CMAKE_SOURCE_DIR}/tools/replay.mjs ${fixture} --classes)
+    set_tests_properties(replay_${fixture} PROPERTIES
+        ENVIRONMENT "PICOVDP_NODE_BINARY=$<TARGET_FILE:picovdp_node>")
+endforeach()

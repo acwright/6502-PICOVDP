@@ -19,9 +19,12 @@
  *   `vdp_expand_line` — the firmware's own 12-bit path, one pixel in two.
  * - **Snapshots.** `Video.ts`'s format, filled from `vdp_debug_save` and read
  *   back through `vdp_debug_restore`.
+ * - **`tickCount` and `observer`**, as `Video.ts` has them, so a trace recorder
+ *   (tools/lib/trace.mjs) can watch the core as the emulator's watches `Video.ts`.
  *
  * Phase 3: ports, registers, VRAM, palette, and the debugger's view of them.
  * Phase 4: the display line, status and interrupts.
+ * Phase 5: the picture, through the tile engine.
  *
  *   PICOVDP_NODE_BINARY   the addon, if not build/host/host/node/picovdp.node
  */
@@ -91,6 +94,12 @@ class Video {
     this.cycleAccumulator = 0
     this.cyclesPerScanline = 0
     this.screenLine = COLD_START_SCREEN_LINE
+
+    /** Ticks since the card was made or last cold-started: the clock a trace is timed by. */
+    this.tickCount = 0
+    /** Told of every port access, line start and reset, as `Video.ts`'s `VideoObserver` is. */
+    this.observer = undefined
+
     this.beginLine()
   }
 
@@ -98,22 +107,27 @@ class Video {
 
   read(address) {
     core.setHblank(this.card, this.horizontalBlanking())
-    return core.read(this.card, address & 3)
+    const value = core.read(this.card, address & 3)
+    if (this.observer) this.observer.read(address & 3, value)
+    return value
   }
 
   write(address, data) {
     core.write(this.card, address & 3, data & 0xff)
+    if (this.observer) this.observer.write(address & 3, data)
   }
 
   // ---- the raster (§3) ----
 
   tick(frequency) {
     this.cyclesPerScanline = frequency / FRAMES_PER_SECOND / SCREEN_LINES
+    this.tickCount++
     this.cycleAccumulator++
     while (this.cycleAccumulator >= this.cyclesPerScanline) {
       this.cycleAccumulator -= this.cyclesPerScanline
       this.screenLine = this.screenLine + 1 === SCREEN_LINES ? 0 : this.screenLine + 1
       this.beginLine()
+      if (this.observer) this.observer.lineStart(this.screenLine, core.displayLine(this.card))
     }
     return core.intAsserted(this.card) ? 0x80 : 0
   }
@@ -124,9 +138,12 @@ class Video {
     this.fillBackground()
     if (coldStart) {
       this.cycleAccumulator = 0
+      this.tickCount = 0
       this.screenLine = COLD_START_SCREEN_LINE
       this.beginLine()
     }
+    // A cold start's line start is reported here, not as a lineStart.
+    if (this.observer) this.observer.reset(coldStart, this.screenLine)
   }
 
   beginLine() {

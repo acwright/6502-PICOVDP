@@ -192,6 +192,11 @@ export class TraceRecorder {
     this.sampleInterrupt()
   }
 
+  /** A checkpoint, at the tick the card has reached; the recorder's analysis adds no annotations. */
+  checkpoint(name) {
+    this.push('C', `${name} ${this.video.tickCount}`)
+  }
+
   reset(coldStart, screenLine) {
     if (coldStart) this.lastTick = 0
     this.push('X', `${coldStart ? 'cold' : 'warm'} ${screenLine}`)

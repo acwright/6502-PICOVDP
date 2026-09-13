@@ -12,7 +12,7 @@ PRO running this firmware; every golden checkpoint the emulator holds reproduces
 byte for byte on the PRO; and the per-line budget, interrupt timing and status
 freshness are measured on the PRO and written back into SPEC.md.
 
-**Status:** Phases 0–4 done ([results](docs/results/)). Phase 1 measured
+**Status:** Phases 0–5 done ([results](docs/results/)). Phase 1 measured
 the line at 2.5–4× §18's estimates, and settled SPEC.md draft 0.4 from it: the
 sprites are built on core 0 (section 3), the clock is 352 MHz, `SPRLIMIT` resets
 to 16, and a late line is specified. Phase 2 exported the oracle: the fixtures'
@@ -21,8 +21,10 @@ static, and `Video.test.ts` runs against the core. Phase 3 put the bus side in
 C — ports, registers, VRAM with its journal and render copy, the palette — and
 it matches `Video.ts` over 10⁷ fuzzed operations. Phase 4 added the raster's
 line numbering, the sixteen status registers and the interrupts, and they match
-`Video.ts` in every read and in `/INT` over 10⁷ more. Phase 5 is next. The PRO is
-on order. Part A of this plan needs no PRO: it runs on the host, in the emulator
+`Video.ts` in every read and in `/INT` over 10⁷ more. Phase 5 added the tile
+engine at 1bpp and the legacy submode: the `bios` goldens reproduce on the
+host, and every frame matches `Video.ts` over 10⁷ more. Phase 6 is next. The PRO
+is on order. Part A of this plan needs no PRO: it runs on the host, in the emulator
 and on a Raspberry Pi Pico 2.
 
 ---
@@ -573,6 +575,7 @@ Node ESM scripts with no build step, as in the emulator's `scripts/`.
 | `vdpctl grab \| compare-capture` | capture |
 | `vdpctl compare` | a snapshot against a golden; writes PNGs of both and of the difference |
 | `fuzz.mjs` | `Video.ts` against the core |
+| `replay.mjs` | `tests/oracle`'s traces into the core (or `Video.ts`), each checkpoint against its golden: the host executor's Node path |
 | `sync-oracle.mjs` | refresh `tests/oracle/` from the emulator: refuses unless it is on `v3-vdp` with a clean tree, and records the emulator commit and SHA-256s in the manifest |
 
 ---
@@ -739,8 +742,8 @@ glyph and so moved here from Phase 3.
 
 **Done when:** host replay of `wizardslab` reproduces all four checkpoints
 exactly; the Jest sprites block passes against the core; the fuzzer's status
-scope, which holds sprites off until this phase (Phase 4), runs 10⁷ operations
-with them on and no divergence in reads or `/INT`.
+and tiles scopes, which hold sprites off until this phase (Phases 4 and 5), run
+10⁷ operations with them on and no divergence in reads, `/INT` or frames.
 
 ### Phase 7 — Core: `VMODE`, bit depths, layer 1, scrolling → **the whole oracle on the host**
 

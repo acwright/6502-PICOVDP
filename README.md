@@ -11,24 +11,24 @@ PICO9918 PRO v2.0 hardware (RP2354A).
   are replayed from.
 - `docs/results/` — what each phase measured and checked.
 
-Status: Phase 4 (the core's line timing, status registers and interrupts)
-done. The bus side of the card — ports, registers, VRAM, palette, status and
-`/INT` — is in C and matches `Video.ts` over 10⁷ fuzzed operations; lines build
-as the backdrop until the tile engine arrives in Phase 5. See
-`docs/results/phase-04.md`.
+Status: Phase 5 (the core's tile engine at 1bpp and the legacy submode) done.
+The bus side of the card is in C and matches `Video.ts` over 10⁷ fuzzed
+operations, and so does every frame it draws at 1bpp. The BIOS's goldens replay
+exactly through the core; sprites follow in Phase 6, and 2, 4 and 8bpp in
+Phase 7. See `docs/results/phase-05.md`.
 
 Layout
 ------
 
 | Path | Holds |
 |---|---|
-| `core/` | portable C11: all of SPEC.md's behaviour, no hardware. `vdp.h` is the card; `vdp_debug.h` inspects it. The bus side (§3's line numbering, §4–§7, §11, §14, §15) is in; the tile engine and sprites follow |
+| `core/` | portable C11: all of SPEC.md's behaviour, no hardware. `vdp.h` is the card; `vdp_debug.h` inspects it. The bus side (§3's line numbering, §4–§7, §11, §14, §15) and the tile engine at 1bpp (§8, §9) are in; sprites and the other depths follow |
 | `host/node/` | the core as a Node-API addon, and `Video.cjs`, which presents it as the emulator's `Video` |
 | `firmware/` | RP2350 only: main, bus PIO, VGA, debug link |
 | `spike/` | Phase 1 timing spike: renderer, worst-case scenes, Pico 2 harness (disposable) |
 | `tests/unit/` | C unit tests, run by CTest |
 | `tests/oracle/` | the emulator's goldens and traces, pinned. Written by `tools/sync-oracle.mjs` only |
-| `tools/` | Node ESM host tools (`sync-oracle`, `fuzz`; `vdpctl` to come) |
+| `tools/` | Node ESM host tools (`sync-oracle`, `replay`, `fuzz`; `vdpctl` to come) |
 | `bench/nano/` | Arduino Nano bus harness (PlatformIO) |
 | `external/pico-sdk` | pico-sdk 2.1.1, submodule |
 
@@ -82,14 +82,17 @@ PICOVDP_ADDON=/path/to/6502-PICOVDP/host/node/Video.cjs npm run test:picovdp
 That runs the emulator's `Video.test.ts`, unchanged, against the core. Here:
 
 ```sh
-node tools/fuzz.mjs --scope status --ops 10000000  # Video.ts against the core, over what the core has so far
+node tools/replay.mjs bios --classes               # a fixture's trace into the core, against tests/oracle (CTest replay_bios)
+node tools/replay.mjs --reference                  # every fixture into Video.ts instead: the harness's own check
+node tools/fuzz.mjs --scope tiles --ops 10000000   # Video.ts against the core, over what the core has so far
 node tools/fuzz.mjs --seed 1 --ops 100000          # everything: reads, /INT and frames (diverges until Phase 7)
-node tools/fuzz.mjs --self --scope status          # Video.ts against itself: the harness's own check
+node tools/fuzz.mjs --self --scope tiles           # Video.ts against itself: the harness's own check
 ```
 
-The fuzzer loads the emulator's compiled `Video`, so run its `npm run build:cli`
-first. A divergence is minimised and written to `build/fuzz/` as an operation
-list and, when the operations fit a trace, as a trace.
+The fuzzer and `replay.mjs --reference` load the emulator's compiled `Video`,
+so run its `npm run build:cli` first. A divergence is minimised and written to
+`build/fuzz/` as an operation list and, when the operations fit a trace, as a
+trace.
 
 ### Firmware
 

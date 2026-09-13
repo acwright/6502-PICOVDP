@@ -35,6 +35,7 @@
 #define VDP_REG_L0PAT 0x12
 #define VDP_REG_L0CTRL 0x15
 #define VDP_REG_L0PAL 0x16
+#define VDP_REG_L1NAME 0x18
 #define VDP_REG_L1CTRL 0x1d
 #define VDP_REG_SPRATTR 0x20
 #define VDP_REG_SPRPAT 0x21
@@ -141,6 +142,31 @@ typedef struct vdp_geometry {
 
 // The geometry a register file selects, and the legacy mode behind it.
 const vdp_geometry_t *vdp_geometry(const uint8_t *reg, vdp_legacy_mode_t *legacy);
+
+// ---- §8: the tile engine (tiles.c) ----
+
+// LxCTRL (§5, §8).
+#define VDP_LXCTRL_DEPTH 0x03
+#define VDP_LXCTRL_ATTR_SOURCE 0x0c
+#define VDP_LXCTRL_ENABLE 0x10
+#define VDP_LXCTRL_INDEX0_OPAQUE 0x20
+#define VDP_LXCTRL_SCRX_BIT8 0x40
+
+// b1:b0.
+#define VDP_DEPTH_1BPP 0
+
+// b3:b2.
+#define VDP_ATTR_PER_CELL 0
+#define VDP_ATTR_PER_GROUP 1
+#define VDP_ATTR_PER_ROW 2
+#define VDP_ATTR_NONE 3
+
+// Draw layer 0 or 1's display line `line`, 0 to g->lines - 1, into the
+// picture's g->width pixels, over what they hold. `legacy` is the legacy mode
+// pinning the layer (§9): layer 0's in the legacy submode, else
+// VDP_LEGACY_NONE. A transparent pixel is left as it is.
+void vdp_draw_layer(const vdp_t *v, unsigned layer, uint16_t line, const vdp_geometry_t *g,
+                    vdp_legacy_mode_t legacy, uint8_t *pixels);
 
 // ---- §3, §6, §14: the raster, status and interrupts (status.c) ----
 

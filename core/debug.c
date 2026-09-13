@@ -90,6 +90,7 @@ void vdp_debug_restore(vdp_t *v, const vdp_snapshot_t *s, const uint8_t *vram) {
 
     memcpy(v->render_vram, v->vram, sizeof v->render_vram);
     memcpy(v->render_reg, v->reg, sizeof v->render_reg);
+    v->render_screen_line = (uint16_t)((v->screen_line + 1) % VDP_SCREEN_LINES);
     v->journal_count = 0;
     v->dirty_pages = 0;
     vdp_palette_reload(v);

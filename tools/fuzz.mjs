@@ -2,7 +2,7 @@
 
 // Fuzz the core against Video.ts (PLAN.md section 4).
 //
-//   node tools/fuzz.mjs [--seed N] [--ops N] [--check-every N] [--scope bus|status|all] [--out DIR] [--self]
+//   node tools/fuzz.mjs [--seed N] [--ops N] [--check-every N] [--scope bus|status|tiles|all] [--out DIR] [--self]
 //
 // Loads the emulator's compiled Video and the adapter (host/node/Video.cjs, or
 // PICOVDP_ADDON) into one process, feeds both the same seeded stream of port
@@ -28,6 +28,13 @@
 //         have it cleared by a debugger's register write — because overflow and
 //         collision are Phase 6's; everything else in STAT0, STAT1 and /INT is
 //         compared exactly.
+//   tiles Phase 5: the status scope, plus §8 at 1bpp, §9 and the backdrop.
+//         Every frame either card presents: both must present it after the
+//         same tick, and its 76,800 indices must agree. Sprites are held off
+//         as in the status scope, and both layers are held at 1bpp — whenever
+//         an operation leaves Video.ts's L0CTRL or L1CTRL b1:0 non-zero, both
+//         cards have them cleared — because 2, 4 and 8bpp are Phase 7's. The
+//         legacy submode ignores L0CTRL's depth, so it runs unheld.
 //   all   every read, /INT after every operation and every tick, and the frame
 //         every N operations.
 //
@@ -55,7 +62,8 @@ function main() {
   console.log(`stream: ${composition(ops)}`)
   const started = Date.now()
   const found = run(make, ops, options)
-  if (options.scope === 'status') console.log(`sprites held off ${held.count} time(s)`)
+  if (options.scope === 'status' || options.scope === 'tiles') console.log(`sprites held off ${held.count} time(s)`)
+  if (options.scope === 'tiles') console.log(`layers held at 1bpp ${held.depth} time(s); ${held.frames} frames compared, ${held.drawn} of them more than one colour`)
   if (!found) {
     console.log(`no divergence in ${((Date.now() - started) / 1000).toFixed(1)}s`)
     return
@@ -73,8 +81,9 @@ function main() {
     JSON.stringify({ seed: options.seed, scope: options.scope, diverged: last.what, ops: minimal }, null, 1) + '\n'
   )
   held.count = 0
+  held.depth = 0
   run(make, minimal, options)
-  if (minimal.some((op) => op.x !== undefined || op.p !== undefined || op.g !== undefined) || held.count) {
+  if (minimal.some((op) => op.x !== undefined || op.p !== undefined || op.g !== undefined) || held.count || held.depth) {
     console.log(`wrote ${relative(REPO, base)}.json (it resets, pokes or holds sprites off, which a version 1 trace cannot hold)`)
   } else {
     writeFileSync(`${base}.vdpt.gz`, record(Reference, minimal, `fuzz-${options.seed}`))
@@ -101,11 +110,11 @@ function parseArgs(args) {
 }
 
 function usage() {
-  console.error('usage: fuzz.mjs [--seed N] [--ops N] [--check-every N] [--scope bus|status|all] [--out DIR] [--self]')
+  console.error('usage: fuzz.mjs [--seed N] [--ops N] [--check-every N] [--scope bus|status|tiles|all] [--out DIR] [--self]')
   process.exit(2)
 }
 
-const SCOPES = ['bus', 'status', 'all']
+const SCOPES = ['bus', 'status', 'tiles', 'all']
 
 // ---- the stream ----
 
@@ -211,8 +220,12 @@ function statusDifference(a, b) {
 const SPRCTRL = 0x23
 const SPRCTRL_ENABLE = 0x01
 
-/** How often the status scope has held the sprites off, for the log. */
-const held = { count: 0 }
+/** §5: LxCTRL, and its bit depth (§8). */
+const LXCTRL = [0x15, 0x1d]
+const LXCTRL_DEPTH = 0x03
+
+/** How often the status and tiles scopes held the sprites off, the tiles scope held the depth, and frames it compared, for the log. */
+const held = { count: 0, depth: 0, frames: 0, drawn: 0 }
 
 /** The first difference in the card's bus-side state (§4, §5, §7, §11), or null. */
 function stateDifference(a, b) {
@@ -245,7 +258,8 @@ function stateDifference(a, b) {
 function run(make, ops, { checkEvery, scope }) {
   const { a, b } = make()
   const bus = scope === 'bus'
-  const status = scope === 'status'
+  const tiles = scope === 'tiles'
+  const status = scope === 'status' || tiles
   a.reset(true)
   b.reset(true)
   const at = (index, what) => ({ index, what: `${describe(ops[index])}: ${what}` })
@@ -265,6 +279,17 @@ function run(make, ops, { checkEvery, scope }) {
       } else if (op.t !== undefined) {
         for (let n = 0; n < op.t; n++) {
           if (a.tick(FREQUENCY) !== b.tick(FREQUENCY) && !bus) return at(index, `/INT differs after ${n + 1} tick(s)`)
+          if (tiles && (a.frameReady || b.frameReady)) {
+            if (a.frameReady !== b.frameReady) {
+              return at(index, `after ${n + 1} tick(s) ${b.frameReady ? 'the core' : 'Video.ts'} alone presented a frame`)
+            }
+            const difference = frameDifference(a, b)
+            if (difference) return at(index, `after ${n + 1} tick(s): ${difference}`)
+            a.frameReady = b.frameReady = false
+            held.frames++
+            const frame = a.frameIndices()
+            if (firstDifference(frame, new Uint8Array(frame.length).fill(frame[0])) >= 0) held.drawn++
+          }
         }
       } else if (op.p !== undefined) {
         a.setVramByte(op.p, op.v)
@@ -282,6 +307,15 @@ function run(make, ops, { checkEvery, scope }) {
         b.setRegister(SPRCTRL, value)
         held.count++
       }
+      if (tiles) {
+        for (const register of LXCTRL) {
+          if (!(a.getRegister(register) & LXCTRL_DEPTH)) continue
+          const value = a.getRegister(register) & ~LXCTRL_DEPTH
+          a.setRegister(register, value)
+          b.setRegister(register, value)
+          held.depth++
+        }
+      }
       const checkpoint = (index + 1) % checkEvery === 0 || index === ops.length - 1
       if (bus) {
         const difference = checkpoint ? stateDifference(a, b) : null
@@ -295,12 +329,8 @@ function run(make, ops, { checkEvery, scope }) {
         continue
       }
       if (checkpoint) {
-        const difference = firstDifference(a.frameIndices(), b.frameIndices())
-        if (difference >= 0) {
-          const x = difference % 320
-          const y = Math.floor(difference / 320)
-          return at(index, `frame differs at x ${x}, y ${y}: ${b.frameIndices()[difference]}, Video.ts ${a.frameIndices()[difference]}`)
-        }
+        const difference = frameDifference(a, b)
+        if (difference) return at(index, difference)
       }
     } catch (error) {
       return at(index, `threw ${error.name}: ${error.message}`)
@@ -350,6 +380,15 @@ function composition(ops) {
   }
   const parts = Object.entries(counts).map(([kind, count]) => `${count} ${names[kind]}`)
   return `${parts.join(', ')}; ${ticks} ticks, ${Math.floor(ticks / (FREQUENCY / 60 / 262))} line starts`
+}
+
+/** Where the two presented frames first differ, or null. */
+function frameDifference(a, b) {
+  const difference = firstDifference(a.frameIndices(), b.frameIndices())
+  if (difference < 0) return null
+  const x = difference % 320
+  const y = Math.floor(difference / 320)
+  return `frame differs at x ${x}, y ${y}: ${b.frameIndices()[difference]}, Video.ts ${a.frameIndices()[difference]}`
 }
 
 function firstDifference(a, b) {
