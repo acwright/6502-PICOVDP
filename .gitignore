@@ -1,0 +1,17 @@
+# CMake presets
+build/
+
+# PlatformIO
+bench/mega/.pio/
+
+# Node
+node_modules/
+
+# Captures and snapshots made on the bench
+captures/
+
+# Editors and OS
+.DS_Store
+.vscode/
+.idea/
+compile_commands.json

@@ -1,0 +1,262 @@
+GIMP Palette
+Name: PICOVDP Default
+Columns: 16
+# 6502-PICOVDP default palette - 256 entries, 12-bit RGB (4096 colours)
+# Row 0 TMS9918 | Row 1 grayscale | Rows 2-13 hues at 30 deg | 14 brown | 15 blue-grey
+#
+  0   0   0	  0 TMS9918 Transparent
+  0   0   0	  1 TMS9918 Black
+ 34 204  68	  2 TMS9918 Medium green
+102 221 119	  3 TMS9918 Light green
+ 85  85 238	  4 TMS9918 Dark blue
+119 119 255	  5 TMS9918 Light blue
+204  85  85	  6 TMS9918 Dark red
+ 68 238 238	  7 TMS9918 Cyan
+255  85  85	  8 TMS9918 Medium red
+255 119 119	  9 TMS9918 Light red
+204 187  85	 10 TMS9918 Dark yellow
+221 204 136	 11 TMS9918 Light yellow
+ 34 170  68	 12 TMS9918 Dark green
+204  85 187	 13 TMS9918 Magenta
+204 204 204	 14 TMS9918 Gray
+255 255 255	 15 TMS9918 White
+  0   0   0	 16 Gray 0
+ 17  17  17	 17 Gray 1
+ 34  34  34	 18 Gray 2
+ 51  51  51	 19 Gray 3
+ 68  68  68	 20 Gray 4
+ 85  85  85	 21 Gray 5
+102 102 102	 22 Gray 6
+119 119 119	 23 Gray 7
+136 136 136	 24 Gray 8
+153 153 153	 25 Gray 9
+170 170 170	 26 Gray 10
+187 187 187	 27 Gray 11
+204 204 204	 28 Gray 12
+221 221 221	 29 Gray 13
+238 238 238	 30 Gray 14
+255 255 255	 31 Gray 15
+ 34   0   0	 32 Red 0
+ 68   0   0	 33 Red 1
+102   0   0	 34 Red 2
+136   0   0	 35 Red 3
+153   0   0	 36 Red 4
+187   0   0	 37 Red 5
+221   0   0	 38 Red 6
+255   0   0	 39 Red 7
+255  34  34	 40 Red 8
+255  51  51	 41 Red 9
+255  85  85	 42 Red 10
+255 119 119	 43 Red 11
+255 136 136	 44 Red 12
+255 170 170	 45 Red 13
+255 204 204	 46 Red 14
+255 221 221	 47 Red 15
+ 34  17   0	 48 Orange 0
+ 68  34   0	 49 Orange 1
+102  51   0	 50 Orange 2
+136  68   0	 51 Orange 3
+153  85   0	 52 Orange 4
+187 102   0	 53 Orange 5
+221 119   0	 54 Orange 6
+255 136   0	 55 Orange 7
+255 153  34	 56 Orange 8
+255 170  51	 57 Orange 9
+255 170  85	 58 Orange 10
+255 187 119	 59 Orange 11
+255 204 136	 60 Orange 12
+255 221 170	 61 Orange 13
+255 221 204	 62 Orange 14
+255 238 221	 63 Orange 15
+ 34  34   0	 64 Yellow 0
+ 68  68   0	 65 Yellow 1
+102 102   0	 66 Yellow 2
+136 136   0	 67 Yellow 3
+153 153   0	 68 Yellow 4
+187 187   0	 69 Yellow 5
+221 221   0	 70 Yellow 6
+255 255   0	 71 Yellow 7
+255 255  34	 72 Yellow 8
+255 255  51	 73 Yellow 9
+255 255  85	 74 Yellow 10
+255 255 119	 75 Yellow 11
+255 255 136	 76 Yellow 12
+255 255 170	 77 Yellow 13
+255 255 204	 78 Yellow 14
+255 255 221	 79 Yellow 15
+ 17  34   0	 80 Chartreuse 0
+ 34  68   0	 81 Chartreuse 1
+ 51 102   0	 82 Chartreuse 2
+ 68 136   0	 83 Chartreuse 3
+ 85 153   0	 84 Chartreuse 4
+102 187   0	 85 Chartreuse 5
+119 221   0	 86 Chartreuse 6
+136 255   0	 87 Chartreuse 7
+153 255  34	 88 Chartreuse 8
+170 255  51	 89 Chartreuse 9
+170 255  85	 90 Chartreuse 10
+187 255 119	 91 Chartreuse 11
+204 255 136	 92 Chartreuse 12
+221 255 170	 93 Chartreuse 13
+221 255 204	 94 Chartreuse 14
+238 255 221	 95 Chartreuse 15
+  0  34   0	 96 Green 0
+  0  68   0	 97 Green 1
+  0 102   0	 98 Green 2
+  0 136   0	 99 Green 3
+  0 153   0	100 Green 4
+  0 187   0	101 Green 5
+  0 221   0	102 Green 6
+  0 255   0	103 Green 7
+ 34 255  34	104 Green 8
+ 51 255  51	105 Green 9
+ 85 255  85	106 Green 10
+119 255 119	107 Green 11
+136 255 136	108 Green 12
+170 255 170	109 Green 13
+204 255 204	110 Green 14
+221 255 221	111 Green 15
+  0  34  17	112 Spring green 0
+  0  68  34	113 Spring green 1
+  0 102  51	114 Spring green 2
+  0 136  68	115 Spring green 3
+  0 153  85	116 Spring green 4
+  0 187 102	117 Spring green 5
+  0 221 119	118 Spring green 6
+  0 255 136	119 Spring green 7
+ 34 255 153	120 Spring green 8
+ 51 255 170	121 Spring green 9
+ 85 255 170	122 Spring green 10
+119 255 187	123 Spring green 11
+136 255 204	124 Spring green 12
+170 255 221	125 Spring green 13
+204 255 221	126 Spring green 14
+221 255 238	127 Spring green 15
+  0  34  34	128 Cyan 0
+  0  68  68	129 Cyan 1
+  0 102 102	130 Cyan 2
+  0 136 136	131 Cyan 3
+  0 153 153	132 Cyan 4
+  0 187 187	133 Cyan 5
+  0 221 221	134 Cyan 6
+  0 255 255	135 Cyan 7
+ 34 255 255	136 Cyan 8
+ 51 255 255	137 Cyan 9
+ 85 255 255	138 Cyan 10
+119 255 255	139 Cyan 11
+136 255 255	140 Cyan 12
+170 255 255	141 Cyan 13
+204 255 255	142 Cyan 14
+221 255 255	143 Cyan 15
+  0  17  34	144 Azure 0
+  0  34  68	145 Azure 1
+  0  51 102	146 Azure 2
+  0  68 136	147 Azure 3
+  0  85 153	148 Azure 4
+  0 102 187	149 Azure 5
+  0 119 221	150 Azure 6
+  0 136 255	151 Azure 7
+ 34 153 255	152 Azure 8
+ 51 170 255	153 Azure 9
+ 85 170 255	154 Azure 10
+119 187 255	155 Azure 11
+136 204 255	156 Azure 12
+170 221 255	157 Azure 13
+204 221 255	158 Azure 14
+221 238 255	159 Azure 15
+  0   0  34	160 Blue 0
+  0   0  68	161 Blue 1
+  0   0 102	162 Blue 2
+  0   0 136	163 Blue 3
+  0   0 153	164 Blue 4
+  0   0 187	165 Blue 5
+  0   0 221	166 Blue 6
+  0   0 255	167 Blue 7
+ 34  34 255	168 Blue 8
+ 51  51 255	169 Blue 9
+ 85  85 255	170 Blue 10
+119 119 255	171 Blue 11
+136 136 255	172 Blue 12
+170 170 255	173 Blue 13
+204 204 255	174 Blue 14
+221 221 255	175 Blue 15
+ 17   0  34	176 Violet 0
+ 34   0  68	177 Violet 1
+ 51   0 102	178 Violet 2
+ 68   0 136	179 Violet 3
+ 85   0 153	180 Violet 4
+102   0 187	181 Violet 5
+119   0 221	182 Violet 6
+136   0 255	183 Violet 7
+153  34 255	184 Violet 8
+170  51 255	185 Violet 9
+170  85 255	186 Violet 10
+187 119 255	187 Violet 11
+204 136 255	188 Violet 12
+221 170 255	189 Violet 13
+221 204 255	190 Violet 14
+238 221 255	191 Violet 15
+ 34   0  34	192 Magenta 0
+ 68   0  68	193 Magenta 1
+102   0 102	194 Magenta 2
+136   0 136	195 Magenta 3
+153   0 153	196 Magenta 4
+187   0 187	197 Magenta 5
+221   0 221	198 Magenta 6
+255   0 255	199 Magenta 7
+255  34 255	200 Magenta 8
+255  51 255	201 Magenta 9
+255  85 255	202 Magenta 10
+255 119 255	203 Magenta 11
+255 136 255	204 Magenta 12
+255 170 255	205 Magenta 13
+255 204 255	206 Magenta 14
+255 221 255	207 Magenta 15
+ 34   0  17	208 Rose 0
+ 68   0  34	209 Rose 1
+102   0  51	210 Rose 2
+136   0  68	211 Rose 3
+153   0  85	212 Rose 4
+187   0 102	213 Rose 5
+221   0 119	214 Rose 6
+255   0 136	215 Rose 7
+255  34 153	216 Rose 8
+255  51 170	217 Rose 9
+255  85 170	218 Rose 10
+255 119 187	219 Rose 11
+255 136 204	220 Rose 12
+255 170 221	221 Rose 13
+255 204 221	222 Rose 14
+255 221 238	223 Rose 15
+ 17  17   0	224 Brown 0
+ 51  34  17	225 Brown 1
+ 68  51  17	226 Brown 2
+102  68  34	227 Brown 3
+119  68  34	228 Brown 4
+136  85  34	229 Brown 5
+170 102  51	230 Brown 6
+187 119  51	231 Brown 7
+187 136  68	232 Brown 8
+204 153 102	233 Brown 9
+204 170 119	234 Brown 10
+221 187 136	235 Brown 11
+221 187 170	236 Brown 12
+238 204 187	237 Brown 13
+238 221 204	238 Brown 14
+255 238 238	239 Brown 15
+ 17  17  34	240 Blue-grey 0
+ 34  34  51	241 Blue-grey 1
+ 51  51  68	242 Blue-grey 2
+ 68  68 102	243 Blue-grey 3
+ 68 102 136	244 Blue-grey 4
+ 85 119 153	245 Blue-grey 5
+102 136 170	246 Blue-grey 6
+119 153 204	247 Blue-grey 7
+136 170 204	248 Blue-grey 8
+153 170 221	249 Blue-grey 9
+170 187 221	250 Blue-grey 10
+187 204 221	251 Blue-grey 11
+187 204 238	252 Blue-grey 12
+204 221 238	253 Blue-grey 13
+221 238 238	254 Blue-grey 14
+238 238 255	255 Blue-grey 15

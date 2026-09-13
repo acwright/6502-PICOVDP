@@ -1,0 +1,105 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "host",
+      "displayName": "Host (macOS): core and unit tests",
+      "inherits": "base",
+      "cacheVariables": {
+        "PICOVDP_PLATFORM": "host",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "host-asan",
+      "displayName": "Host with AddressSanitizer and UBSan",
+      "inherits": "host",
+      "cacheVariables": {
+        "PICOVDP_SANITIZE": "ON"
+      }
+    },
+    {
+      "name": "rp2350",
+      "hidden": true,
+      "inherits": "base",
+      "cacheVariables": {
+        "PICOVDP_PLATFORM": "rp2350",
+        "PICO_PLATFORM": "rp2350-arm-s"
+      }
+    },
+    {
+      "name": "pico2",
+      "displayName": "Raspberry Pi Pico 2 (debug)",
+      "inherits": "rp2350",
+      "cacheVariables": {
+        "PICO_BOARD": "pico2",
+        "PICOVDP_DEBUG": "ON",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "pro-debug",
+      "displayName": "PICO9918 PRO v2.0 (debug)",
+      "inherits": "rp2350",
+      "cacheVariables": {
+        "PICO_BOARD": "pico9918pro",
+        "PICOVDP_DEBUG": "ON",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "pro-release",
+      "displayName": "PICO9918 PRO v2.0 (release)",
+      "inherits": "rp2350",
+      "cacheVariables": {
+        "PICO_BOARD": "pico9918pro",
+        "PICOVDP_DEBUG": "OFF",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "host", "configurePreset": "host" },
+    { "name": "host-asan", "configurePreset": "host-asan" },
+    { "name": "pico2", "configurePreset": "pico2" },
+    { "name": "pro-debug", "configurePreset": "pro-debug" },
+    { "name": "pro-release", "configurePreset": "pro-release" }
+  ],
+  "testPresets": [
+    {
+      "name": "host",
+      "configurePreset": "host",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "host-asan",
+      "configurePreset": "host-asan",
+      "output": { "outputOnFailure": true }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "host",
+      "steps": [
+        { "type": "configure", "name": "host" },
+        { "type": "build", "name": "host" },
+        { "type": "test", "name": "host" }
+      ]
+    },
+    {
+      "name": "host-asan",
+      "steps": [
+        { "type": "configure", "name": "host-asan" },
+        { "type": "build", "name": "host-asan" },
+        { "type": "test", "name": "host-asan" }
+      ]
+    }
+  ]
+}

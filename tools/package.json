@@ -1,0 +1,12 @@
+{
+  "name": "picovdp-tools",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Host tools for 6502-PICOVDP: vdpctl, fuzz, sync-oracle (PLAN.md section 5)",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {}
+}
