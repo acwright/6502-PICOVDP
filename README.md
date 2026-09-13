@@ -20,7 +20,7 @@ Layout
 | `firmware/` | RP2350 only: main, bus PIO, VGA, debug link |
 | `tests/unit/` | C unit tests, run by CTest |
 | `tools/` | Node ESM host tools (`vdpctl`, `fuzz`, `sync-oracle`) |
-| `bench/mega/` | Arduino Mega bus harness (PlatformIO) |
+| `bench/nano/` | Arduino Nano bus harness (PlatformIO) |
 | `external/pico-sdk` | pico-sdk 2.1.1, submodule |
 
 Getting started
@@ -28,7 +28,7 @@ Getting started
 
 Requirements on macOS: Arm GNU Toolchain (`brew install --cask
 gcc-arm-embedded`), CMake ≥ 3.25, Ninja, `picotool` 2.x, Node ≥ 22, and
-PlatformIO for the Mega harness.
+PlatformIO for the Nano harness.
 
 ```sh
 git clone --recursive <this repo>        # or, in an existing clone:
@@ -63,10 +63,10 @@ The first flash needs the board in BOOTSEL (hold BOOT while plugging in USB).
 After that a debug build can be reflashed while it runs: `-f` asks it to reboot
 into BOOTSEL over USB. Its log appears on `/dev/cu.usbmodem*`.
 
-### Mega harness
+### Nano harness
 
 ```sh
-cd bench/mega && pio run              # pio run -t upload to flash
+cd bench/nano && pio run              # pio run -t upload to flash
 ```
 
 Licence

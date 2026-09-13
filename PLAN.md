@@ -47,7 +47,7 @@ Contents
 - Additions to `6502-EMULATOR` on its `v3-vdp` branch that export its oracle: a
   port observer, port traces of the golden fixtures, a CPU-less trace replay,
   and a Jest configuration that runs its video tests against this repo's core.
-- A bench that drives the PRO without an AC6502: an Arduino Mega bus harness, a
+- A bench that drives the PRO without an AC6502: an Arduino Nano bus harness, a
   USB debug link in the firmware, video capture, and the host tools that tie
   them together.
 - Debug and release builds; acceptance in an AC6502.
@@ -140,12 +140,12 @@ only what needs the PRO: the pins, the picture and the clock.
     node/          N-API adapter: the core behind Video.ts's interface
     replay/        vdp-replay — pure-C trace replay CLI
   spike/           Phase 1 timing spike (disposable)
-  bench/mega/      Arduino Mega bus harness (PlatformIO, megaatmega2560)
+  bench/nano/      Arduino Nano bus harness (PlatformIO, nanoatmega328new)
   tools/           Node ESM, no build step: vdpctl, fuzz, sync-oracle, lib/
   tests/
     unit/          C unit tests, by SPEC section
     oracle/        pinned goldens + traces + manifest (tools/sync-oracle.mjs only)
-    bench/         port-level conformance scripts for the Mega
+    bench/         port-level conformance scripts for the Nano
   docs/            TRACE.md, DEBUGLINK.md, BENCH.md, results/
   external/pico-sdk   submodule, pinned to 2.1.1 (with lib/tinyusb initialised)
 ```
@@ -186,7 +186,7 @@ Instead:
   either port see them at once, and are appended to a journal.
   `vdp_line_start` drains the journal into the render copy. The build reads only
   the render copy, which does not change under it. A journal that overflows —
-  no 6502 can do it at 1024 entries a line, but the Mega's fastest profile might
+  no 6502 can do it at 1024 entries a line, but the Nano's fastest profile might
   — falls back to copying dirty 1 KB pages, and counts that it did. 128 KB of
   VRAM is comfortable in 520 KB of SRAM.
 - **Registers are snapshotted** at `vdp_line_start`, with the derived per-line
@@ -345,7 +345,7 @@ decides.
 | **Reference replay** — `6502-EMULATOR/scripts/replay-trace.mjs` | `Video.ts`, no CPU | exact: ticks to each operation | reproduces the goldens; defines expected reads |
 | **Host** — `host/node` adapter and `host/replay` CLI | `core/` on macOS | exact | goldens, all 342 Jest tests, fuzz against `Video.ts` |
 | **Injection** — `vdpctl inject` | firmware on a Pico 2 or PRO, via USB | exact: applied at each operation's (frame, line), with a snapshot marker on each golden frame | goldens on silicon, static and dynamic alike |
-| **Bus** — `vdpctl replay` | firmware on the PRO, via the Mega and real pins | untimed | static checkpoints exactly; VRAM reads; timing-independent status |
+| **Bus** — `vdpctl replay` | firmware on the PRO, via the Nano and real pins | untimed | static checkpoints exactly; VRAM reads; timing-independent status |
 
 **Running Video.test.ts against C.** Rather than port 342 tests by hand, the
 emulator gains `jest.picovdp.cjs`. It maps `src/core/IO/Video` to the N-API
@@ -396,8 +396,15 @@ Phases 1, 8 and 10–13 exist for those.
 ------------
 
 Specified in full in `docs/BENCH.md` (Phase 9). The PRO sits on a breadboard or a
-40-pin socket, driven by an Arduino Mega. Its video goes to the Mac through the
-capture card, and its USB-C goes to the Mac for power and the debug link.
+40-pin socket, driven by an Arduino Nano on the same breadboard. Its video goes
+to the Mac through the capture card, and its USB-C goes to the Mac for power and
+the debug link.
+
+The Nano (ATmega328P) was chosen over the Mega 2560 for a cleaner breadboard.
+It is the same 16 MHz AVR, so strobe timing and `/INT` capture resolution are
+unchanged. What it gives up is RAM (2 KB against 8 KB), a free 8-bit port for
+data, and spare input-capture timers. Each is accounted for below. The Mega stays
+on hand as the fallback (section 7, risk 12).
 
 ### Parts
 
@@ -405,11 +412,12 @@ capture card, and its USB-C goes to the Mac for power and the debug link.
 |---|---|---|
 | Raspberry Pi Pico 2 | on hand | Phase 0 |
 | PICO9918 PRO v2.0, VGA dongle, FFC cable | on order | Phase 9 |
-| Arduino Mega 2560 | on hand | Phase 9 |
+| Arduino Nano (ATmega328P, 5 V, 16 MHz) | on hand | Phase 9 |
+| Arduino Mega 2560 | on hand, fallback | — |
 | VGA-to-HDMI converter, HDMI capture card | on hand | Phase 9 |
 | One 0.1″ male header pin for `MDE1` | needed | Phase 9 |
-| 8 × 220 Ω resistors, breadboard or DIP-40 socket, jumpers | needed | Phase 9 |
-| 74HCT-family gate, for tapping VSYNC into the Mega | optional | Phase 13 |
+| 8 × 220 Ω resistors, 2 × 10 kΩ resistors, breadboard or DIP-40 socket, jumpers | needed | Phase 9 |
+| 74HCT-family gate, for tapping VSYNC into the Nano | optional | Phase 13 |
 
 ### Preparing the PRO
 
@@ -424,37 +432,62 @@ TI numbers the TMS9918 data bus backwards: **CD0 is the most significant bit and
 CD7 the least**. pico9918 samples GPIO 14 (CD7) as bit 0. Get this wrong and
 every byte arrives bit-reversed.
 
-| PRO label | TMS9918 pin | Signal | Mega pin | AVR port bit |
+The Nano's `A0`–`A5` are header pins on its analog side, used here as digital
+I/O. They have nothing to do with the CPU address lines that MODE and MODE1 stand
+for.
+
+| PRO label | TMS9918 pin | Signal | Nano pin | AVR port bit |
 |---|:--:|---|:--:|:--:|
-| CD7 | 17 | data bit 0 (LSB) | D22 | PA0, via 220 Ω |
-| CD6 | 18 | data bit 1 | D23 | PA1, via 220 Ω |
-| CD5 | 19 | data bit 2 | D24 | PA2, via 220 Ω |
-| CD4 | 20 | data bit 3 | D25 | PA3, via 220 Ω |
-| CD3 | 21 | data bit 4 | D26 | PA4, via 220 Ω |
-| CD2 | 22 | data bit 5 | D27 | PA5, via 220 Ω |
-| CD1 | 23 | data bit 6 | D28 | PA6, via 220 Ω |
-| CD0 | 24 | data bit 7 (MSB) | D29 | PA7, via 220 Ω |
-| CSW | 14 | `/CSW` | D37 | PC0 |
-| CSR | 15 | `/CSR` | D36 | PC1 |
-| MDE | 13 | MODE = A0 | D35 | PC2 |
-| MDE1 | 11 (fitted pin) | MODE1 = A1 | D34 | PC3 |
-| RST | 34 | `/RESET` | D33 | PC4 |
-| INT | 16 | `/INT` (10 k pull-up on the PRO) | D48 | PL1 = ICP5 |
+| CD7 | 17 | data bit 0 (LSB) | D2 | PD2, via 220 Ω |
+| CD6 | 18 | data bit 1 | D3 | PD3, via 220 Ω |
+| CD5 | 19 | data bit 2 | D4 | PD4, via 220 Ω |
+| CD4 | 20 | data bit 3 | D5 | PD5, via 220 Ω |
+| CD3 | 21 | data bit 4 | D6 | PD6, via 220 Ω |
+| CD2 | 22 | data bit 5 | D7 | PD7, via 220 Ω |
+| CD1 | 23 | data bit 6 | D9 | PB1, via 220 Ω |
+| CD0 | 24 | data bit 7 (MSB) | D10 | PB2, via 220 Ω |
+| CSW | 14 | `/CSW` | A0 | PC0, 10 k pull-up to 5 V |
+| CSR | 15 | `/CSR` | A1 | PC1, 10 k pull-up to 5 V |
+| MDE | 13 | MODE = CPU A0 | A2 | PC2 |
+| MDE1 | 11 (fitted pin) | MODE1 = CPU A1 | A3 | PC3 |
+| RST | 34 | `/RESET` | A4 | PC4 |
+| INT | 16 | `/INT` (10 k pull-up on the PRO) | D8 | PB0 = ICP1 |
+| — | — | VSYNC, via the 74HCT gate (optional, Phase 13) | A5 | PC5 = PCINT13 |
 | GND | 12 | ground | GND | |
 | +5V | 33 | **leave unconnected** — the PRO runs from its USB-C | | |
 
-Data on one AVR port and control on another make each bus edge a single port
-write. Timer 5's input capture on D48 timestamps `/INT` edges to 62.5 ns. The
-socket side of the PRO is 5 V logic — a 74HC245 driving out, a 5 V-tolerant
-74LVC245 receiving — so the Mega needs no level shifting. The resistors protect
-against a harness bug driving the data lines while the PRO does.
+`D0` and `D1` carry the USB serial link, and `PB6`/`PB7` and `PC6` hold the
+crystal and reset, so the 328P has no free 8-bit port. Data is split: six bits on
+PORTD, two on PORTB. Control stays on PORTC alone, so each strobe edge is still a
+single port write:
 
-### The Mega harness (`bench/mega`)
+- **On a write,** both data ports are set before `/CSW` falls.
+- **On a read,** both are sampled while `/CSR` is low, one instruction (62.5 ns)
+  apart, and the PRO holds the bus throughout.
 
-A PlatformIO project (`megaatmega2560`) that speaks a framed protocol at
-1,000,000 baud. It is a small bus-script runner, not a byte relay, because
-anything timing-critical has to happen on the Mega: USB serial latency is
-milliseconds.
+Timer 1's input capture on `D8` timestamps `/INT` edges to 62.5 ns. That is the
+328P's only input-capture pin. The optional VSYNC tap is timestamped instead,
+from Timer 1's count inside its pin-change interrupt. That is good to a few µs,
+against a 63.6 µs line. `D11`–`D13` stay free; `D13`'s on-board LED is the
+harness's status light.
+
+The socket side of the PRO is 5 V logic, so the Nano needs no level shifting: a
+74HC245 drives out and a 5 V-tolerant 74LVC245 receives. The 220 Ω resistors
+protect against a harness bug driving the data lines while the PRO does. The
+10 k pull-ups hold both strobes high while the Nano's pins float in reset. The
+host opening the serial port pulses DTR, which resets the Nano, so without the
+pull-ups the PRO would see stray accesses.
+
+### The Nano harness (`bench/nano`)
+
+A PlatformIO project that speaks a framed protocol at 1,000,000 baud. Its
+environments are `nanoatmega328new`, for the current bootloader, and
+`nanoatmega328`, for clones with the old one. The 328P's 16 MHz clock hits that
+rate exactly. The Nano's USB bridge (FT232RL on genuine boards, CH340 on most
+clones) and its macOS driver must also carry it. Phase 9 confirms this; the
+fallback is 500,000 baud, which is also exact. The harness is a small bus-script
+runner, not a byte relay, because anything timing-critical has to happen on the
+Nano: USB serial latency is milliseconds.
 
 - **Primitives:** write or read a port, block write or read, pulse `/RESET`, and
   timestamp `/INT` edges.
@@ -463,13 +496,17 @@ milliseconds.
   can also be set directly, for margin sweeps.
 - **Scripts:** executed locally with deterministic timing — wait for `/INT`
   (with timeout), delay µs, write, read and compare, record timestamp, loop.
-  Scanline-interrupt tests run this way, reacting within microseconds.
-- **Invariants it enforces:** never `/CSR` and `/CSW` together; data port
-  tri-stated before `/CSR` falls; blocks of at most 1 KB, acknowledged, because
-  the Mega has 8 KB of RAM.
+  Scanline-interrupt tests run this way, reacting within microseconds. A script
+  is held in RAM, so it is capped at 256 bytes. That is ample for Phase 13's
+  loops, which are a handful of operations.
+- **Invariants it enforces:** never `/CSR` and `/CSW` together; data ports
+  tri-stated before `/CSR` falls; blocks of at most 256 bytes, acknowledged,
+  because the Nano has 2 KB of RAM. The serial receive buffer is raised with a
+  build flag so a block arrives whole before any of it is put on the bus.
 
-Throughput is about 100 KB/s sustained, so all 64 KB of VRAM takes about a
-second. Bursts from the Mega's buffer run faster than any 6502.
+The serial rate caps throughput at 100 KB/s, less the per-block
+acknowledgements, so all 64 KB of VRAM takes one to two seconds. Bursts from the
+Nano's buffer run faster than any 6502.
 
 ### Video capture
 
@@ -487,12 +524,12 @@ under load. It is used in Phases 9, 10, 13 and 14.
 ### Host tools (`tools/`)
 
 Node ESM scripts with no build step, as in the emulator's `scripts/`.
-`serialport` talks to the Mega and the debug link.
+`serialport` talks to the Nano and the debug link.
 
 | Tool | Does |
 |---|---|
 | `vdpctl flash \| info \| stats \| snapshot \| vram \| inject \| reset \| reboot` | debug link |
-| `vdpctl bus \| replay \| sweep \| irq-timing` | Mega harness |
+| `vdpctl bus \| replay \| sweep \| irq-timing` | Nano harness |
 | `vdpctl grab \| compare-capture` | capture |
 | `vdpctl compare` | a snapshot against a golden; writes PNGs of both and of the difference |
 | `fuzz.mjs` | `Video.ts` against the core |
@@ -522,7 +559,7 @@ Phases 1 and 2 are independent and may run in either order or together.
   PlatformIO are already present.
 - `CMakePresets.json` with the five presets of section 3. The host presets build with
   `-Wall -Wextra -Werror`; `host-asan` adds AddressSanitizer and UBSan.
-- `tools/package.json`; `bench/mega` PlatformIO skeleton.
+- `tools/package.json`; `bench/nano` PlatformIO skeleton.
 - Pico 2 hello: a UF2 that logs over USB CDC.
 
 **Done when:** `cmake --preset host && ctest --preset host` passes a placeholder
@@ -710,9 +747,9 @@ is the bench.*
   dongle, converter and capture card.
 - Back up the PRO's stock flash first: `picotool save` in BOOTSEL, kept outside
   the repo.
-- `bench/mega` primitives and scripts; `vdpctl bus`, `sweep`, `irq-timing`,
+- `bench/nano` primitives and scripts; `vdpctl bus`, `sweep`, `irq-timing`,
   `grab`, `compare-capture`; `docs/BENCH.md`.
-- On the stock TMS9918 firmware, driven by the Mega:
+- On the stock TMS9918 firmware, driven by the Nano:
   - text mode, with the 2 KB character set taken from `BIOS.bin` at `$B800`
   - write a line of text
   - read status
@@ -725,6 +762,10 @@ is the bench.*
   `6502-1mhz` and `fastest` profiles (the stock firmware's 16 KB wrap applies)
 - the `/INT` period is measured at 16.68 ms
 - strobe-width and hold-time margins are recorded as the baseline for Phase 11
+- the serial rate is confirmed through the Nano's USB bridge on macOS:
+  1,000,000 baud, or the 500,000 fallback, recorded
+- opening and closing the serial port 100 times, which resets the Nano each time,
+  causes no stray access: VRAM and registers read back unchanged
 
 ### Phase 10 — The firmware on the PRO, no bus → **goldens by injection; the picture on the monitor**
 
@@ -756,17 +797,17 @@ is the bench.*
 
 **Done when:**
 - 10⁷ random port operations over both ports — every command form, `VBANK` and
-  `VINC` edge cases, and both read orders — run through the Mega with no read
+  `VINC` edge cases, and both read orders — run through the Nano with no read
   mismatch, at each of the three profiles
 - back-to-back reads 4 µs apart return correct prefetch bytes
 - strobe and hold margins are no worse than Phase 9's baseline
 - a `/RESET` pulse yields §15's state, confirmed by `SNAPSHOT`
 - no FIFO overruns
 
-### Phase 12 — Traces through the bus → **every static golden via the Mega**
+### Phase 12 — Traces through the bus → **every static golden via the Nano**
 
 - `vdpctl replay`:
-  - plays a trace's operations through the Mega, untimed
+  - plays a trace's operations through the Nano, untimed
   - checks VRAM reads, and status reads that are timing-independent (`STAT4`–`STAT6`)
   - pauses at each checkpoint's settle point, takes the next complete frame with
     `SNAPSHOT`, then plays on to the checkpoint and reads VRAM and registers there
@@ -780,7 +821,7 @@ results standing for them.
 
 *SPEC §3, §6, §14, §18, and Still Open 1 and 4.*
 
-- **The latch.** A Mega script sets `IRQLINE` = N and, on `/INT`, writes `COLOR`
+- **The latch.** A Nano script sets `IRQLINE` = N and, on `/INT`, writes `COLOR`
   and `L0SCRX`. The snapshot must show the change from line N + 2, on every one of
   10⁴ trials, with N swept through picture, border and blanking.
 - **Interrupt timing.** vblank period and phase; scanline-compare offsets per
@@ -788,7 +829,7 @@ results standing for them.
   where the odd VGA line falls.
 - **Status freshness.** `STAT2` read from a scanline handler over 10⁴ interrupts
   gives the distribution of lag. `OVF` and `COL` publication delay, likewise.
-- **Load.** The worst-case scene, plus the Mega's fastest traffic on both ports,
+- **Load.** The worst-case scene, plus the Nano's fastest traffic on both ports,
   plus a scanline interrupt every eight lines, plus USB snapshot streaming, for
   thirty minutes.
 - **Release parity.** `pro-release` repeats Phases 11 and 12 through the bus,
@@ -872,7 +913,7 @@ results standing for them.
    pins its commit, `sync-oracle.mjs` refuses a dirty or wrong-branch tree, and
    re-syncs are commits of their own (rule 4).
 
-9. **The Mega is not a 6502.** Its strobes and spacing come from profiles, not
+9. **The Nano is not a 6502.** Its strobes and spacing come from profiles, not
    from a PHI2. Margin sweeps bracket the 6502's timing from both sides, and
    Phase 14 is the check that the real machine agrees.
 
@@ -881,6 +922,13 @@ results standing for them.
 
 11. **SDK drift.** pico9918 documents failures under pico-sdk 2.2.0. The
     submodule is pinned at 2.1.1, and upgrading is a decision, not an accident.
+
+12. **The Nano runs out of room.** 2 KB of RAM caps blocks and scripts at 256
+    bytes. Its one input-capture pin serves `/INT`, leaving VSYNC to a
+    pin-change interrupt. If a script outgrows that, or VSYNC timing needs better
+    than a few µs, the harness moves to the Mega 2560 on hand. It is the same
+    16 MHz AVR with the same protocol and profiles; only the pin map, block size
+    and capture timers change, and the host tools are untouched.
 
 ---
 
@@ -942,4 +990,4 @@ in `THIRD_PARTY.md`.
 | `src/gpio.h` pin map | `firmware/pins.h` | MODE1 used |
 | `vrEmuTms9918` | — | not used (SPEC §18) |
 | `gpu/`, `config.c`, `flash.c`, `splash.c`, `diag.c`, `palconv.pio`, `configtool/`, SCART detection | — | not used |
-| `test/host` — a Pico driving the TMS9918 bus by GPIO | — | not used, but the nearest precedent for `bench/mega` |
+| `test/host` — a Pico driving the TMS9918 bus by GPIO | — | not used, but the nearest precedent for `bench/nano` |

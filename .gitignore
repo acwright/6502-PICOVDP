@@ -2,7 +2,7 @@
 build/
 
 # PlatformIO
-bench/mega/.pio/
+bench/nano/.pio/
 
 # Node
 node_modules/
