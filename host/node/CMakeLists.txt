@@ -23,7 +23,7 @@ endif()
 add_library(picovdp_node MODULE addon.c)
 target_include_directories(picovdp_node SYSTEM PRIVATE ${PICOVDP_NODE_INCLUDE})
 target_compile_definitions(picovdp_node PRIVATE NODE_GYP_MODULE_NAME=picovdp)
-target_link_libraries(picovdp_node PRIVATE picovdp_core picovdp_warnings)
+target_link_libraries(picovdp_node PRIVATE picovdp_core_debug picovdp_warnings)
 set_target_properties(picovdp_node PROPERTIES
     PREFIX ""
     SUFFIX ".node"

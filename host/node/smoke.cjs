@@ -12,7 +12,8 @@ assert.ok(binary, 'usage: smoke.cjs <picovdp.node>')
 process.env.PICOVDP_NODE_BINARY = binary
 
 const core = require(binary)
-for (const name of ['create', 'reset', 'read', 'write', 'lineStart', 'setHblank', 'buildLine', 'expandLine', 'intAsserted']) {
+for (const name of ['create', 'reset', 'read', 'write', 'lineStart', 'setHblank', 'buildLine', 'expandLine', 'intAsserted',
+  'getRegister', 'setRegister', 'getVram', 'setVram', 'portState', 'paletteEntry', 'mode', 'stats', 'save', 'restore']) {
   assert.equal(typeof core[name], 'function', `the binding has no ${name}`)
 }
 assert.throws(() => core.read({}, 0), TypeError, 'a non-card is refused')
@@ -28,6 +29,9 @@ for (let cycle = 0; cycle < 1_000_000 / 60 + 100; cycle++) interrupts |= video.t
 assert.equal(video.frameReady, true, 'a frame is presented within a frame')
 assert.equal(video.frameIndices().length, DISPLAY_WIDTH * DISPLAY_HEIGHT)
 assert.equal(interrupts, 0)
+const restored = new Video()
+restored.deserialize(video.serialize())
+assert.deepEqual(restored.serialize(), video.serialize(), 'a snapshot round-trips')
 video.reset(true)
 
 console.log('picovdp addon: binding whole, adapter presents frames')

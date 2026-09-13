@@ -17,15 +17,18 @@
  *   begins (§3), into a back buffer that is presented when row 239 is built, as
  *   `Video.ts` does. The picture comes from `vdp_build_line` and its colour from
  *   `vdp_expand_line` — the firmware's own 12-bit path, one pixel in two.
+ * - **Snapshots.** `Video.ts`'s format, filled from `vdp_debug_save` and read
+ *   back through `vdp_debug_restore`.
  *
- * Phase 2: over the empty core. Every method `Video.test.ts` calls exists; the
- * ones that inspect the card need accessors the core does not have yet, and
- * throw naming the phase that adds them.
+ * Phase 3: ports, registers, VRAM, palette, and the debugger's view of them. The
+ * status registers and the display line are Phase 4's; their methods throw,
+ * naming the phase.
  *
  *   PICOVDP_NODE_BINARY   the addon, if not build/host/host/node/picovdp.node
  */
 
 const { join } = require('node:path')
+const CP437 = require('./cp437.cjs')
 
 const binary =
   process.env.PICOVDP_NODE_BINARY ?? join(__dirname, '..', '..', 'build', 'host', 'host', 'node', 'picovdp.node')
@@ -37,6 +40,7 @@ const VIDEO_PALETTE_ENTRIES = 256
 const VIDEO_STATUS_COUNT = 16
 const VIDEO_REGISTER_COUNT = 128
 const VRAM_SIZE = 0x10000
+const VRAM_MASK = VRAM_SIZE - 1
 
 /** §3: 262 screen lines, 60 frames a second, as `Video.ts` times them. */
 const SCREEN_LINES = 262
@@ -55,6 +59,22 @@ const VGA_LINES_PER_DISPLAY_LINE = 2
 /** 4-bit channel to 8-bit, as `Video.ts` expands its palette. */
 const CHANNEL_EXPAND = 0xff / 0x0f
 
+/**
+ * `STAT5` (§6). The firmware reports its own version; the adapter reports the
+ * spec revision, `$04`, as `Video.ts` does (PLAN.md section 4's known differences).
+ */
+const STAT5_SPEC_REVISION = 0x04
+
+/** §5: `PALBASE`, and the register numbers `getMode`'s neighbours read. */
+const REG_COLOR = 0x07
+const REG_PALBASE = 0x0c
+const REG_L0NAME = 0x10
+const REG_L0PAL = 0x16
+
+/** `vdp_debug_mode_t`'s codes, as `Video.ts` names them (§9). */
+const LEGACY_NAMES = [null, 'text', 'graphics-i', 'graphics-ii', 'multicolor']
+const GEOMETRY_NAMES = ['text', 'compact', 'graphics', 'full']
+
 class NotInCore extends Error {
   constructor(method, phase) {
     super(`picovdp: Video.${method} needs the core's ${phase}; it is not there yet`)
@@ -65,7 +85,7 @@ class NotInCore extends Error {
 class Video {
   constructor() {
     this.kind = 'video'
-    this.card = core.create()
+    this.card = core.create(STAT5_SPEC_REVISION)
 
     /** The presented frame, RGBA, as `Video.buffer`. */
     this.buffer = Buffer.alloc(DISPLAY_WIDTH * DISPLAY_HEIGHT * 4)
@@ -108,8 +128,8 @@ class Video {
 
   reset(coldStart) {
     core.reset(this.card, coldStart)
-    this.backIndexBuffer.fill(0)
-    this.backBuffer.fill(0)
+    // `Video.ts` starts the frame in progress from the backdrop as reset leaves it.
+    this.fillBackground()
     if (coldStart) {
       this.cycleAccumulator = 0
       this.screenLine = COLD_START_SCREEN_LINE
@@ -143,6 +163,22 @@ class Video {
     }
   }
 
+  /** The back buffers filled with the backdrop (§11), for a reset or a restore. */
+  fillBackground() {
+    const index = ((this.getRegister(REG_L0PAL) & 0x0f) << 4) | (this.getRegister(REG_COLOR) & 0x0f)
+    const rgb = this.paletteEntry(index)
+    const red = ((rgb >> 8) & 0x0f) * CHANNEL_EXPAND
+    const green = ((rgb >> 4) & 0x0f) * CHANNEL_EXPAND
+    const blue = (rgb & 0x0f) * CHANNEL_EXPAND
+    for (let offset = 0; offset < this.backBuffer.length; offset += 4) {
+      this.backBuffer[offset] = red
+      this.backBuffer[offset + 1] = green
+      this.backBuffer[offset + 2] = blue
+      this.backBuffer[offset + 3] = 0xff
+    }
+    this.backIndexBuffer.fill(index)
+  }
+
   horizontalBlanking() {
     if (this.cyclesPerScanline <= 0) return false
     const vgaLine = this.cyclesPerScanline / VGA_LINES_PER_DISPLAY_LINE
@@ -158,46 +194,82 @@ class Video {
     return core.intAsserted(this.card)
   }
 
-  // ---- inspection: accessors the core adds from Phase 3 ----
+  // ---- inspection (vdp_debug.h) ----
 
   get vramSize() {
     return VRAM_SIZE
   }
 
-  readVRAM() {
-    throw new NotInCore('readVRAM', 'VRAM (Phase 3)')
+  readVRAM(offset) {
+    return core.getVram(this.card, offset & VRAM_MASK)
   }
 
-  writeVRAM() {
-    throw new NotInCore('writeVRAM', 'VRAM (Phase 3)')
+  writeVRAM(offset, value) {
+    core.setVram(this.card, offset & VRAM_MASK, value & 0xff)
   }
 
-  getVramByte() {
-    throw new NotInCore('getVramByte', 'VRAM (Phase 3)')
+  getVramByte(address) {
+    return core.getVram(this.card, address & VRAM_MASK)
   }
 
-  setVramByte() {
-    throw new NotInCore('setVramByte', 'VRAM (Phase 3)')
+  setVramByte(address, value) {
+    core.setVram(this.card, address & VRAM_MASK, value & 0xff)
   }
 
-  getRegister() {
-    throw new NotInCore('getRegister', 'register file (Phase 3)')
+  getRegister(index) {
+    return core.getRegister(this.card, index & 0x7f)
   }
 
-  setRegister() {
-    throw new NotInCore('setRegister', 'register file (Phase 3)')
+  setRegister(index, value) {
+    core.setRegister(this.card, index & 0x7f, value & 0xff)
   }
 
+  /** The palette window's first byte, `PALBASE` × `$400` (§11). */
   paletteBase() {
-    throw new NotInCore('paletteBase', 'palette (Phase 3)')
+    return (this.getRegister(REG_PALBASE) & 0x3f) << 10
   }
 
-  paletteEntry() {
-    throw new NotInCore('paletteEntry', 'palette (Phase 3)')
+  /** An entry as 12-bit `$RGB`, as the next line built draws it (§11). */
+  paletteEntry(index) {
+    return core.paletteEntry(this.card, index & 0xff)
   }
 
-  portState() {
-    throw new NotInCore('portState', 'ports (Phase 3)')
+  portState(which) {
+    const { pointer, readMode, readAhead, awaitingCommand, payload } = core.portState(this.card, which === 'a' ? 0 : 1)
+    return { pointer, readMode, readAhead, awaitingCommand, payload }
+  }
+
+  getMode() {
+    const mode = core.mode(this.card)
+    return {
+      vmode: mode.vmode,
+      legacy: LEGACY_NAMES[mode.legacy],
+      geometry: GEOMETRY_NAMES[mode.geometry],
+      cols: mode.cols,
+      rows: mode.rows,
+      cellWidth: mode.cellWidth,
+      width: mode.width,
+      lines: mode.lines,
+      originX: mode.originX,
+      originY: mode.originY
+    }
+  }
+
+  isDisplayEnabled() {
+    return core.mode(this.card).display
+  }
+
+  /** Layer 0's name table as CP437 text, one string per cell row (§9). */
+  textGrid() {
+    const { cols, rows } = core.mode(this.card)
+    const base = (this.getRegister(REG_L0NAME) << 10) & VRAM_MASK
+    const lines = []
+    for (let row = 0; row < rows; row++) {
+      let line = ''
+      for (let col = 0; col < cols; col++) line += CP437[core.getVram(this.card, (base + row * cols + col) & VRAM_MASK)]
+      lines.push(line)
+    }
+    return lines
   }
 
   getStatus() {
@@ -212,27 +284,52 @@ class Video {
     throw new NotInCore('getDisplayLine', 'line timing (Phase 4)')
   }
 
-  getMode() {
-    throw new NotInCore('getMode', 'geometry table (Phase 5)')
-  }
+  // ---- snapshots, in Video.ts's format ----
 
-  isDisplayEnabled() {
-    throw new NotInCore('isDisplayEnabled', 'geometry table (Phase 5)')
-  }
-
-  textGrid() {
-    throw new NotInCore('textGrid', 'geometry table (Phase 5)')
-  }
-
-  // Snapshots are the emulator's, and not in PLAN.md section 4's surface; three
-  // tests use them. Phase 3 decides whether the core carries its state out or
-  // those tests are skipped by name.
   serialize() {
-    throw new NotInCore('serialize', 'snapshot state (undecided)')
+    const vram = new Uint8Array(VRAM_SIZE)
+    const saved = core.save(this.card, vram)
+    return {
+      kind: this.kind,
+      registers: Buffer.from(saved.registers).toString('base64'),
+      ports: saved.ports.map((port) => ({ kind: 'video-port', ...port })),
+      vram: Buffer.from(vram).toString('base64'),
+      cycleAccumulator: this.cycleAccumulator,
+      screenLine: saved.screenLine,
+      frameReady: this.frameReady
+    }
   }
 
-  deserialize() {
-    throw new NotInCore('deserialize', 'snapshot state (undecided)')
+  deserialize(state) {
+    if (state?.kind !== this.kind) throw new Error(`picovdp: expected a '${this.kind}' state, got '${state?.kind}'`)
+    const bytes = (name, length) => {
+      const decoded = Buffer.from(state[name], 'base64')
+      if (decoded.length !== length) throw new Error(`picovdp: ${name} is ${decoded.length} bytes, not ${length}`)
+      return new Uint8Array(decoded)
+    }
+    const snapshot = {
+      registers: bytes('registers', VIDEO_REGISTER_COUNT),
+      ports: state.ports.map((port) => ({
+        pointer: port.pointer & VRAM_MASK,
+        readMode: Boolean(port.readMode),
+        readAhead: port.readAhead & 0xff,
+        stage: port.stage & 1,
+        payload: port.payload & 0xff
+      })),
+      screenLine: typeof state.screenLine === 'number' ? state.screenLine : 0
+    }
+    const vram = bytes('vram', VRAM_SIZE)
+    core.restore(this.card, snapshot, vram)
+    // A snapshot from before screen lines were counted has only the display
+    // line, which the restored geometry's top border turns back into one (§3).
+    if (typeof state.screenLine !== 'number') {
+      snapshot.screenLine = (state.displayLine + core.mode(this.card).originY) % SCREEN_LINES
+      core.restore(this.card, snapshot, vram)
+    }
+    this.screenLine = snapshot.screenLine % SCREEN_LINES
+    this.cycleAccumulator = state.cycleAccumulator
+    this.frameReady = Boolean(state.frameReady)
+    this.fillBackground()
   }
 }
 

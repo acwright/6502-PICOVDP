@@ -11,17 +11,17 @@ PICO9918 PRO v2.0 hardware (RP2354A).
   are replayed from.
 - `docs/results/` — what each phase measured and checked.
 
-Status: Phase 2 (the oracle, exported) done. The emulator's goldens and traces
-are pinned in `tests/oracle/`, and `Video.test.ts` runs against the core through
-`host/node`. The core itself is still empty; Phase 3 starts it. See
-`docs/results/phase-02.md`.
+Status: Phase 3 (the core's ports, registers, VRAM and palette) done. The bus
+side of the card is in C and matches `Video.ts` over 10⁷ fuzzed operations;
+lines build as the backdrop until the tile engine arrives in Phase 5. See
+`docs/results/phase-03.md`.
 
 Layout
 ------
 
 | Path | Holds |
 |---|---|
-| `core/` | portable C11: all of SPEC.md's behaviour, no hardware. The interface is in place; the behaviour arrives from Phase 3 |
+| `core/` | portable C11: all of SPEC.md's behaviour, no hardware. `vdp.h` is the card; `vdp_debug.h` inspects it. The bus side (§4, §5, §7, §11, §15) is in; status, the tile engine and sprites follow |
 | `host/node/` | the core as a Node-API addon, and `Video.cjs`, which presents it as the emulator's `Video` |
 | `firmware/` | RP2350 only: main, bus PIO, VGA, debug link |
 | `spike/` | Phase 1 timing spike: renderer, worst-case scenes, Pico 2 harness (disposable) |
@@ -81,12 +81,14 @@ PICOVDP_ADDON=/path/to/6502-PICOVDP/host/node/Video.cjs npm run test:picovdp
 That runs the emulator's `Video.test.ts`, unchanged, against the core. Here:
 
 ```sh
-node tools/fuzz.mjs --seed 1 --ops 100000   # Video.ts against the core; needs the emulator's npm run build:cli
-node tools/fuzz.mjs --self                  # Video.ts against itself: the harness's own check
+node tools/fuzz.mjs --scope bus --ops 10000000  # Video.ts against the core, over what the core has so far
+node tools/fuzz.mjs --seed 1 --ops 100000      # everything: reads, /INT and frames (diverges until Phase 7)
+node tools/fuzz.mjs --self                     # Video.ts against itself: the harness's own check
 ```
 
-A divergence is minimised and written to `build/fuzz/` as an operation list and
-a trace.
+The fuzzer loads the emulator's compiled `Video`, so run its `npm run build:cli`
+first. A divergence is minimised and written to `build/fuzz/` as an operation
+list and, when the operations fit a trace, as a trace.
 
 ### Firmware
 

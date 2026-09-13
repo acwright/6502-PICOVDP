@@ -3,18 +3,17 @@
 // A thin binding: one function per core entry point, each taking the card as an
 // external. Everything that makes the core look like the emulator's Video — the
 // cycle accumulator that decides when a line starts, the frame buffers, the
-// debug accessors — is JavaScript in Video.cjs, where Video.ts's is. What is
-// here is only what has to be C.
-//
-// Phase 2: over the empty core. The binding is complete for vdp.h as it
-// stands; Phase 3 adds the accessors the adapter's inspection methods need.
+// snapshot format — is JavaScript in Video.cjs, where Video.ts's is. What is
+// here is only what has to be C: vdp.h, and the inspection of vdp_debug.h.
 
 #define NAPI_VERSION 8
 #include <node_api.h>
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "vdp.h"
+#include "vdp_debug.h"
 
 #define CHECK_STATUS(env, status)                                                \
     do {                                                                         \
@@ -72,14 +71,47 @@ static napi_value undefined(napi_env env) {
     return result;
 }
 
+static napi_value uint_value(napi_env env, uint32_t value) {
+    napi_value result;
+    CHECK_STATUS(env, napi_create_uint32(env, value, &result));
+    return result;
+}
+
+static bool set_uint(napi_env env, napi_value object, const char *name, uint32_t value) {
+    napi_value v;
+    return napi_create_uint32(env, value, &v) == napi_ok && napi_set_named_property(env, object, name, v) == napi_ok;
+}
+
+static bool set_bool(napi_env env, napi_value object, const char *name, bool value) {
+    napi_value v;
+    return napi_get_boolean(env, value, &v) == napi_ok && napi_set_named_property(env, object, name, v) == napi_ok;
+}
+
+static bool get_uint(napi_env env, napi_value object, const char *name, uint32_t *out) {
+    napi_value v;
+    return napi_get_named_property(env, object, name, &v) == napi_ok && napi_get_value_uint32(env, v, out) == napi_ok;
+}
+
+static bool get_bool(napi_env env, napi_value object, const char *name, bool *out) {
+    napi_value v;
+    return napi_get_named_property(env, object, name, &v) == napi_ok && napi_get_value_bool(env, v, out) == napi_ok;
+}
+
+// ---- vdp.h ----
+
+// create(version): a card, power-on reset, STAT5 = version.
 static napi_value js_create(napi_env env, napi_callback_info info) {
-    (void)info;
-    vdp_t *v = calloc(1, sizeof *v);
+    napi_value argv[1];
+    size_t argc = 1;
+    uint32_t version = 0;
+    if (napi_get_cb_info(env, info, &argc, argv, NULL, NULL) != napi_ok) return NULL;
+    if (argc >= 1 && !uint_arg(env, argv[0], &version)) return NULL;
+    vdp_t *v = malloc(sizeof *v);
     if (v == NULL) {
         napi_throw_error(env, NULL, "picovdp: out of memory");
         return NULL;
     }
-    vdp_reset(v, true);
+    vdp_init(v, (uint8_t)version);
     napi_value result;
     napi_status status = napi_create_external(env, v, finalize_card, NULL, &result);
     if (status != napi_ok) free(v);
@@ -102,9 +134,7 @@ static napi_value js_read(napi_env env, napi_callback_info info) {
     vdp_t *v = card_args(env, info, 2, argv);
     uint32_t port;
     if (v == NULL || !uint_arg(env, argv[1], &port)) return NULL;
-    napi_value result;
-    CHECK_STATUS(env, napi_create_uint32(env, vdp_read(v, port & 3), &result));
-    return result;
+    return uint_value(env, vdp_read(v, port & 3));
 }
 
 static napi_value js_write(napi_env env, napi_callback_info info) {
@@ -168,17 +198,199 @@ static napi_value js_int_asserted(napi_env env, napi_callback_info info) {
     return result;
 }
 
+// ---- vdp_debug.h ----
+
+static napi_value js_get_register(napi_env env, napi_callback_info info) {
+    napi_value argv[2];
+    vdp_t *v = card_args(env, info, 2, argv);
+    uint32_t index;
+    if (v == NULL || !uint_arg(env, argv[1], &index)) return NULL;
+    return uint_value(env, vdp_debug_register(v, index));
+}
+
+static napi_value js_set_register(napi_env env, napi_callback_info info) {
+    napi_value argv[3];
+    vdp_t *v = card_args(env, info, 3, argv);
+    uint32_t index, value;
+    if (v == NULL || !uint_arg(env, argv[1], &index) || !uint_arg(env, argv[2], &value)) return NULL;
+    vdp_debug_set_register(v, index, (uint8_t)value);
+    return undefined(env);
+}
+
+static napi_value js_get_vram(napi_env env, napi_callback_info info) {
+    napi_value argv[2];
+    vdp_t *v = card_args(env, info, 2, argv);
+    uint32_t address;
+    if (v == NULL || !uint_arg(env, argv[1], &address)) return NULL;
+    return uint_value(env, vdp_debug_vram(v, (uint16_t)address));
+}
+
+static napi_value js_set_vram(napi_env env, napi_callback_info info) {
+    napi_value argv[3];
+    vdp_t *v = card_args(env, info, 3, argv);
+    uint32_t address, value;
+    if (v == NULL || !uint_arg(env, argv[1], &address) || !uint_arg(env, argv[2], &value)) return NULL;
+    vdp_debug_set_vram(v, (uint16_t)address, (uint8_t)value);
+    return undefined(env);
+}
+
+// portState(card, pair): { pointer, readMode, readAhead, awaitingCommand, payload }, Video.ts's names.
+static napi_value js_port_state(napi_env env, napi_callback_info info) {
+    napi_value argv[2];
+    vdp_t *v = card_args(env, info, 2, argv);
+    uint32_t pair;
+    if (v == NULL || !uint_arg(env, argv[1], &pair)) return NULL;
+    vdp_port_t p = vdp_debug_port(v, pair);
+    napi_value result;
+    CHECK_STATUS(env, napi_create_object(env, &result));
+    if (!set_uint(env, result, "pointer", p.pointer) || !set_bool(env, result, "readMode", p.read_mode) ||
+        !set_uint(env, result, "readAhead", p.prefetch) || !set_bool(env, result, "awaitingCommand", p.second) ||
+        !set_uint(env, result, "payload", p.payload)) {
+        CHECK_STATUS(env, napi_generic_failure);
+    }
+    return result;
+}
+
+static napi_value js_palette_entry(napi_env env, napi_callback_info info) {
+    napi_value argv[2];
+    vdp_t *v = card_args(env, info, 2, argv);
+    uint32_t entry;
+    if (v == NULL || !uint_arg(env, argv[1], &entry)) return NULL;
+    return uint_value(env, vdp_debug_palette(v, entry));
+}
+
+// mode(card): vdp_debug_mode_t, one property a field.
+static napi_value js_mode(napi_env env, napi_callback_info info) {
+    napi_value argv[1];
+    vdp_t *v = card_args(env, info, 1, argv);
+    if (v == NULL) return NULL;
+    vdp_debug_mode_t m = vdp_debug_mode(v);
+    napi_value result;
+    CHECK_STATUS(env, napi_create_object(env, &result));
+    if (!set_uint(env, result, "vmode", m.vmode) || !set_uint(env, result, "legacy", m.legacy) ||
+        !set_uint(env, result, "geometry", m.geometry) || !set_uint(env, result, "cols", m.cols) ||
+        !set_uint(env, result, "rows", m.rows) || !set_uint(env, result, "cellWidth", m.cell_width) ||
+        !set_uint(env, result, "width", m.width) || !set_uint(env, result, "lines", m.lines) ||
+        !set_uint(env, result, "originX", m.origin_x) || !set_uint(env, result, "originY", m.origin_y) ||
+        !set_bool(env, result, "display", m.display)) {
+        CHECK_STATUS(env, napi_generic_failure);
+    }
+    return result;
+}
+
+static napi_value js_stats(napi_env env, napi_callback_info info) {
+    napi_value argv[1];
+    vdp_t *v = card_args(env, info, 1, argv);
+    if (v == NULL) return NULL;
+    vdp_debug_stats_t s = vdp_debug_stats(v);
+    napi_value result;
+    CHECK_STATUS(env, napi_create_object(env, &result));
+    if (!set_uint(env, result, "journalOverflows", s.journal_overflows)) CHECK_STATUS(env, napi_generic_failure);
+    return result;
+}
+
+// save(card, vram: Uint8Array(65536)): { registers: Uint8Array(128), ports: [2], screenLine }, VRAM into vram.
+static napi_value js_save(napi_env env, napi_callback_info info) {
+    napi_value argv[2];
+    vdp_t *v = card_args(env, info, 2, argv);
+    if (v == NULL) return NULL;
+    uint8_t *vram = typed_arg(env, argv[1], napi_uint8_array, VDP_VRAM_SIZE);
+    if (vram == NULL) return NULL;
+    vdp_snapshot_t s;
+    vdp_debug_save(v, &s, vram);
+
+    napi_value result, buffer, registers, ports;
+    void *bytes = NULL;
+    CHECK_STATUS(env, napi_create_object(env, &result));
+    CHECK_STATUS(env, napi_create_arraybuffer(env, VDP_REGISTERS, &bytes, &buffer));
+    memcpy(bytes, s.registers, VDP_REGISTERS);
+    CHECK_STATUS(env, napi_create_typedarray(env, napi_uint8_array, VDP_REGISTERS, buffer, 0, &registers));
+    CHECK_STATUS(env, napi_set_named_property(env, result, "registers", registers));
+    CHECK_STATUS(env, napi_create_array_with_length(env, 2, &ports));
+    for (unsigned pair = 0; pair < 2; pair++) {
+        napi_value port;
+        const vdp_port_t *p = &s.port[pair];
+        CHECK_STATUS(env, napi_create_object(env, &port));
+        if (!set_uint(env, port, "pointer", p->pointer) || !set_bool(env, port, "readMode", p->read_mode) ||
+            !set_uint(env, port, "readAhead", p->prefetch) || !set_uint(env, port, "stage", p->second ? 1 : 0) ||
+            !set_uint(env, port, "payload", p->payload)) {
+            CHECK_STATUS(env, napi_generic_failure);
+        }
+        CHECK_STATUS(env, napi_set_element(env, ports, pair, port));
+    }
+    CHECK_STATUS(env, napi_set_named_property(env, result, "ports", ports));
+    if (!set_uint(env, result, "screenLine", s.screen_line)) CHECK_STATUS(env, napi_generic_failure);
+    return result;
+}
+
+// restore(card, { registers, ports, screenLine }, vram): save's inverse.
+static napi_value js_restore(napi_env env, napi_callback_info info) {
+    napi_value argv[3];
+    vdp_t *v = card_args(env, info, 3, argv);
+    if (v == NULL) return NULL;
+    uint8_t *vram = typed_arg(env, argv[2], napi_uint8_array, VDP_VRAM_SIZE);
+    if (vram == NULL) return NULL;
+
+    vdp_snapshot_t s;
+    memset(&s, 0, sizeof s);
+    napi_value registers, ports;
+    CHECK_STATUS(env, napi_get_named_property(env, argv[1], "registers", &registers));
+    uint8_t *reg = typed_arg(env, registers, napi_uint8_array, VDP_REGISTERS);
+    if (reg == NULL) return NULL;
+    memcpy(s.registers, reg, VDP_REGISTERS);
+    CHECK_STATUS(env, napi_get_named_property(env, argv[1], "ports", &ports));
+    for (unsigned pair = 0; pair < 2; pair++) {
+        napi_value port;
+        uint32_t pointer, prefetch, stage, payload;
+        bool read_mode;
+        CHECK_STATUS(env, napi_get_element(env, ports, pair, &port));
+        if (!get_uint(env, port, "pointer", &pointer) || !get_bool(env, port, "readMode", &read_mode) ||
+            !get_uint(env, port, "readAhead", &prefetch) || !get_uint(env, port, "stage", &stage) ||
+            !get_uint(env, port, "payload", &payload)) {
+            napi_throw_type_error(env, NULL, "picovdp: a port state needs pointer, readMode, readAhead, stage, payload");
+            return NULL;
+        }
+        s.port[pair] = (vdp_port_t){
+            .pointer = (uint16_t)pointer,
+            .prefetch = (uint8_t)prefetch,
+            .payload = (uint8_t)payload,
+            .read_mode = read_mode,
+            .second = (stage & 1) != 0,
+        };
+    }
+    uint32_t screen_line;
+    if (!get_uint(env, argv[1], "screenLine", &screen_line)) {
+        napi_throw_type_error(env, NULL, "picovdp: a snapshot needs screenLine");
+        return NULL;
+    }
+    s.screen_line = (uint16_t)(screen_line % VDP_SCREEN_LINES);
+    vdp_debug_restore(v, &s, vram);
+    return undefined(env);
+}
+
+#define FUNCTION(name, fn) {name, NULL, fn, NULL, NULL, NULL, napi_enumerable, NULL}
+
 static napi_value init(napi_env env, napi_value exports) {
     static const napi_property_descriptor functions[] = {
-        {"create", NULL, js_create, NULL, NULL, NULL, napi_enumerable, NULL},
-        {"reset", NULL, js_reset, NULL, NULL, NULL, napi_enumerable, NULL},
-        {"read", NULL, js_read, NULL, NULL, NULL, napi_enumerable, NULL},
-        {"write", NULL, js_write, NULL, NULL, NULL, napi_enumerable, NULL},
-        {"lineStart", NULL, js_line_start, NULL, NULL, NULL, napi_enumerable, NULL},
-        {"setHblank", NULL, js_set_hblank, NULL, NULL, NULL, napi_enumerable, NULL},
-        {"buildLine", NULL, js_build_line, NULL, NULL, NULL, napi_enumerable, NULL},
-        {"expandLine", NULL, js_expand_line, NULL, NULL, NULL, napi_enumerable, NULL},
-        {"intAsserted", NULL, js_int_asserted, NULL, NULL, NULL, napi_enumerable, NULL},
+        FUNCTION("create", js_create),
+        FUNCTION("reset", js_reset),
+        FUNCTION("read", js_read),
+        FUNCTION("write", js_write),
+        FUNCTION("lineStart", js_line_start),
+        FUNCTION("setHblank", js_set_hblank),
+        FUNCTION("buildLine", js_build_line),
+        FUNCTION("expandLine", js_expand_line),
+        FUNCTION("intAsserted", js_int_asserted),
+        FUNCTION("getRegister", js_get_register),
+        FUNCTION("setRegister", js_set_register),
+        FUNCTION("getVram", js_get_vram),
+        FUNCTION("setVram", js_set_vram),
+        FUNCTION("portState", js_port_state),
+        FUNCTION("paletteEntry", js_palette_entry),
+        FUNCTION("mode", js_mode),
+        FUNCTION("stats", js_stats),
+        FUNCTION("save", js_save),
+        FUNCTION("restore", js_restore),
     };
     if (napi_define_properties(env, exports, sizeof functions / sizeof functions[0], functions) != napi_ok) {
         napi_throw_error(env, NULL, "picovdp: could not define the binding");

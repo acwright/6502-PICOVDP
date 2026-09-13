@@ -12,12 +12,14 @@ PRO running this firmware; every golden checkpoint the emulator holds reproduces
 byte for byte on the PRO; and the per-line budget, interrupt timing and status
 freshness are measured on the PRO and written back into SPEC.md.
 
-**Status:** Phases 0, 1 and 2 done ([results](docs/results/)). Phase 1 measured
+**Status:** Phases 0–3 done ([results](docs/results/)). Phase 1 measured
 the line at 2.5–4× §18's estimates, and settled SPEC.md draft 0.4 from it: the
 sprites are built on core 0 (section 3), the clock is 352 MHz, `SPRLIMIT` resets
 to 16, and a late line is specified. Phase 2 exported the oracle: the fixtures'
 traces replay every golden exactly with no CPU, all fifteen checkpoints are
-static, and `Video.test.ts` runs against the core. Phase 3 is next. The PRO is
+static, and `Video.test.ts` runs against the core. Phase 3 put the bus side in
+C — ports, registers, VRAM with its journal and render copy, the palette — and
+it matches `Video.ts` over 10⁷ fuzzed operations. Phase 4 is next. The PRO is
 on order. Part A of this plan needs no PRO: it runs on the host, in the emulator
 and on a Raspberry Pi Pico 2.
 
@@ -165,6 +167,7 @@ One state structure, no globals, so the host can run many instances. Its
 interface is small and is the same on both platforms:
 
 ```c
+void    vdp_init(vdp_t *v, uint8_t version);                // power-on reset; STAT5 = version (Phase 3)
 void    vdp_reset(vdp_t *v, bool power_on);                 // §15; RST leaves the raster running
 uint8_t vdp_read(vdp_t *v, unsigned port);                  // port = A1:A0, §4
 void    vdp_write(vdp_t *v, unsigned port, uint8_t value);  // §4
@@ -179,6 +182,11 @@ void    vdp_build_line(vdp_t *v, uint8_t *indices);         // all of the above 
 void    vdp_expand_line(const vdp_t *v, const uint8_t *indices, uint16_t *rgb); // 12-bit 0x0BGR, ×2
 bool    vdp_int_asserted(const vdp_t *v);                   // §14
 ```
+
+Inspecting the card without disturbing it — registers, VRAM, ports, the palette,
+the mode, statistics, snapshot save and restore — is `core/vdp_debug.h`, a
+library of its own that the adapter, the unit tests and the debug link link and
+a release image need not.
 
 The core is split into a **bus side** — ports, register file, VRAM, status and
 interrupt latches, which `vdp_read`/`vdp_write` touch — and a **render side**,
@@ -382,10 +390,11 @@ used: construction, `read`, `write`, `tick`, `getVramByte`/`setVramByte`,
 `frameIndices`, `buffer`, `getStatus`, `peekStatus`, `getDisplayLine`,
 `portState`, `paletteEntry`, `getRegister`/`setRegister`, `getMode`,
 `isDisplayEnabled`, `textGrid`, `readVRAM`/`writeVRAM`, `vramSize`, and in three
-tests `serialize`/`deserialize` — snapshots, which Phase 3 decides to carry or to
-skip by name. Any test that reaches into the TypeScript class's internals is
-listed in the config as skipped, by name, with the reason — never skipped
-silently. Phase 2 found none. `PICOVDP_ADDON` names the adapter module,
+tests `serialize`/`deserialize` — snapshots, which the core carries: the adapter
+writes and reads `Video.ts`'s own format through `vdp_debug.h` (Phase 3). Any
+test that reaches into the TypeScript class's internals is listed in the config
+as skipped, by name, with the reason — never skipped silently. Phases 2 and 3
+found none. `PICOVDP_ADDON` names the adapter module,
 `host/node/Video.cjs`, which loads the compiled addon itself.
 
 **Fuzzing.** `tools/fuzz.mjs` loads the emulator's compiled `Video` and the
@@ -689,8 +698,8 @@ clean.
   frame beginning at screen line 0. Scanline compare. The once-a-frame guards for
   vblank, overflow and collision (§14).
 - `STAT0`–`STAT15` (§6): sticky flags, the split acknowledgement, `/INT` =
-  latches ∧ `IRQEN`, `MODE1` b5 ≡ `IRQEN` b0, `STAT3` b0 from the line and b1
-  from the platform.
+  latches ∧ `IRQEN`, `MODE1` b5 ≡ `IRQEN` b0 (in the register file since Phase
+  3), `STAT3` b0 from the line and b1 from the platform.
 - Reset (§15): RST leaves the screen line and the frame's spent events alone.
 
 **Done when:** the Jest block for timing, status and interrupts passes against
@@ -701,7 +710,8 @@ with no divergence in reads or in `/INT` after any operation.
 
 *SPEC §8 at 1bpp, §9, §12 for layer 0.*
 
-- Geometry table; legacy `M1`/`M2`/`M3` resolution and `L0ATTR × $40`; 1bpp with
+- Geometry table (resolved from the registers since Phase 3, for `textGrid`);
+  legacy `M1`/`M2`/`M3` resolution and `L0ATTR × $40`; 1bpp with
   all four attribute sources; `COLOR`; transparency; backdrop and border per
   line; display off.
 - Layer code written for both layers from the start — it is one engine (§8) —
@@ -709,7 +719,9 @@ with no divergence in reads or in `/INT` after any operation.
 
 **Done when:** host replay of the `bios` trace reproduces `ok`, `screenful` and
 `scroll` exactly; the Jest legacy block ("Video (TMS9918 VDP)") and the tile
-engine's 1bpp, geometry and legacy-submode tests pass against the core.
+engine's 1bpp, geometry and legacy-submode tests pass against the core, and so
+does the palette block's "renders COLOR = $1F as black on white", which draws a
+glyph and so moved here from Phase 3.
 
 ### Phase 6 — Core: sprites → **`wizardslab` goldens on the host**
 
