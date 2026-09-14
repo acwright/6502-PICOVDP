@@ -157,6 +157,9 @@ const vdp_geometry_t *vdp_geometry(const uint8_t *reg, vdp_legacy_mode_t *legacy
 
 // b1:b0.
 #define VDP_DEPTH_1BPP 0
+#define VDP_DEPTH_2BPP 1
+#define VDP_DEPTH_4BPP 2
+#define VDP_DEPTH_8BPP 3
 
 // b3:b2.
 #define VDP_ATTR_PER_CELL 0
@@ -168,10 +171,22 @@ const vdp_geometry_t *vdp_geometry(const uint8_t *reg, vdp_legacy_mode_t *legacy
 // picture's g->width pixels, over what they hold. `legacy` is the legacy mode
 // pinning the layer (§9): layer 0's in the legacy submode, else
 // VDP_LEGACY_NONE. A transparent pixel is left as it is. Where `levels` is not
-// NULL, each pixel written has its §12 level, `level`, recorded there, by
-// picture column, for the sprites to be judged against.
+// NULL it holds the §12 level of each picture column, the backdrop's before
+// layer 0 is drawn: layer 1 writes only where its level beats the one there,
+// and each pixel written has its level recorded, for layer 1 and the sprites
+// to be judged against. Where it is NULL, every opaque pixel is written.
 void vdp_draw_layer(const vdp_t *v, unsigned layer, uint16_t line, const vdp_geometry_t *g,
-                    vdp_legacy_mode_t legacy, uint8_t *pixels, uint8_t *levels, uint8_t level);
+                    vdp_legacy_mode_t legacy, uint8_t *pixels, uint8_t *levels);
+
+// §8, §12: whether layer 0's cells can carry attribute b6, and so stand at
+// level 4 above layer 1's ordinary cells — an attribute byte at 2, 4 or 8bpp,
+// outside the legacy submode, which pins 1bpp (§9).
+static inline bool vdp_layer0_has_priority(const uint8_t *reg, vdp_legacy_mode_t legacy) {
+    uint8_t control = reg[VDP_REG_L0CTRL];
+    return legacy == VDP_LEGACY_NONE && (control & VDP_LXCTRL_ENABLE) &&
+           (control & VDP_LXCTRL_DEPTH) != VDP_DEPTH_1BPP &&
+           (control & VDP_LXCTRL_ATTR_SOURCE) >> 2 != VDP_ATTR_NONE;
+}
 
 // ---- §12: priority levels ----
 
@@ -179,7 +194,9 @@ void vdp_draw_layer(const vdp_t *v, unsigned layer, uint16_t line, const vdp_geo
 #define VDP_LEVEL_LAYER0 1
 #define VDP_LEVEL_SPRITE 2
 #define VDP_LEVEL_LAYER1 3
+#define VDP_LEVEL_LAYER0_FRONT 4
 #define VDP_LEVEL_SPRITE_FRONT 5
+#define VDP_LEVEL_LAYER1_FRONT 6
 
 // ---- §10: sprites (sprites.c) ----
 

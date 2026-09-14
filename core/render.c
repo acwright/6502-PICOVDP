@@ -7,6 +7,7 @@
 // through the tile engine (tiles.c).
 // Phase 6: the levels the layers leave for the sprites (sprites.c), and the
 // whole line built the way the two cores divide it.
+// Phase 7: levels kept for the layers' own contest, where layer 0 can carry b6.
 
 #include "vdp_internal.h"
 
@@ -35,20 +36,22 @@ void VDP_HOT(vdp_build_layers)(vdp_t *v, uint8_t *indices) {
     // Display off draws the backdrop over the picture (§3).
     if (!(v->render_reg[VDP_REG_MODE1] & VDP_MODE1_DISP)) return;
 
-    // Layer 0, then layer 1 over it (§12). At 1bpp neither carries a priority
-    // bit, so levels 1 and 3 are this order and nothing more. A line with
-    // sprites on it records each pixel's level, which they are drawn against.
+    // Layer 0, then layer 1 over it (§12), each pixel at its level. Levels are
+    // kept only on a line that needs them: one with sprites, which are drawn
+    // against them, or one where a layer 0 cell's b6 can lift it over layer 1.
+    // Anywhere else layer 1 simply draws over layer 0, which is levels 1 and 3.
     uint8_t *picture = indices + g->origin_x;
+    bool layer1 = (v->render_reg[VDP_REG_L1CTRL] & VDP_LXCTRL_ENABLE) != 0;
     uint8_t *levels = NULL;
-    if (v->sprite_count) {
+    if (v->sprite_count || (layer1 && vdp_layer0_has_priority(v->render_reg, legacy))) {
         levels = v->level;
         memset(levels, VDP_LEVEL_BACKDROP, g->width);
     }
     if (v->render_reg[VDP_REG_L0CTRL] & VDP_LXCTRL_ENABLE) {
-        vdp_draw_layer(v, 0, line, g, legacy, picture, levels, VDP_LEVEL_LAYER0);
+        vdp_draw_layer(v, 0, line, g, legacy, picture, levels);
     }
-    if (v->render_reg[VDP_REG_L1CTRL] & VDP_LXCTRL_ENABLE) {
-        vdp_draw_layer(v, 1, line, g, VDP_LEGACY_NONE, picture, levels, VDP_LEVEL_LAYER1);
+    if (layer1) {
+        vdp_draw_layer(v, 1, line, g, VDP_LEGACY_NONE, picture, levels);
     }
 }
 

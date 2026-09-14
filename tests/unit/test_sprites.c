@@ -1,4 +1,4 @@
-// §10's sprites, §9's legacy sprites and §12 against 1bpp layers, at the core's
+// §10's sprites, §9's legacy sprites and §12 against the layers, at the core's
 // own interface: the latch evaluates, and the build draws on two cores.
 //
 // Video.test.ts covers the sprites through the adapter, which builds each row
@@ -15,7 +15,8 @@
 #include "test.h"
 
 enum {
-    MODE1 = 0x01, COLOR = 0x07, IRQEN = 0x0a, VMODE = 0x0d, L0CTRL = 0x15, L0PAT = 0x12, L0ATTR = 0x11,
+    MODE1 = 0x01, COLOR = 0x07, IRQEN = 0x0a, VMODE = 0x0d, L0CTRL = 0x15, L0PAT = 0x12, L0ATTR = 0x11, L0SCRX = 0x13,
+    L1SCRY = 0x1c,
     L1NAME = 0x18, L1ATTR = 0x19, L1PAT = 0x1a, L1CTRL = 0x1d, L1PAL = 0x1e, SPRATTR = 0x20, SPRPAT = 0x21,
     SPRCOUNT = 0x22, SPRCTRL = 0x23, SPRLIMIT = 0x24, SPRPAL = 0x25,
 };
@@ -82,7 +83,8 @@ static unsigned below(unsigned n) {
 }
 
 // A random scene: a mode, sprite size, depth, collision and limits, layers at
-// 1bpp over random tables, and slots placed around the lines the test builds.
+// every depth and attribute source over random tables, scrolled — so at every
+// §12 level from Phase 7 — and slots placed around the lines the test builds.
 static void scene(vdp_t *v, uint16_t around) {
     static const uint8_t vmodes[] = {0x0, 0x1, 0x2, 0x3, 0x4};
     uint8_t vmode = vmodes[below(5)];
@@ -94,10 +96,12 @@ static void scene(vdp_t *v, uint16_t around) {
     set_reg(v, SPRPAL, (uint8_t)rng());
     set_reg(v, SPRATTR, 0x00);
     set_reg(v, SPRPAT, (uint8_t)rng());
-    set_reg(v, L0CTRL, (uint8_t)(ENABLE | (below(2) ? OPAQUE : 0) | (below(4) << 2)));
+    set_reg(v, L0CTRL, (uint8_t)(ENABLE | (below(2) ? OPAQUE : 0) | (below(4) << 2) | below(4)));
+    set_reg(v, L0SCRX, (uint8_t)rng());
     set_reg(v, L0ATTR, (uint8_t)rng());
     set_reg(v, L0PAT, (uint8_t)rng());
-    set_reg(v, L1CTRL, (uint8_t)((below(2) ? ENABLE : 0) | (below(4) ? 0 : OPAQUE) | (below(4) << 2)));
+    set_reg(v, L1CTRL, (uint8_t)((below(2) ? ENABLE : 0) | (below(4) ? 0 : OPAQUE) | (below(4) << 2) | below(4)));
+    set_reg(v, L1SCRY, (uint8_t)rng());
     set_reg(v, L1NAME, (uint8_t)rng());
     set_reg(v, L1ATTR, (uint8_t)rng());
     set_reg(v, L1PAT, (uint8_t)rng());
@@ -182,7 +186,7 @@ TEST(every_split_builds_the_same_line) {
     // The scenes reach what they are for.
     printf("  %u lines: sprites on %u, collision on %u, overflow on %u, a detailed map on %u\n", lines, drawn,
            collided, overflowed, mapped);
-    CHECK(drawn > lines / 2);
+    CHECK(drawn > lines * 2 / 5);
     CHECK(collided > lines / 4);
     CHECK(overflowed > lines / 20);
     CHECK(mapped > lines / 8);

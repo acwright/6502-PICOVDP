@@ -16,8 +16,9 @@
 // Phase 4: the raster's line numbering (§3), status (§6) and interrupts (§14).
 // Phase 5: the tile engine at 1bpp (§8), the geometries and the legacy submode
 // (§9), for both layers.
-// Phase 6: sprites (§10) and their place among the layers (§12). 2, 4 and 8bpp
-// layers are Phase 7's.
+// Phase 6: sprites (§10) and their place among the layers (§12).
+// Phase 7: 2, 4 and 8bpp layers, the attribute byte and §12's seven levels (§8,
+// §12, §13): the whole of SPEC.md's picture.
 
 #pragma once
 

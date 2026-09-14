@@ -17,7 +17,7 @@ can tell.
 |---|---|
 | **Written by** | `6502-EMULATOR`: `scripts/record-traces.mjs`, through `Video.observer`, during the same run the goldens are captured from |
 | **Reference reader** | `6502-EMULATOR/src/tests/goldens/traces.js`, and its CPU-less replay `scripts/replay-trace.mjs` |
-| **Read here by** | `tools/lib/trace.mjs` (written from this document), `tools/sync-oracle.mjs`, `tools/fuzz.mjs`; later `host/replay` and `vdpctl inject` / `replay` |
+| **Read here by** | `tools/lib/trace.mjs` (written from this document), `tools/sync-oracle.mjs`, `tools/fuzz.mjs`, `host/replay` (a reader of its own, in C); later `vdpctl inject` / `replay` |
 | **Pinned here in** | `tests/oracle/<fixture>/<fixture>.vdpt.gz`, by `tools/sync-oracle.mjs` only |
 
 In this document, **§** means a section of SPEC.md.

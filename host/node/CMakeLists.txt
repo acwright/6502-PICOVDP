@@ -39,9 +39,9 @@ endif()
 add_test(NAME node_addon_loads
     COMMAND ${PICOVDP_NODE} ${CMAKE_CURRENT_SOURCE_DIR}/smoke.cjs $<TARGET_FILE:picovdp_node>)
 
-# The host executor (PLAN.md section 4): each fixture whose goldens the core
-# draws so far, replayed from tests/oracle through the addon. Needs no emulator.
-foreach(fixture bios wizardslab)
+# The host executor (PLAN.md section 4): every fixture, replayed from
+# tests/oracle through the addon. Needs no emulator.
+foreach(fixture bios wizardslab vdp-modes vdp-layers)
     add_test(NAME replay_${fixture}
         COMMAND ${PICOVDP_NODE} ${CMAKE_SOURCE_DIR}/tools/replay.mjs ${fixture} --classes)
     set_tests_properties(replay_${fixture} PROPERTIES

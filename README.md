@@ -11,19 +11,21 @@ PICO9918 PRO v2.0 hardware (RP2354A).
   are replayed from.
 - `docs/results/` — what each phase measured and checked.
 
-Status: Phase 6 (the core's sprites) done. The bus side of the card is in C and
-matches `Video.ts` over 10⁷ fuzzed operations, and so does every frame it draws
-with 1bpp layers and sprites at every depth. The `bios` and `wizardslab` goldens
-replay exactly through the core; 2, 4 and 8bpp layers follow in Phase 7. See
-`docs/results/phase-06.md`.
+Status: Phase 7 (bit depths, layer 1 and scrolling) done: the core holds all of
+SPEC.md's behaviour on the host. All fifteen golden checkpoints replay exactly
+through it, from Node and from the pure-C `vdp-replay`; all 342 tests of the
+emulator's `Video.test.ts` pass against it; and it matches `Video.ts` over 10⁷
+fuzzed operations and 10⁵ frames of random layer scenes. Firmware on the Pico 2
+is next. See `docs/results/phase-07.md`.
 
 Layout
 ------
 
 | Path | Holds |
 |---|---|
-| `core/` | portable C11: all of SPEC.md's behaviour, no hardware. `vdp.h` is the card; `vdp_debug.h` inspects it. The bus side (§3's line numbering, §4–§7, §11, §14, §15), the tile engine at 1bpp (§8, §9) and sprites (§10) are in; the other depths and §12's compositor follow |
+| `core/` | portable C11: all of SPEC.md's behaviour, no hardware. `vdp.h` is the card; `vdp_debug.h` inspects it |
 | `host/node/` | the core as a Node-API addon, and `Video.cjs`, which presents it as the emulator's `Video` |
+| `host/replay/` | `vdp-replay`: a trace into the core in pure C, each checkpoint against its golden |
 | `firmware/` | RP2350 only: main, bus PIO, VGA, debug link |
 | `spike/` | Phase 1 timing spike: renderer, worst-case scenes, Pico 2 harness (disposable) |
 | `tests/unit/` | C unit tests, run by CTest |
@@ -82,11 +84,19 @@ PICOVDP_ADDON=/path/to/6502-PICOVDP/host/node/Video.cjs npm run test:picovdp
 That runs the emulator's `Video.test.ts`, unchanged, against the core. Here:
 
 ```sh
-node tools/replay.mjs bios --classes               # a fixture's trace into the core, against tests/oracle (CTest replay_bios, replay_wizardslab)
+node tools/replay.mjs bios --classes               # a fixture's trace into the core, against tests/oracle (CTest replay_<fixture>)
 node tools/replay.mjs --reference                  # every fixture into Video.ts instead: the harness's own check
-node tools/fuzz.mjs --scope tiles --ops 10000000   # Video.ts against the core, over what the core has so far
-node tools/fuzz.mjs --seed 1 --ops 100000          # everything: reads, /INT and frames (diverges until Phase 7)
+node tools/fuzz.mjs --scope tiles --ops 10000000   # Video.ts against the core: reads, /INT, status and every frame
+node tools/fuzz.mjs --scope frames --ops 8000000   # the same over random layer and sprite scenes, ~27,000 frames
+node tools/fuzz.mjs --seed 1 --ops 100000          # the all scope: every read, /INT, and a frame every 5,000 operations
 node tools/fuzz.mjs --self --scope tiles           # Video.ts against itself: the harness's own check
+```
+
+And with no Node at all, after building the `host` preset (CTest
+`vdp_replay_<fixture>`, also under `host-asan`):
+
+```sh
+build/host/host/replay/vdp-replay --classes tests/oracle/*/*.vdpt.gz
 ```
 
 With `PICOVDP_SPLIT_CHECK=1` set, the adapter builds every row a second time

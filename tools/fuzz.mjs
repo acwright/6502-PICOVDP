@@ -2,7 +2,7 @@
 
 // Fuzz the core against Video.ts (PLAN.md section 4).
 //
-//   node tools/fuzz.mjs [--seed N] [--ops N] [--check-every N] [--scope bus|status|tiles|all] [--out DIR] [--self]
+//   node tools/fuzz.mjs [--seed N] [--ops N] [--check-every N] [--scope bus|status|tiles|frames|all] [--out DIR] [--self]
 //
 // Loads the emulator's compiled Video and the adapter (host/node/Video.cjs, or
 // PICOVDP_ADDON) into one process, feeds both the same seeded stream of port
@@ -25,14 +25,17 @@
 //         and every N operations all sixteen status registers, peeked, and the
 //         display line. Frames are not compared. From Phase 6 sprites run, so
 //         overflow, collision, STAT7 and the collision map are compared too.
-//   tiles Phase 5: the status scope, plus §8 at 1bpp, §9 and the backdrop,
-//         and from Phase 6 §10's sprites and §12 against 1bpp layers. Every
-//         frame either card presents: both must present it after the same
-//         tick, and its 76,800 indices must agree. Both layers are held at
-//         1bpp — whenever an operation leaves Video.ts's L0CTRL or L1CTRL b1:0
-//         non-zero, both cards have them cleared — because 2, 4 and 8bpp are
-//         Phase 7's. The legacy submode ignores L0CTRL's depth, so it runs
-//         unheld. Sprites run at every depth.
+//   tiles Phase 5: the status scope, plus §8, §9 and the backdrop, from
+//         Phase 6 §10's sprites, and from Phase 7 every depth and §12 whole.
+//         Every frame either card presents: both must present it after the
+//         same tick, and its 76,800 indices must agree. (Phases 5 and 6 held
+//         both layers at 1bpp; Phase 7 lifted the hold.)
+//   frames
+//         Phase 7: the tiles scope's comparisons over a stream built for
+//         frames: random layer scenes — a geometry, a layer's depth,
+//         attribute source, opacity, scroll and palette group, and a run of
+//         its name, attribute or pattern table, then most of a frame — and
+//         sprite scenes, between runs of ticks up to a quarter of a frame.
 //   all   every read, /INT after every operation and every tick, and the frame
 //         every N operations.
 //
@@ -60,10 +63,16 @@ function main() {
   console.log(`stream: ${composition(ops)}`)
   const started = Date.now()
   const found = run(make, ops, options)
-  if (options.scope === 'status' || options.scope === 'tiles') {
+  if (options.scope === 'status' || options.scope === 'tiles' || options.scope === 'frames') {
     console.log(`sprites: Video.ts's OVF set ${held.overflow} time(s), COL ${held.collision}, the collision map grew ${held.map}`)
   }
-  if (options.scope === 'tiles') console.log(`layers held at 1bpp ${held.depth} time(s); ${held.frames} frames compared, ${held.drawn} of them more than one colour`)
+  if (options.scope === 'tiles' || options.scope === 'frames') {
+    console.log(`frames: ${held.frames} compared, ${held.drawn} of them more than one colour`)
+    const depths = (layer) => ['1bpp', '2bpp', '4bpp', '8bpp'].map((name, depth) => `${held.depth[layer][depth]} at ${name}`).join(', ')
+    console.log(`  presented with layer 0 enabled in a VMODE mode: ${depths(0)}`)
+    console.log(`  presented with layer 1 enabled: ${depths(1)}`)
+    console.log(`  presented with layer 1 over a layer 0 that can carry b6: ${held.contested}`)
+  }
   if (!found) {
     console.log(`no divergence in ${((Date.now() - started) / 1000).toFixed(1)}s`)
     return
@@ -80,10 +89,8 @@ function main() {
     `${base}.json`,
     JSON.stringify({ seed: options.seed, scope: options.scope, diverged: last.what, ops: minimal }, null, 1) + '\n'
   )
-  held.depth = 0
-  run(make, minimal, options)
-  if (minimal.some((op) => op.x !== undefined || op.p !== undefined || op.g !== undefined) || held.depth) {
-    console.log(`wrote ${relative(REPO, base)}.json (it resets, pokes or holds a depth, which a version 1 trace cannot hold)`)
+  if (minimal.some((op) => op.x !== undefined || op.p !== undefined || op.g !== undefined)) {
+    console.log(`wrote ${relative(REPO, base)}.json (it resets or pokes, which a version 1 trace cannot hold)`)
   } else {
     writeFileSync(`${base}.vdpt.gz`, record(Reference, minimal, `fuzz-${options.seed}`))
     console.log(`wrote ${relative(REPO, base)}.json and .vdpt.gz`)
@@ -109,11 +116,11 @@ function parseArgs(args) {
 }
 
 function usage() {
-  console.error('usage: fuzz.mjs [--seed N] [--ops N] [--check-every N] [--scope bus|status|tiles|all] [--out DIR] [--self]')
+  console.error('usage: fuzz.mjs [--seed N] [--ops N] [--check-every N] [--scope bus|status|tiles|frames|all] [--out DIR] [--self]')
   process.exit(2)
 }
 
-const SCOPES = ['bus', 'status', 'tiles', 'all']
+const SCOPES = ['bus', 'status', 'tiles', 'frames', 'all']
 
 // ---- the stream ----
 
@@ -147,11 +154,19 @@ function generate(seed, count, scope) {
   const byte = () => (next() < 0.6 ? pick(VALUES) : Math.floor(next() * 256))
   const port = () => (next() < 0.8 ? 0 : 2) // port A mostly, B too
   const ops = []
-  // The status and tiles scopes add sprite scenes to the stream. The bus and
-  // all scopes draw no extra numbers, so their streams are as they were.
-  const scenes = scope === 'status' || scope === 'tiles'
+  // The status and tiles scopes add sprite scenes to the stream, and the
+  // frames scope layer scenes as well. The bus and all scopes draw no extra
+  // numbers, so their streams are as they were.
+  const frames = scope === 'frames'
+  const scenes = scope === 'status' || scope === 'tiles' || frames
 
   while (ops.length < count) {
+    if (frames && next() < LAYER_SCENE_CHANCE) {
+      // A scene, then most of a frame to see it in.
+      layerScene(ops, next, pick, byte, port())
+      ops.push({ t: Math.floor(TICKS_PER_FRAME * (0.25 + next())) })
+      continue
+    }
     if (scenes && next() < SCENE_CHANCE) {
       spriteScene(ops, next, pick, byte, port())
       continue
@@ -183,7 +198,8 @@ function generate(seed, count, scope) {
         }
         continue
       }
-      ops.push({ t: next() < 0.95 ? 1 + Math.floor(next() * 200) : Math.floor(next() * TICKS_PER_FRAME) })
+      if (frames) ops.push({ t: 1 + Math.floor(next() * (next() < 0.5 ? 400 : TICKS_PER_FRAME / 4)) })
+      else ops.push({ t: next() < 0.95 ? 1 + Math.floor(next() * 200) : Math.floor(next() * TICKS_PER_FRAME) })
     } else if (roll < 0.998) {
       ops.push({ w: p | 1, v: byte() }) // half a command pair
     } else {
@@ -241,6 +257,77 @@ function spriteScene(ops, next, pick, byte, p) {
 /** Where scenes write, besides $0000: sprite table bases a register value names. */
 const SCENE_BASES = [0x0080, 0x0800, 0x1000, 0x2000, 0x3800, 0x4000, 0x7f80, 0xf800]
 
+/** How often, in the frames scope, a layer scene is written. */
+const LAYER_SCENE_CHANCE = 0.04
+
+/** §5: VMODE, and each layer's block and the offsets in it. */
+const VMODE = 0x0d
+const LAYER_BLOCK = [0x10, 0x18]
+const LNAME = 0
+const LATTR = 1
+const LPAT = 2
+const LSCRX = 3
+const LSCRY = 4
+const LCTRL = 5
+const LPAL = 6
+/** A layer's usual name, attribute and pattern bases, as register values: apart, but not always. */
+const LAYER_BASES = [
+  [0x00, 0x04, 0x08],
+  [0x08, 0x0c, 0x10]
+]
+
+/**
+ * A layer scene (§8, §9, §12, §13), as a program writes one: sometimes a
+ * geometry and the display on; one layer's control — depth, attribute source,
+ * enable, index 0 opaque, scroll bit 8 — and perhaps its scroll, palette group
+ * and table bases; then a run of its name table, of its attribute table, or of
+ * the patterns of a few tiles at its depth, bit-8 tiles included. Names are
+ * biased toward the tiles the patterns fill, and patterns toward mixed values
+ * and zero, so that cells draw, overlap and show through; attribute bytes are
+ * any byte, which reaches every flip, priority bit and sub-palette.
+ */
+function layerScene(ops, next, pick, byte, p) {
+  const register = (index, value) => ops.push({ w: p | 1, v: value }, { w: p | 1, v: 0x80 | index })
+  const pointAt = (address) => {
+    register(0x08, (address >> 14) & 3)
+    ops.push({ w: p | 1, v: address & 0xff }, { w: p | 1, v: ((address >> 8) & 0x3f) | 0x40 })
+  }
+  if (next() < 0.4) register(VMODE, next() < 0.85 ? 1 + Math.floor(next() * 4) : pick([0x00, 0x05, 0x0f]))
+  if (next() < 0.3) register(MODE1, 0x40 | (next() < 0.05 ? 0x10 : 0) | (next() < 0.3 ? 0x20 : 0) | Math.floor(next() * 4))
+
+  const layer = next() < 0.5 ? 0 : 1
+  const block = LAYER_BLOCK[layer]
+  const depth = Math.floor(next() * 4)
+  const source = next() < 0.6 ? 0 : Math.floor(next() * 4)
+  register(
+    block + LCTRL,
+    depth | (source << 2) | (next() < 0.9 ? 0x10 : 0) | (next() < 0.5 ? 0x20 : 0) | (next() < 0.25 ? 0x40 : 0) | (next() < 0.05 ? 0x80 : 0)
+  )
+  if (next() < 0.4) register(block + LSCRX, Math.floor(next() * 256))
+  if (next() < 0.4) register(block + LSCRY, Math.floor(next() * 256))
+  if (next() < 0.4) register(block + LPAL, byte())
+  const bases = LAYER_BASES[layer].map((usual, field) => {
+    const value = next() < 0.85 ? usual : byte()
+    if (next() < 0.3 || value !== usual) register(block + field, value)
+    return value
+  })
+
+  const what = next()
+  if (what < 0.35) {
+    pointAt(((bases[LNAME] << 10) + Math.floor(next() * 1200)) & 0xffff)
+    for (let n = 1 + Math.floor(next() * 320); n > 0; n--) ops.push({ w: p, v: next() < 0.85 ? Math.floor(next() * 16) : byte() })
+  } else if (what < 0.65) {
+    const span = source === 2 ? 2048 : 1200
+    pointAt(((bases[LATTR] << 10) + Math.floor(next() * span)) & 0xffff)
+    for (let n = 1 + Math.floor(next() * 320); n > 0; n--) ops.push({ w: p, v: Math.floor(next() * 256) })
+  } else {
+    const tile = next() < 0.8 ? Math.floor(next() * 16) : next() < 0.5 ? 0x100 + Math.floor(next() * 16) : Math.floor(next() * 512)
+    const tileBytes = 8 << depth
+    pointAt(((bases[LPAT] << 11) + tile * tileBytes) & 0xffff)
+    for (let n = tileBytes * (1 + Math.floor(next() * 4)); n > 0; n--) ops.push({ w: p, v: next() < 0.3 ? 0 : Math.floor(next() * 256) })
+  }
+}
+
 // ---- running ----
 
 const interrupt = (video) =>
@@ -270,16 +357,45 @@ function statusDifference(a, b) {
   return null
 }
 
-/** §5: LxCTRL, and its bit depth (§8). */
+/** §5: LxCTRL, and its bit depth, attribute source and enable (§8). */
 const LXCTRL = [0x15, 0x1d]
 const LXCTRL_DEPTH = 0x03
+const LXCTRL_SOURCE = 0x0c
+const LXCTRL_ENABLE = 0x10
+const DISP = 0x40
 
 /**
- * For the log: how often the tiles scope held the depth and the frames it
- * compared, and how often Video.ts's OVF and COL were set and its collision
- * map grew — that the stream reaches the sprites at all.
+ * For the log: the frames compared, and at each, whether the layers were on
+ * and at what depth as Video.ts presented it; and how often Video.ts's OVF and
+ * COL were set and its collision map grew — that the stream reaches the
+ * layers and the sprites at all.
  */
-const held = { depth: 0, frames: 0, drawn: 0, overflow: 0, collision: 0, map: 0 }
+const held = {
+  frames: 0,
+  drawn: 0,
+  depth: [
+    [0, 0, 0, 0],
+    [0, 0, 0, 0]
+  ],
+  contested: 0,
+  overflow: 0,
+  collision: 0,
+  map: 0
+}
+
+/** Tally the layers of the frame Video.ts has just presented, from its registers. */
+function tallyLayers(video) {
+  if (!(video.getRegister(MODE1) & DISP)) return
+  const vmode = video.getRegister(VMODE) & 0x0f
+  const legacy = vmode < 1 || vmode > 4
+  const control = LXCTRL.map((register) => video.getRegister(register))
+  if (!legacy && control[0] & LXCTRL_ENABLE) held.depth[0][control[0] & LXCTRL_DEPTH]++
+  if (control[1] & LXCTRL_ENABLE) {
+    held.depth[1][control[1] & LXCTRL_DEPTH]++
+    const attributed = (control[0] & LXCTRL_DEPTH) !== 0 && (control[0] & LXCTRL_SOURCE) !== LXCTRL_SOURCE
+    if (!legacy && control[0] & LXCTRL_ENABLE && attributed) held.contested++
+  }
+}
 
 /** §6: STAT0's sprite flags. */
 const STAT0_OVF = 0x40
@@ -316,7 +432,7 @@ function stateDifference(a, b) {
 function run(make, ops, { checkEvery, scope }) {
   const { a, b } = make()
   const bus = scope === 'bus'
-  const tiles = scope === 'tiles'
+  const tiles = scope === 'tiles' || scope === 'frames'
   const status = scope === 'status' || tiles
   a.reset(true)
   b.reset(true)
@@ -346,6 +462,7 @@ function run(make, ops, { checkEvery, scope }) {
             if (difference) return at(index, `after ${n + 1} tick(s): ${difference}`)
             a.frameReady = b.frameReady = false
             held.frames++
+            tallyLayers(a)
             const frame = a.frameIndices()
             if (firstDifference(frame, new Uint8Array(frame.length).fill(frame[0])) >= 0) held.drawn++
           }
@@ -359,15 +476,6 @@ function run(make, ops, { checkEvery, scope }) {
       } else {
         a.reset(op.x)
         b.reset(op.x)
-      }
-      if (tiles) {
-        for (const register of LXCTRL) {
-          if (!(a.getRegister(register) & LXCTRL_DEPTH)) continue
-          const value = a.getRegister(register) & ~LXCTRL_DEPTH
-          a.setRegister(register, value)
-          b.setRegister(register, value)
-          held.depth++
-        }
       }
       const checkpoint = (index + 1) % checkEvery === 0 || index === ops.length - 1
       if (bus) {
