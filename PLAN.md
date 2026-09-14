@@ -112,8 +112,9 @@ only what needs the PRO: the pins, the picture and the clock.
    and it is decided in the spec first (SPEC §18). Do not encode a behaviour that
    is not written down.
 2. **The spec has three copies, kept in step.** `SPEC.md` here, `docs/VDP-SPEC.md`
-   in `6502-EMULATOR`, and the published HTML rendering. A change to one is a
-   change to all three, made in the same sitting — the emulator's `CLAUDE.md`
+   in `6502-EMULATOR`, and the HTML rendering, `docs/SPEC.html` here, which is
+   published from that file to the same artifact URL each time. A change to one is
+   a change to all three, made in the same sitting — the emulator's `CLAUDE.md`
    holds that repo to the same rule.
 3. **Emulator changes land on `v3-vdp`.** Never on `main`. Check
    `git branch --show-current` before every emulator commit. The emulator's own

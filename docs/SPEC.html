@@ -1,0 +1,1659 @@
+<meta charset="utf-8">
+<title>6502-PICOVDP</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
+<style>
+/* ---- tokens: light = paper datasheet ---------------------------------- */
+:root {
+  --ground:      #EDEFF4;   /* blue-grey paper, from palette row F */
+  --panel:       #FAFBFD;
+  --panel-2:     #E2E6F0;
+  --panel-3:     #D8DDEA;
+  --ink:         #161B26;
+  --ink-2:       #4A5365;
+  --ink-3:       #78829A;
+  --rule:        #C7CFDE;
+  --rule-2:      #AFB9CD;
+  --accent:      #3B3BB8;   /* TMS9918 $55E dark blue, deepened for paper */
+  --accent-2:    #6A6ACF;
+  --accent-soft: #E1E2F8;
+  --green:       #1C7F3E;   /* TMS9918 $2A4 medium green */
+  --green-soft:  #DCEFE1;
+  --red:         #AF3A2C;   /* TMS9918 $F55 light red */
+  --amber:       #86660C;   /* TMS9918 $CB5 dark yellow */
+  --cyan:        #0E7C86;   /* TMS9918 $4EE cyan */
+
+  --shadow: 0 1px 2px rgba(22,27,38,.06), 0 6px 18px -10px rgba(22,27,38,.18);
+
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, Segoe UI, sans-serif;
+  --cond: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
+}
+/* ---- dark = the chip's own colors on black ---------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:      #0D1017;
+    --panel:       #151A24;
+    --panel-2:     #1C2230;
+    --panel-3:     #242C3C;
+    --ink:         #E5E9F2;
+    --ink-2:       #A9B3C6;
+    --ink-3:       #78839A;
+    --rule:        #2A3242;
+    --rule-2:      #3A4456;
+    --accent:      #7777FF;
+    --accent-2:    #5555EE;
+    --accent-soft: #1D2240;
+    --green:       #22CC44;
+    --green-soft:  #10281A;
+    --red:         #FF5555;
+    --amber:       #CCBB55;
+    --cyan:        #44EEEE;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 22px -12px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"] {
+  --ground:      #0D1017;
+  --panel:       #151A24;
+  --panel-2:     #1C2230;
+  --panel-3:     #242C3C;
+  --ink:         #E5E9F2;
+  --ink-2:       #A9B3C6;
+  --ink-3:       #78839A;
+  --rule:        #2A3242;
+  --rule-2:      #3A4456;
+  --accent:      #7777FF;
+  --accent-2:    #5555EE;
+  --accent-soft: #1D2240;
+  --green:       #22CC44;
+  --green-soft:  #10281A;
+  --red:         #FF5555;
+  --amber:       #CCBB55;
+  --cyan:        #44EEEE;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 22px -12px rgba(0,0,0,.7);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- shell ------------------------------------------------------------ */
+.shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-inline: 20px;
+  padding-block: 0 72px;
+}
+.cols { display: grid; grid-template-columns: 1fr; gap: 44px; }
+@media (min-width: 1000px) {
+  .cols { grid-template-columns: 208px minmax(0,1fr); gap: 56px; align-items: start; }
+}
+
+/* ---- masthead --------------------------------------------------------- */
+.mast { padding-block: 52px 0; }
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11.5px; font-weight: 500;
+  letter-spacing: .16em; text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0 0 14px;
+}
+h1 {
+  font-family: var(--cond); font-weight: 700;
+  font-size: clamp(38px, 8vw, 66px);
+  line-height: .98; letter-spacing: -.015em;
+  margin: 0; text-wrap: balance;
+}
+h1 .dim { color: var(--accent); }
+.lede {
+  font-size: clamp(17px, 2.3vw, 20px);
+  line-height: 1.5; color: var(--ink-2);
+  max-width: 34em; margin: 18px 0 0; text-wrap: balance;
+}
+.meta {
+  display: flex; flex-wrap: wrap; gap: 8px 10px;
+  margin: 26px 0 0; padding: 0; list-style: none;
+}
+.meta li {
+  font-family: var(--mono); font-size: 12px;
+  padding: 5px 10px; border: 1px solid var(--rule-2);
+  color: var(--ink-2); background: var(--panel);
+}
+.meta li b { color: var(--ink); font-weight: 600; }
+.meta li.hl { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.meta li.hl b { color: var(--accent); }
+
+/* facts: the capability figures are the point of §1, so they lead */
+.facts {
+  display: grid; gap: 1px; margin: 40px 0 0;
+  grid-template-columns: repeat(2, 1fr);
+  background: var(--rule); border: 1px solid var(--rule);
+}
+@media (min-width: 620px) { .facts { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1000px) { .facts { grid-template-columns: repeat(6, 1fr); } }
+.fact { background: var(--panel); padding: 16px 14px 14px; }
+.fact .n {
+  font-family: var(--cond); font-weight: 700;
+  font-size: 27px; line-height: 1; letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+  display: block;
+}
+.fact .k {
+  font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-3); display: block; margin-top: 8px;
+}
+.fact .was { font-family: var(--mono); font-size: 11px; color: var(--ink-3); display: block; margin-top: 3px; }
+
+.rule-h { height: 1px; background: var(--rule); border: 0; margin: 48px 0 0; }
+
+/* ---- nav -------------------------------------------------------------- */
+nav.idx { font-family: var(--mono); font-size: 12.5px; }
+@media (min-width: 1000px) {
+  nav.idx { position: sticky; top: 24px; max-height: calc(100vh - 48px); overflow-y: auto; }
+}
+nav.idx .navhead {
+  font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--ink-3); padding-bottom: 10px; border-bottom: 1px solid var(--rule);
+  margin-bottom: 4px;
+}
+nav.idx ol { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+nav.idx li { counter-increment: s; }
+nav.idx a {
+  display: grid; grid-template-columns: 1.9rem 1fr; gap: 2px;
+  padding: 4px 0; color: var(--ink-2); text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+nav.idx a::before { content: counter(s); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+nav.idx li.nonum a::before { content: "\00b7"; }
+nav.idx a:hover { color: var(--accent); }
+nav.idx a:hover::before { color: var(--accent); }
+nav.idx a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- content ---------------------------------------------------------- */
+main { min-width: 0; }
+section { padding-block: 8px 0; margin-block: 0 44px; scroll-margin-top: 24px; }
+.sec-num {
+  font-family: var(--mono); font-size: 11.5px; font-weight: 500;
+  letter-spacing: .14em; color: var(--accent); text-transform: uppercase;
+  display: block; margin-bottom: 6px;
+}
+h2 {
+  font-family: var(--cond); font-weight: 700;
+  font-size: clamp(26px, 4vw, 34px); line-height: 1.08; letter-spacing: -.012em;
+  margin: 0 0 18px; text-wrap: balance;
+  padding-bottom: 12px; border-bottom: 2px solid var(--ink);
+}
+h3 {
+  font-family: var(--cond); font-weight: 600;
+  font-size: 20px; line-height: 1.2; letter-spacing: -.005em;
+  margin: 34px 0 10px;
+}
+h4 {
+  font-family: var(--mono); font-weight: 600; font-size: 12px;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2);
+  margin: 26px 0 8px;
+}
+p { margin: 0 0 14px; max-width: 66ch; }
+main ul, main ol { max-width: 64ch; padding-left: 1.3em; margin: 0 0 16px; }
+main li { margin-bottom: 7px; }
+main li::marker { color: var(--ink-3); }
+strong { font-weight: 600; }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+code, .m {
+  font-family: var(--mono); font-size: .89em;
+  background: var(--panel-2); padding: .1em .34em;
+  border-radius: 2px; white-space: nowrap;
+}
+h2 code, h3 code { font-size: .8em; }
+
+pre {
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.6;
+  background: var(--panel); color: var(--ink);
+  border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+  padding: 16px 18px; margin: 0 0 18px;
+  overflow-x: auto;
+}
+pre code { background: none; padding: 0; font-size: inherit; white-space: pre; }
+pre .cm { color: var(--ink-3); }
+
+/* note / callout — used where the spec itself flags a deliberate break */
+.note {
+  border-left: 3px solid var(--amber);
+  background: var(--panel);
+  padding: 14px 18px; margin: 0 0 18px;
+  font-size: 15px; color: var(--ink-2);
+  max-width: 68ch;
+}
+.note p:last-child { margin-bottom: 0; }
+.note.acc { border-left-color: var(--accent); }
+.note strong { color: var(--ink); }
+
+/* ---- tables ----------------------------------------------------------- */
+.tw { overflow-x: auto; margin: 0 0 20px; border: 1px solid var(--rule); background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td {
+  text-align: left; padding: 8px 12px;
+  border-bottom: 1px solid var(--rule); vertical-align: top;
+}
+thead th {
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  letter-spacing: .07em; text-transform: uppercase; color: var(--ink-2);
+  background: var(--panel-2); border-bottom: 1px solid var(--rule-2);
+  white-space: nowrap;
+}
+tbody tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); white-space: nowrap; }
+td.c, th.c { text-align: center; }
+td.mn { font-family: var(--mono); white-space: nowrap; }
+table code { background: none; padding: 0; }
+tbody th { font-weight: 600; font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+.t-cmp td:first-child { color: var(--ink-2); width: 34%; }
+.t-cmp td:nth-child(2) { font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); }
+.t-cmp td:nth-child(3) { font-family: var(--mono); font-size: 12.5px; color: var(--ink); font-weight: 500; }
+.t-cmp thead th:nth-child(3) { color: var(--accent); }
+.t-kv td:first-child { color: var(--ink-2); width: 38%; }
+
+/* ---- register list ---------------------------------------------------- */
+.regblock { border: 1px solid var(--rule); background: var(--panel); margin: 0 0 22px; }
+.regblock > .rbhead {
+  display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline;
+  padding: 10px 14px; background: var(--panel-2);
+  border-bottom: 1px solid var(--rule-2);
+}
+.rbhead .rbrange { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+.rbhead .rbname {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+.reg {
+  display: grid; gap: 2px 14px; padding: 11px 14px;
+  border-bottom: 1px solid var(--rule);
+  grid-template-columns: 1fr;
+}
+.regblock .reg:last-child { border-bottom: 0; }
+@media (min-width: 720px) {
+  .reg { grid-template-columns: 3.4rem 7.2rem 3.4rem minmax(0,1fr); align-items: baseline; }
+}
+.reg .a, .reg .nm, .reg .rv { font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+.reg .a { color: var(--accent); font-weight: 500; }
+.reg .nm { font-weight: 600; }
+.reg .rv { color: var(--ink-3); font-size: 12px; }
+.reg .d { font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+.reg .d b { color: var(--ink); font-weight: 600; }
+.reg .d em { color: var(--ink-3); font-style: italic; }
+.reg.alias { background: var(--panel-2); }
+.reg.rsv .nm, .reg.rsv .d { color: var(--ink-3); }
+@media (max-width: 719px) {
+  .reg { padding-block: 12px; }
+  .reg .a { display: inline; }
+  .reg .nm { display: inline; margin-left: .5em; }
+  .reg .rv { display: inline; margin-left: .5em; }
+  .reg .d { margin-top: 5px; }
+}
+
+/* ---- figures ---------------------------------------------------------- */
+figure { margin: 26px 0; }
+figure svg { display: block; width: 100%; max-width: 100%; height: auto; }
+figcaption {
+  font-size: 13.5px; line-height: 1.5; color: var(--ink-2);
+  margin-top: 12px; max-width: 62ch;
+}
+figcaption b { color: var(--ink); font-weight: 600; }
+.figframe { border: 1px solid var(--rule); background: var(--panel); padding: 18px; overflow-x: auto; }
+.figframe > svg { min-width: 560px; }
+svg text { font-family: var(--mono); }
+
+/* ---- priority stack --------------------------------------------------- */
+.stack { border: 1px solid var(--rule); background: var(--panel); margin: 0 0 8px; }
+.stk {
+  display: grid; grid-template-columns: 2.6rem 9px 1fr auto;
+  gap: 0 12px; align-items: center;
+  padding: 9px 14px; border-bottom: 1px solid var(--rule);
+}
+.stack .stk:last-child { border-bottom: 0; }
+.stk .lv { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--ink-3); }
+.stk .sw { width: 9px; height: 26px; }
+.stk .lb { font-size: 14.5px; }
+.stk .lb b { font-weight: 600; }
+.stk .tg {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+  letter-spacing: .05em; text-transform: uppercase; white-space: nowrap;
+}
+.stk.l1 { background: var(--panel-2); }
+.stk.dfl .lv { color: var(--accent); }
+.sk-note { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); display: flex; justify-content: space-between; }
+
+/* ---- budget legend ---------------------------------------------------- */
+.legend { display: grid; gap: 1px; margin: 14px 0 0; background: var(--rule); border: 1px solid var(--rule); }
+@media (min-width: 660px) { .legend { grid-template-columns: 1fr 1fr; } }
+.lgi {
+  display: grid; grid-template-columns: 10px 1fr auto; gap: 10px; align-items: center;
+  background: var(--panel); padding: 7px 12px; font-size: 13.5px;
+}
+.lgi .sw { width: 10px; height: 10px; }
+.lgi .v { font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.lgi.tot { background: var(--panel-2); font-weight: 600; }
+.lgi.tot .v { color: var(--ink); }
+
+/* ---- palette grid ---------------------------------------------------- */
+.palwrap { border: 1px solid var(--rule); background: var(--panel); padding: 16px; overflow-x: auto; }
+.palgrid { min-width: 700px; --sw: 34px; }
+/* fixed swatch columns: 1fr columns let the square cells sit narrower than the
+   track and open gaps between them, so the swatch size drives the grid instead */
+.palrow { display: grid; grid-template-columns: 1.5rem repeat(16, var(--sw)) minmax(7rem, 1fr); gap: 0; align-items: stretch; }
+.palrow.head { margin-bottom: 4px; }
+.palrow.head .ph {
+  font-family: var(--mono); font-size: 10.5px; color: var(--ink-3);
+  text-align: center; padding-bottom: 2px;
+}
+.palrow .rl {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+  display: flex; align-items: center; justify-content: flex-end; padding-right: 6px;
+}
+.palrow .rn {
+  font-size: 11.5px; color: var(--ink-2); padding-left: 10px;
+  display: flex; align-items: center; line-height: 1.2;
+}
+.sw-cell { display: block; width: var(--sw); height: var(--sw); position: relative; }
+.sw-cell.zero::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(135deg, transparent 44%, var(--ink-3) 44%, var(--ink-3) 56%, transparent 56%);
+  opacity: .55;
+}
+.palkey { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 14px; font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+.palkey span { display: inline-flex; align-items: center; gap: 6px; }
+.palkey i { width: 11px; height: 11px; display: inline-block; background: linear-gradient(135deg, transparent 44%, var(--ink-3) 44%, var(--ink-3) 56%, transparent 56%); border: 1px solid var(--rule-2); }
+
+/* ---- misc ------------------------------------------------------------- */
+.breaks td:first-child { font-family: var(--mono); font-size: 13px; white-space: nowrap; width: 30%; }
+.ok { color: var(--green); font-weight: 600; }
+.bad { color: var(--red); font-weight: 600; }
+.tagline {
+  font-family: var(--cond); font-weight: 600; font-size: clamp(19px,2.6vw,23px);
+  line-height: 1.3; letter-spacing: -.005em; color: var(--ink);
+  border-left: 3px solid var(--accent); padding: 4px 0 4px 18px;
+  margin: 26px 0; max-width: 40ch; text-wrap: balance;
+}
+footer {
+  border-top: 1px solid var(--rule); margin-top: 56px; padding-top: 22px;
+  font-family: var(--mono); font-size: 12px; color: var(--ink-3);
+  display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between;
+}
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="shell">
+
+  <header class="mast">
+    <p class="eyebrow">Video Display Processor &middot; AC6502 family</p>
+    <h1>6502&#8209;PICOVDP<span class="dim">.</span></h1>
+    <p class="lede">A custom VDP for the AC6502 family, implemented in firmware on PICO9918 PRO v2.0 hardware. No TMS9918 left inside &mdash; but the unmodified BIOS still boots.</p>
+    <ul class="meta">
+      <li>Status <b>draft 0.4</b></li>
+      <li>Reference <b>6502-EMULATOR v3-vdp</b></li>
+      <li>Target <b>PICO9918 PRO v2.0 / RP2354A</b></li>
+      <li>Firmware&#8209;only <b>no hardware mod</b></li>
+      <li class="hl">Ident byte <b>$AC</b> &middot; STAT4</li>
+    </ul>
+    <p class="lede" style="font-size:15px;margin-top:14px"><strong>Status:</strong> draft 0.4. Implemented in the emulator — <code>6502-EMULATOR</code> 3.0.0 on its <code>v3-vdp</code> branch, <code>src/core/IO/Video.ts</code> — and in firmware, all but the bus interface, running on a Raspberry Pi Pico 2 (<code>6502-PICOVDP</code>, its plan's Phase 8). What changed in each draft is listed under <a href="#history">Revision History</a>.</p>
+
+    <div class="facts">
+      <div class="fact"><span class="n">256</span><span class="k">Colors</span><span class="was">of 4096 &middot; was 15</span></div>
+      <div class="fact"><span class="n">2</span><span class="k">Tile layers</span><span class="was">1, 2, 4 or 8 bpp</span></div>
+      <div class="fact"><span class="n">64<span style="font-size:.62em"> KB</span></span><span class="k">Video RAM</span><span class="was">was 16 KB</span></div>
+      <div class="fact"><span class="n">128</span><span class="k">Registers</span><span class="was">was 8</span></div>
+      <div class="fact"><span class="n">32</span><span class="k">Sprites / line</span><span class="was">16 by default &middot; no flicker</span></div>
+      <div class="fact"><span class="n">4</span><span class="k">CPU ports</span><span class="was">two full port pairs</span></div>
+    </div>
+    <hr class="rule-h">
+  </header>
+
+  <div class="cols">
+
+    <nav class="idx" aria-label="Specification contents">
+      <div class="navhead">Contents</div>
+      <ol>
+        <li><a href="#s1">Goals</a></li>
+        <li><a href="#s2">Target Hardware</a></li>
+        <li><a href="#s3">Display Model</a></li>
+        <li><a href="#s4">CPU Interface</a></li>
+        <li><a href="#s5">Register Map</a></li>
+        <li><a href="#s6">Status Registers</a></li>
+        <li><a href="#s7">Video RAM</a></li>
+        <li><a href="#s8">The Tile Engine</a></li>
+        <li><a href="#s9">Display Modes</a></li>
+        <li><a href="#s10">Sprites</a></li>
+        <li><a href="#s11">Palette</a></li>
+        <li><a href="#s12">Compositing</a></li>
+        <li><a href="#s13">Scrolling</a></li>
+        <li><a href="#s14">Interrupts</a></li>
+        <li><a href="#s15">Reset State</a></li>
+        <li><a href="#s16">Detection</a></li>
+        <li><a href="#s17">BIOS Impact</a></li>
+        <li><a href="#s18">Implementation Notes</a></li>
+        <li><a href="#s19">Omissions &amp; Future Space</a></li>
+        <li class="nonum"><a href="#resolved">Resolved Questions</a></li>
+        <li class="nonum"><a href="#open">Still Open</a></li>
+        <li class="nonum"><a href="#history">Revision History</a></li>
+      </ol>
+    </nav>
+
+    <main>
+
+      <!-- ============ s1 ============ -->
+      <section id="s1">
+        <span class="sec-num">Section 1</span>
+        <h2>Goals</h2>
+        <p>The PICO9918 emulates a TMS9918A faithfully, which the AC6502 does not need. This design keeps the parts of the TMS9918 interface that cost nothing to keep, and spends everything else on capability.</p>
+        <h3>What this design provides</h3>
+        <div class="tw">
+          <table class="t-cmp">
+            <thead><tr><th></th><th>TMS9918A / PICO9918</th><th>6502-PICOVDP</th></tr></thead>
+            <tbody>
+              <tr><td>Display modes</td><td>Text, Graphics I, Graphics II, Multicolor</td><td>Text, Compact, Graphics, Full — plus a legacy submode</td></tr>
+              <tr><td>Tile bit depth</td><td>1</td><td>1, 2, 4 or 8, per layer</td></tr>
+              <tr><td>Tile layers</td><td>1</td><td>2</td></tr>
+              <tr><td>Colors on screen</td><td>15 + transparent</td><td>256, from 4096</td></tr>
+              <tr><td>Palette</td><td>fixed</td><td>256 entries, user defined</td></tr>
+              <tr><td>Colors per tile</td><td>2 (per 8-pixel row at best)</td><td>2, 4, 16 or 256</td></tr>
+              <tr><td>Sprites</td><td>32 total, 4 per line, 1 color</td><td>64 total, up to 32 per line, up to 255 colors</td></tr>
+              <tr><td>Sprite flipping</td><td>none</td><td>horizontal and vertical</td></tr>
+              <tr><td>Scrolling</td><td>none</td><td>hardware, per layer, per pixel</td></tr>
+              <tr><td>Interrupts</td><td>vblank</td><td>vblank, scanline compare, overflow, collision</td></tr>
+              <tr><td>VRAM</td><td>16 KB</td><td>64 KB</td></tr>
+              <tr><td>VRAM access window</td><td>~8 µs between accesses</td><td>unrestricted</td></tr>
+              <tr><td>Registers</td><td>8</td><td>128</td></tr>
+              <tr><td>CPU ports</td><td>2</td><td>4</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Design principles</h3>
+        <ol><li><strong>The classic port pair still works.</strong> <code>$9C00</code>/<code>$9C01</code> behave as they always have. The existing Kernal drives this VDP unmodified (see §17). There is no unlock sequence and no lock: everything new is simply present.</li><li><strong>No mode is reachable only by magic.</strong> Registers <code>$08</code>–<code>$7F</code> are always live.</li><li><strong>The 6502 is the bottleneck, not the Pico.</strong> At 1 MHz a <code>sta VC_DATA</code> run moves ~250 KB/s at the very most (§4). Every design decision that trades VRAM or CPU writes for VDP-side work is worth taking; every decision that demands more CPU writes is not. This is why VRAM is 64 KB and not 512 KB, and why hardware scrolling matters more than extra tile capacity.</li><li><strong>Nothing is at a fixed address.</strong> Every table is placed by a base register.</li></ol>
+        <h3>Non-goals</h3>
+        <ul><li>TMS9918 Graphics II and Multicolor modes. Dropped — see §19 for why Graphics II in particular did not survive. The <em>capability</em> Graphics II offered, one color pair per pattern row, is a first-class feature of the tile engine (§8).</li><li>F18A compatibility. The F18A register set is not implemented and not emulated.</li><li>A GPU/coprocessor.</li><li>A blitter or VRAM fill/copy engine. See §19.</li></ul>
+      </section>
+
+      <!-- ============ s2 ============ -->
+      <section id="s2">
+        <span class="sec-num">Section 2</span>
+        <h2>Target Hardware</h2>
+        <h3>PICO9918 PRO v2.0 (RP2354A) only.</h3>
+        <div class="tw">
+          <table class="t-kv">
+            <tbody>
+              <tr><td>MCU</td><td>RP2354A: an RP2350A, dual Cortex-M33, with 2 MB of flash in the package</td></tr>
+              <tr><td>SRAM</td><td>520 KB</td></tr>
+              <tr><td>System clock</td><td>352 MHz (VGA preset 2), the clock §18's budget is measured at. The stock firmware boots at preset 0, 252 MHz, and preset 1 is 302.4 MHz; this design budgets for neither</td></tr>
+              <tr><td>Video out</td><td>VGA 640×480@60, HDMI, or SCART RGB, via the FFC dongles. The timing in §3 and §14 is the VGA raster's; SCART's interlaced 480i/576i timing is not specified by this revision</td></tr>
+              <tr><td>Color depth</td><td>12 bits (4-4-4 R/G/B on GPIO 2–13)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Why not v1.0–1.3 (RP2040)</h3>
+        <p>The first draft of this reasoning priced a line against one VGA line, 31.78 µs: ~9,600 cycles at 302.4 MHz against an estimated ~7,400 of work on an M33, and ~8,000 at 252 MHz against ~12,000 on an M0+. But a display line is rendered once per <strong>two</strong> VGA lines (§3, §18), 63.56 µs, which doubles every budget: ~19,200 cycles on the M33 and ~16,000 on an RP2040. On that arithmetic the RP2040 no longer fails outright, and the case against it is now the one it was always partly about — a v1.x profile would mean cutting to roughly 16 sprites per line and dropping 8bpp, two renderers and a capability query in every piece of software. The M33's side has since been measured (§18): at 352 MHz it takes both cores to build the worst-case line in time, where the estimate had one core doing it with half the line to spare. The target stays the PRO v2.0. An RP2040 was not measured, and would need to be before a v1.x profile was considered.</p>
+        <p>If a v1.x profile is wanted later, <code>STAT6</code> (§6) already reports capability bits for exactly this purpose.</p>
+        <h3>No hardware modification required</h3>
+        <p>The AC6502 already wires the PICO9918's <code>MODE</code> pin (GPIO 28) to A0 and <code>MODE1</code> (GPIO 29) to A1. The existing <code>tmsWrite</code> PIO program already samples both: <code>in pins, 16</code> from GPIO 14 reaches GPIO 29, and MODE1 lands in bit 31 of the FIFO word, so the write side needs only its handler changed.</p>
+        <p>The read side needs more. <code>tmsRead</code> answers a read from a word staged ahead of it — pin directions, the data port's prefetched byte and the status byte, 28 of its 32 bits already spoken for — and chooses between two outputs on <code>MODE</code>. Four ports need <code>MODE1</code> sampled as well (<code>in pins, 1</code> becomes <code>in pins, 2</code>) and a second port's data and status staged beside the first's, which is a rewrite of the read program and its handler rather than a one-word change. It is still all firmware.</p>
+        <p class="tagline">This is a firmware-only project.</p>
+      </section>
+
+      <!-- ============ s3 ============ -->
+      <section id="s3">
+        <span class="sec-num">Section 3</span>
+        <h2>Display Model</h2>
+        <p>The PICO9918 renders a <strong>320 × 240 virtual frame</strong> at one byte (palette index) per pixel, and expands it 2× in both axes through a 256-entry RGB lookup into the 640 × 480 VGA raster. This VDP keeps that pipeline exactly.</p>
+        <div class="tw">
+          <table class="t-kv">
+            <tbody>
+              <tr><td>Virtual frame</td><td>320 × 240, 8-bit palette index per pixel</td></tr>
+              <tr><td>Physical output</td><td>640 × 480 @ 59.94 Hz (2× scale)</td></tr>
+              <tr><td>Pixel clock</td><td>25.175 MHz</td></tr>
+              <tr><td>VGA line period</td><td>31.78 µs, 525 lines a frame</td></tr>
+              <tr><td>Display line</td><td>Two VGA lines, 63.56 µs — one line of the 240-line virtual frame</td></tr>
+              <tr><td>Frame period</td><td>16.68 ms</td></tr>
+              <tr><td>VGA vertical blanking</td><td>45 VGA lines (22.5 display lines) ≈ 1.43 ms ≈ 1,430 CPU cycles @ 1 MHz</td></tr>
+              <tr><td>Palette</td><td>256 entries × 12-bit RGB (4096 colors)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <figure>
+          <div class="figframe">
+            <svg viewBox="0 0 700 200" role="img" aria-label="The four display modes drawn to scale inside the 320 by 240 virtual frame: Text 240 by 192, Compact 256 by 192, Graphics 256 by 240, and Full 320 by 240 which fills the frame edge to edge.">
+              <!-- Text -->
+              <text x="10" y="26" font-size="12" font-weight="600" fill="currentColor">Text</text>
+              <rect x="10" y="40" width="140" height="105" fill="var(--panel-2)" stroke="var(--rule-2)" stroke-width="1"/>
+              <rect x="27.5" y="50.5" width="104.6" height="84" fill="var(--accent)" fill-opacity=".28" stroke="var(--accent)" stroke-width="1.5"/>
+              <text x="10" y="163" font-size="11" fill="currentColor">40 &times; 24 of 6 &times; 8</text>
+              <text x="10" y="178" font-size="11" fill="var(--ink-3)">240 &times; 192</text>
+              <!-- Compact -->
+              <text x="185" y="26" font-size="12" font-weight="600" fill="currentColor">Compact</text>
+              <rect x="185" y="40" width="140" height="105" fill="var(--panel-2)" stroke="var(--rule-2)" stroke-width="1"/>
+              <rect x="199" y="50.5" width="111.6" height="84" fill="var(--accent)" fill-opacity=".28" stroke="var(--accent)" stroke-width="1.5"/>
+              <text x="185" y="163" font-size="11" fill="currentColor">32 &times; 24 of 8 &times; 8</text>
+              <text x="185" y="178" font-size="11" fill="var(--ink-3)">256 &times; 192</text>
+              <!-- Graphics -->
+              <text x="360" y="26" font-size="12" font-weight="600" fill="currentColor">Graphics</text>
+              <rect x="360" y="40" width="140" height="105" fill="var(--panel-2)" stroke="var(--rule-2)" stroke-width="1"/>
+              <rect x="374" y="40" width="111.6" height="105" fill="var(--accent)" fill-opacity=".28" stroke="var(--accent)" stroke-width="1.5"/>
+              <text x="360" y="163" font-size="11" fill="currentColor">32 &times; 30 of 8 &times; 8</text>
+              <text x="360" y="178" font-size="11" fill="var(--ink-3)">256 &times; 240</text>
+              <!-- Full -->
+              <text x="535" y="26" font-size="12" font-weight="600" fill="currentColor">Full</text>
+              <rect x="535" y="40" width="140" height="105" fill="var(--accent)" fill-opacity=".28" stroke="var(--accent)" stroke-width="1.5"/>
+              <text x="535" y="163" font-size="11" fill="currentColor">40 &times; 30 of 8 &times; 8</text>
+              <text x="535" y="178" font-size="11" fill="var(--ink-3)">320 &times; 240 &mdash; no border</text>
+            </svg>
+          </div>
+          <figcaption>Active picture (outlined) inside the 320 &times; 240 virtual frame (grey), drawn to scale. <b>Full mode is the only one with no border at all</b> &mdash; and the only one whose tables outgrow a single 1 KB block.</figcaption>
+        </figure>
+        <p>Active areas within the 320 × 240 frame:</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Mode</th><th>Cells</th><th>Pixels</th><th>Position</th><th>Border</th></tr></thead>
+            <tbody>
+              <tr><td>Text</td><td>40 × 24 of 6 × 8</td><td>240 × 192</td><td>x 40–279, y 24–215</td><td>40 px left/right, 24 lines top/bottom</td></tr>
+              <tr><td>Compact</td><td>32 × 24 of 8 × 8</td><td>256 × 192</td><td>x 32–287, y 24–215</td><td>32 px left/right, 24 lines top/bottom</td></tr>
+              <tr><td>Graphics</td><td>32 × 30 of 8 × 8</td><td>256 × 240</td><td>x 32–287, y 0–239</td><td>32 px left/right, none top/bottom</td></tr>
+              <tr><td>Full</td><td>40 × 30 of 8 × 8</td><td>320 × 240</td><td>the whole frame</td><td>none</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>On a 4:3 monitor at 640 × 480 the pixels are square, so Full mode's 8 × 8 cells are square on screen and the frame has no border at all. Text mode's 6 × 8 cells are taller than they are wide, as they are on a TMS9918.</p>
+        <p>Text mode therefore occupies exactly the same physical screen area it does today (240 virtual pixels → 480 VGA pixels wide, either way). Graphics mode is the same width as today's 256-pixel modes but 240 lines tall instead of 192.</p>
+        <p>The raster does not change with the mode. A frame is 525 VGA lines: 262 <strong>screen lines</strong> of two VGA lines each, numbered 0–261 from the top of the frame, and one odd VGA line after screen line 261 that begins no line of its own. Screen lines 0–239 are the 240 rows of the frame above; screen lines 240–261 and the odd VGA line are the VGA raster's vertical blanking, in every mode.</p>
+        <p>Scanline numbering used by <code>IRQLINE</code> and <code>STAT2</code> is the <strong>display line</strong>, which counts from the first line of the active picture <em>in the current mode</em> — not from the top of the frame. Display line 0 is the first visible line, the count runs up through the picture, the bottom border, vertical blanking and the top border, and wraps after 261. It is the screen line less the picture's top border:</p>
+<pre><code>  display line = (screen line − top border) mod 262
+  top border   = 24 in Text and Compact, 0 in Graphics and Full</code></pre>
+        <p>In the 192-line modes, then, display line 0 is screen line 24, the top border's screen lines 0–23 are display lines 238–261, scanned before the picture they sit above, and the odd VGA line follows display line 237.</p>
+        <figure>
+          <div class="figframe">
+            <svg viewBox="0 0 700 200" role="img" aria-label="The 262 screen lines of a frame, the same in every mode, with the display line numbering of each geometry above them. In Text and Compact the top border is display lines 238 to 261, the picture 0 to 191 on screen lines 24 to 215, the bottom border 192 to 215, and VGA blanking 216 to 237; vertical blank fires at screen line 216. In Graphics and Full the picture is display lines 0 to 239 on screen lines 0 to 239, and VGA blanking 240 to 261; vertical blank fires at screen line 240.">
+              <!-- Text, Compact -->
+              <text x="10" y="62" font-size="12" font-weight="600" fill="currentColor">Text, Compact</text>
+              <rect x="132.0" y="44" width="47.36" height="28" fill="var(--panel-2)" stroke="var(--rule-2)" stroke-width="1"/>
+              <rect x="179.36" y="44" width="378.88" height="28" fill="var(--accent)" fill-opacity=".28" stroke="var(--accent)" stroke-width="1.5"/>
+              <rect x="558.24" y="44" width="47.36" height="28" fill="var(--panel-2)" stroke="var(--rule-2)" stroke-width="1"/>
+              <rect x="605.6" y="44" width="44.4" height="28" fill="var(--panel-3)" stroke="var(--rule-2)" stroke-width="1" stroke-dasharray="3 3"/>
+              <g font-size="10.5" fill="var(--ink-3)">
+                <text x="134.0" y="38">238</text>
+                <text x="181.36" y="38">0</text>
+                <text x="560.24" y="38">192</text>
+                <text x="607.6" y="38">216</text>
+              </g>
+              <text x="368.8" y="62" font-size="11" fill="currentColor" text-anchor="middle">picture</text>
+              <line x1="558.24" y1="40" x2="558.24" y2="78" stroke="currentColor" stroke-width="1.5"/>
+              <text x="558.24" y="90" font-size="10.5" fill="currentColor" text-anchor="middle">vblank</text>
+              <!-- Graphics, Full -->
+              <text x="10" y="130" font-size="12" font-weight="600" fill="currentColor">Graphics, Full</text>
+              <rect x="132.0" y="112" width="473.6" height="28" fill="var(--accent)" fill-opacity=".28" stroke="var(--accent)" stroke-width="1.5"/>
+              <rect x="605.6" y="112" width="44.4" height="28" fill="var(--panel-3)" stroke="var(--rule-2)" stroke-width="1" stroke-dasharray="3 3"/>
+              <g font-size="10.5" fill="var(--ink-3)">
+                <text x="134.0" y="106">0</text>
+                <text x="607.6" y="106">240</text>
+              </g>
+              <text x="368.8" y="130" font-size="11" fill="currentColor" text-anchor="middle">picture</text>
+              <line x1="605.6" y1="108" x2="605.6" y2="146" stroke="currentColor" stroke-width="1.5"/>
+              <text x="605.6" y="158" font-size="10.5" fill="currentColor" text-anchor="middle">vblank</text>
+              <!-- screen line axis -->
+              <g stroke="var(--rule-2)" stroke-width="1">
+                <line x1="132.0" y1="172" x2="650" y2="172"/>
+                <line x1="132.0" y1="172" x2="132.0" y2="177"/>
+                <line x1="179.36" y1="172" x2="179.36" y2="177"/>
+                <line x1="558.24" y1="172" x2="558.24" y2="177"/>
+                <line x1="605.6" y1="172" x2="605.6" y2="177"/>
+                <line x1="650" y1="172" x2="650" y2="177"/>
+              </g>
+              <g font-size="10.5" fill="var(--ink-3)" text-anchor="middle">
+                <text x="132.0" y="190">0</text>
+                <text x="179.36" y="190">24</text>
+                <text x="558.24" y="190">216</text>
+                <text x="605.6" y="190">240</text>
+                <text x="650" y="190">262</text>
+              </g>
+              <text x="118" y="190" font-size="10.5" fill="var(--ink-3)" text-anchor="end" letter-spacing="1">SCREEN LINE</text>
+            </svg>
+          </div>
+          <figcaption>Screen lines along the bottom are the raster, and the same in every mode; the numbers above each bar are its display lines. <b>A frame begins at screen line 0</b>, and vertical blank fires where the picture ends &mdash; screen line 216 or 240. Grey is border, dashed is VGA blanking; the odd VGA line follows screen line 261.</figcaption>
+        </figure>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Mode</th><th class="num">Active</th><th>Picture occupies</th><th>Outside the picture</th></tr></thead>
+            <tbody>
+              <tr><td>Text, Compact</td><td class="num">192 lines</td><td>display lines 0–191, screen lines 24–215</td><td>bottom border 192–215; VGA blanking 216–237 and the odd VGA line; top border 238–261</td></tr>
+              <tr><td>Graphics, Full</td><td class="num">240 lines</td><td>display lines 0–239, screen lines 0–239</td><td>VGA blanking 240–261 and the odd VGA line</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Counting from the picture rather than from the frame means a raster split stays put across a mode change: <code>IRQLINE = 80</code> is ten character rows down whatever mode is running. It is also how the TMS9918 counts, which matters for §14.</p>
+        <h3>When a line is built</h3>
+        <p><strong>Display line N is built from the registers, VRAM and palette as they stand when display line N − 1 begins.</strong> That is when the PICO9918 structure asks its render core for the line, which then has the whole of line N − 1 to draw it (§18). Line 0 is built as line 261 begins. A line not finished in that time is shown as §18's <a href="#late-lines"><em>Late lines</em></a> describes.</p>
+        <p>So a write the CPU makes while line N is being scanned shows from line N + 2 — the picture, the backdrop in the border beside it (§11) and the border lines outside the picture alike. A handler for <code>IRQLINE</code> = N, which runs while line N is scanned (§14), changes the picture from line N + 2: set <code>IRQLINE</code> two lines above the first line that should change.</p>
+        <p>A change of display mode takes effect from the next line built, so a frame in which the mode changes may be torn. Between Text and Compact, or between Graphics and Full, that is all it does. Between a 192-line and a 240-line geometry it also moves the top border, and the screen lines stay where they are, so the display line numbering moves instead: the next line to begin is numbered 24 more than it would have been (192 lines to 240) or 24 less (240 lines to 192). The display lines skipped match no <code>IRQLINE</code>, the ones repeated match it again, and vertical blank still fires exactly once in the frame (§14).</p>
+        <p><strong>Display off</strong> (<code>MODE1</code> b6 clear) draws the backdrop over the picture area. Neither layer is drawn and no sprite is evaluated, so no overflow or collision is reported; the display line counter, <code>STAT0</code> b7 and the interrupts carry on.</p>
+      </section>
+
+      <!-- ============ s4 ============ -->
+      <section id="s4">
+        <span class="sec-num">Section 4</span>
+        <h2>CPU Interface</h2>
+        <p>Four byte-wide ports in I/O slot 8, decoded from A1:A0. Slot 8 mirrors them across <code>$9C00</code>–<code>$9FFF</code>; use the canonical addresses.</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th class="c">A1</th><th class="c">A0</th><th>Address</th><th>Name</th><th>Write</th><th>Read</th></tr></thead>
+            <tbody>
+              <tr><td class="c">0</td><td class="c">0</td><td><code>$9C00</code></td><td><code>VC_DATA</code></td><td>VRAM data, port A</td><td>VRAM data, port A</td></tr>
+              <tr><td class="c">0</td><td class="c">1</td><td><code>$9C01</code></td><td><code>VC_REG</code> / <code>VC_STATUS</code></td><td>command, port A</td><td>status, port A</td></tr>
+              <tr><td class="c">1</td><td class="c">0</td><td><code>$9C02</code></td><td><code>VC_DATA2</code></td><td>VRAM data, port B</td><td>VRAM data, port B</td></tr>
+              <tr><td class="c">1</td><td class="c">1</td><td><code>$9C03</code></td><td><code>VC_REG2</code> / <code>VC_STATUS2</code></td><td>command, port B</td><td>status, port B</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Two independent ports</h3>
+        <p><code>$9C02</code>/<code>$9C03</code> are a second, complete copy of the interface. Each port pair has its own:</p>
+        <ul><li>VRAM address pointer</li><li>read/write direction latch</li><li>read-ahead prefetch byte</li><li>first-byte/second-byte flip-flop</li><li>status register selector (<code>STATSEL_A</code> / <code>STATSEL_B</code>)</li></ul>
+        <p>Both ports address the same 64 KB of VRAM and write the same register file — which includes <code>VBANK</code> and <code>VINC</code>. Those two are not per port.</p>
+        <p>This exists for three reasons:</p>
+        <ol><li><strong>Interrupt safety.</strong> The hazard the AC6502 documentation warns about — an interrupt landing between the two halves of a command pair — disappears if interrupt handlers use port B and foreground code uses port A, and a handler that writes <code>VBANK</code> or <code>VINC</code> puts them back. No <code>sei</code>/<code>cli</code> around VDP work. Status reads are split for the same reason (§6): a handler acknowledges through <code>STAT1</code> without clearing the <code>STAT0</code> flags foreground code polls.</li><li><strong>VRAM to VRAM copies without a RAM buffer.</strong> <code>lda VC_DATA2 : sta VC_DATA</code> in an unrolled loop is 8 cycles per byte, both pointers advancing.</li><li><strong>Two live cursors.</strong> Park port B on the sprite attribute table and port A on the name table and neither needs re-addressing.</li></ol>
+        <h3>Command protocol</h3>
+        <p>Identical to the TMS9918 on both ports. Two writes to the command port:</p>
+<pre><code>  1st write:  payload byte P
+  2nd write:  command byte C</code></pre>
+        <div class="tw">
+          <table>
+            <thead><tr><th>C</th><th>Effect</th></tr></thead>
+            <tbody>
+              <tr><td><code>%1rrrrrrr</code></td><td>Write register <code>r</code> (0–127) with value <code>P</code></td></tr>
+              <tr><td><code>%01aaaaaa</code></td><td>Set VRAM pointer for <strong>write</strong> to <code>{VBANK[1:0], a[5:0], P[7:0]}</code></td></tr>
+              <tr><td><code>%00aaaaaa</code></td><td>Set VRAM pointer for <strong>read</strong> to the same, and prefetch</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The TMS9918 decodes 3 register bits and the F18A 6; this VDP decodes 7. Legacy writes of <code>$80</code>–<code>$87</code> reach registers 0–7 unchanged.</p>
+        <p>The payload is held in a latch of its own. A register write does not change either port's pointer or prefetch byte.</p>
+        <p>Any access to a pair's data port, and any read of its status port, resets that pair's flip-flop — so a program that loses track of it recovers by reading status once.</p>
+        <h3>VRAM pointer</h3>
+        <p>The pointer is a full 16-bit counter. The command protocol sets bits 13:0; bits 15:14 come from <code>VBANK</code> (§5), sampled when the address command completes. After each <code>VC_DATA</code> access the pointer advances by the signed stride in <code>VINC</code> (reset value <code>+1</code>), <strong>carrying into the bank bits</strong> — a streaming write runs off the end of a bank into the next one — and wrapping from <code>$FFFF</code> to <code>$0000</code>, or from <code>$0000</code> to <code>$FFFF</code> on a negative stride.</p>
+        <p>The carry lives in that port's pointer and nowhere else. <code>VBANK</code> is never changed by it, and a <code>VBANK</code> write does not move a pointer already set: it applies to the next address command, on either port.</p>
+        <div class="note"><p>This is the one place where TMS9918 behavior is deliberately broken: a real TMS9918 wraps within 16 KB. Nothing in the AC6502 software suite relies on that wrap.</p></div>
+        <p>Reads are prefetched. This is TMS9918 behavior and the reason the read-then-advance pattern works. Exactly:</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Operation</th><th>Effect, in order</th></tr></thead>
+            <tbody>
+              <tr><td>Set a read address</td><td>Fetch the byte at the pointer into the prefetch; advance</td></tr>
+              <tr><td>Set a write address</td><td>Nothing more</td></tr>
+              <tr><td>Read <code>VC_DATA</code></td><td>Return the prefetch; fetch the byte at the pointer into it; advance</td></tr>
+              <tr><td>Write <code>VC_DATA</code></td><td>Store at the pointer; load the written byte into the prefetch; advance</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The direction latch records which kind of address was set last and nothing reads it: either data-port operation works whichever way a port was pointed.</p>
+        <h3>Access timing</h3>
+        <p>There is no minimum interval between VRAM accesses. VRAM is RP2350 SRAM, not a DRAM array being time-shared with the raster, so the ~8 µs gap a real TMS9918 demands does not exist. The 65C02's fastest back-to-back port access is <code>sta abs</code> at 4 cycles — 4 µs at 1 MHz, 2 µs at 2 MHz — which leaves the RP2350 roughly 700 cycles at 352 MHz to service each access. A stand-in for the PIO-plus-interrupt path measured about 100 (§18).</p>
+        <p>Sustained throughput through an unrolled <code>sta VC_DATA</code> run — the ceiling:</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th>CPU</th><th>Bytes/s</th><th>960-byte table</th><th>8 KB pattern set</th><th>Full 64 KB</th></tr></thead>
+            <tbody>
+              <tr><td>1 MHz</td><td>~250 K</td><td>3.8 ms</td><td>33 ms</td><td>262 ms</td></tr>
+              <tr><td>2 MHz</td><td>~500 K</td><td>1.9 ms</td><td>16 ms</td><td>131 ms</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>A real loop is slower. <code>sta VC_DATA : iny : bne</code> is 9 cycles a byte, ~111 KB/s at 1 MHz; copying from memory with <code>lda (zp),y</code> is about 14, ~71 KB/s. The upload times in §8 and §19 are at the ceiling — multiply by 2.2 to 3.5 for a loop.</p>
+        <p>Writing during active display is permitted and will not corrupt the raster, but changing a structure the current frame is still drawing will tear. Structures are sampled line by line as §3 describes; the palette cache takes a write at once (§11), and the next line built uses it.</p>
+      </section>
+
+      <!-- ============ s5 ============ -->
+      <section id="s5">
+        <span class="sec-num">Section 5</span>
+        <h2>Register Map</h2>
+        <p>128 registers, all write-only. Read back state through the status registers (§6).</p>
+        <p>Registers <code>$02</code>–<code>$06</code> are <strong>aliases</strong> of registers in the layer and sprite blocks — the same storage under two addresses — so that legacy register writes and the symmetric new layout describe the same hardware.</p>
+        <div class="regblock">
+          <div class="rbhead"><span class="rbrange">$00–$07</span><span class="rbname">Legacy core</span></div>
+          <div class="reg"><span class="a">$00</span><span class="nm">MODE0</span><span class="rv">$00</span><span class="d"><strong>b1 M3</strong> legacy mode select (§9); b0 EXTVID <em>(ignored)</em>; b7:2 reserved</span></div>
+          <div class="reg"><span class="a">$01</span><span class="nm">MODE1</span><span class="rv">$00</span><span class="d">b7 <em>(ignored, 4/16K)</em>; <strong>b6 DISP</strong> display enable; <strong>b5 IE</strong> vblank IRQ enable; <strong>b4 M1</strong> and <strong>b3 M2</strong> legacy mode select (§9); b2 reserved; <strong>b1 SPRSIZE</strong> 0 = 8×8, 1 = 16×16; <strong>b0 SPRMAG</strong> magnify ×2</span></div>
+          <div class="reg alias"><span class="a">$02</span><span class="nm">L0NAME</span><span class="rv">$00</span><span class="d">Layer 0 name table base, ×<code>$400</code>. Alias of <code>$10</code>.</span></div>
+          <div class="reg alias"><span class="a">$03</span><span class="nm">L0ATTR</span><span class="rv">$00</span><span class="d">Layer 0 attribute table base, ×<code>$400</code>. Alias of <code>$11</code>.</span></div>
+          <div class="reg alias"><span class="a">$04</span><span class="nm">L0PAT</span><span class="rv">$00</span><span class="d">Layer 0 pattern table base, ×<code>$800</code>. Alias of <code>$12</code>.</span></div>
+          <div class="reg alias"><span class="a">$05</span><span class="nm">SPRATTR</span><span class="rv">$00</span><span class="d">Sprite attribute table base, ×<code>$80</code>. Alias of <code>$20</code>.</span></div>
+          <div class="reg alias"><span class="a">$06</span><span class="nm">SPRPAT</span><span class="rv">$00</span><span class="d">Sprite pattern table base, ×<code>$800</code>. Alias of <code>$21</code>.</span></div>
+          <div class="reg"><span class="a">$07</span><span class="nm">COLOR</span><span class="rv">$00</span><span class="d">b7:4 default foreground index, b3:0 backdrop/border index. The foreground indexes the 16-entry palette group of the layer drawing it, named by its <code>LxPAL</code> (§8); the backdrop is in <code>L0PAL</code>'s (§11)</span></div>
+        </div>
+        <p><code>M1</code>, <code>M2</code> and <code>M3</code> select the display mode only while <code>VMODE</code> (register <code>$0D</code>) is <code>$0</code>, which it is at reset. See §9 for what each combination resolves to and what <code>VMODE</code> does instead.</p>
+        <p>Base register fields are widened from the TMS9918's. <code>L0NAME</code> was 4 bits, now 8 (×<code>$400</code> → reaches <code>$3FC00</code>, of which bits 5:0 are meaningful in 64 KB). <code>L0PAT</code>/<code>SPRPAT</code> were 3 bits, now 8 (×<code>$800</code> → <code>$F800</code> within 64 KB). <code>SPRATTR</code> stays ×<code>$80</code> over 8 bits, reaching <code>$7F80</code>. Legacy values land exactly where they used to, for any value whose bits a TMS9918 ignores are zero. Every table address wraps at 64 KB (§7).</p>
+        <div class="regblock">
+          <div class="rbhead"><span class="rbrange">$08–$0F</span><span class="rbname">Access and interrupts</span></div>
+          <div class="reg"><span class="a">$08</span><span class="nm">VBANK</span><span class="rv">$00</span><span class="d">VRAM address bits A21:A14, sampled by an address command (§4). Bits 1:0 implemented (64 KB); the rest are stored, ignored, and reserved for a larger VRAM.</span></div>
+          <div class="reg"><span class="a">$09</span><span class="nm">VINC</span><span class="rv">$01</span><span class="d">VRAM auto-increment stride, signed 8-bit, −128…+127. <code>$00</code> = no increment.</span></div>
+          <div class="reg"><span class="a">$0A</span><span class="nm">IRQEN</span><span class="rv">$00</span><span class="d">b0 vblank, b1 scanline compare, b2 sprite overflow, b3 sprite collision; b7:4 ignored</span></div>
+          <div class="reg"><span class="a">$0B</span><span class="nm">IRQLINE</span><span class="rv">$00</span><span class="d">Scanline compare value, display line 0–255</span></div>
+          <div class="reg"><span class="a">$0C</span><span class="nm">PALBASE</span><span class="rv">$3F</span><span class="d">Palette base, b5:0 ×<code>$400</code>; b7:6 ignored. Reset = <code>$FC00</code>.</span></div>
+          <div class="reg"><span class="a">$0D</span><span class="nm">VMODE</span><span class="rv">$00</span><span class="d">b3:0 display mode (§9); b7:4 reserved, ignored</span></div>
+          <div class="reg"><span class="a">$0E</span><span class="nm">STATSEL_B</span><span class="rv">$00</span><span class="d">b3:0: which status register port B returns; b7:4 ignored</span></div>
+          <div class="reg"><span class="a">$0F</span><span class="nm">STATSEL_A</span><span class="rv">$00</span><span class="d">b3:0: which status register port A returns; b7:4 ignored</span></div>
+        </div>
+        <p><code>STATSEL_A</code> is at <code>$0F</code> because the F18A puts its status select at R15; anyone carrying F18A habits lands in the right place. The two selectors are separate so an interrupt handler reading status on port B cannot disturb foreground code reading status on port A.</p>
+        <div class="regblock">
+          <div class="rbhead"><span class="rbrange">$10–$17</span><span class="rbname">Layer 0</span></div>
+          <div class="reg alias"><span class="a">$10</span><span class="nm">L0NAME</span><span class="rv">$00</span><span class="d">Name table base, ×<code>$400</code> <em>(= <code>$02</code>)</em></span></div>
+          <div class="reg alias"><span class="a">$11</span><span class="nm">L0ATTR</span><span class="rv">$00</span><span class="d">Attribute table base, ×<code>$400</code> <em>(= <code>$03</code>)</em></span></div>
+          <div class="reg alias"><span class="a">$12</span><span class="nm">L0PAT</span><span class="rv">$00</span><span class="d">Pattern table base, ×<code>$800</code> <em>(= <code>$04</code>)</em></span></div>
+          <div class="reg"><span class="a">$13</span><span class="nm">L0SCRX</span><span class="rv">$00</span><span class="d">Horizontal scroll, pixels — bits 7:0; bit 8 is <code>L0CTRL</code> b6</span></div>
+          <div class="reg"><span class="a">$14</span><span class="nm">L0SCRY</span><span class="rv">$00</span><span class="d">Vertical scroll, pixels</span></div>
+          <div class="reg"><span class="a">$15</span><span class="nm">L0CTRL</span><span class="rv">$3C</span><span class="d">b1:0 bit depth; b3:2 attribute source; b4 layer enable; b5 index 0 opaque; b6 horizontal scroll bit 8; b7 reserved — see §8</span></div>
+          <div class="reg"><span class="a">$16</span><span class="nm">L0PAL</span><span class="rv">$00</span><span class="d">b3:0 palette group high bits — see §8; b7:4 ignored</span></div>
+          <div class="reg rsv"><span class="a">$17</span><span class="nm">—</span><span class="rv">—</span><span class="d">Reserved</span></div>
+        </div>
+        <p>Identical layout, different reset values.</p>
+        <div class="regblock">
+          <div class="rbhead"><span class="rbrange">$18–$1F</span><span class="rbname">Layer 1</span></div>
+          <div class="reg"><span class="a">$18</span><span class="nm">L1NAME</span><span class="rv">$00</span><span class="d">Name table base, ×<code>$400</code></span></div>
+          <div class="reg"><span class="a">$19</span><span class="nm">L1ATTR</span><span class="rv">$00</span><span class="d">Attribute table base, ×<code>$400</code></span></div>
+          <div class="reg"><span class="a">$1A</span><span class="nm">L1PAT</span><span class="rv">$00</span><span class="d">Pattern table base, ×<code>$800</code></span></div>
+          <div class="reg"><span class="a">$1B</span><span class="nm">L1SCRX</span><span class="rv">$00</span><span class="d">Horizontal scroll, pixels — bits 7:0; bit 8 is <code>L1CTRL</code> b6</span></div>
+          <div class="reg"><span class="a">$1C</span><span class="nm">L1SCRY</span><span class="rv">$00</span><span class="d">Vertical scroll, pixels</span></div>
+          <div class="reg"><span class="a">$1D</span><span class="nm">L1CTRL</span><span class="rv">$0C</span><span class="d">Same bits as <code>L0CTRL</code>. Reset: layer disabled, index 0 transparent.</span></div>
+          <div class="reg"><span class="a">$1E</span><span class="nm">L1PAL</span><span class="rv">$00</span><span class="d">b3:0 palette group high bits; b7:4 ignored</span></div>
+          <div class="reg rsv"><span class="a">$1F</span><span class="nm">—</span><span class="rv">—</span><span class="d">Reserved</span></div>
+        </div>
+        <p><code>L0CTRL</code> resets to <code>$3C</code> — 1bpp, no attribute table, enabled, index 0 opaque — so that a bare text screen in <code>VMODE</code> Text has a solid background colored by <code>COLOR</code>. <code>L1CTRL</code> resets to <code>$0C</code> — the same, but disabled and with index 0 transparent, which is what an overlay layer wants.</p>
+        <p>While <code>VMODE</code> = <code>$0</code> the bit-depth and attribute-source fields of <code>L0CTRL</code> are ignored and derived from the legacy mode bits instead, and so is b5: index 0 is transparent there, as TMS9918 color 0 is (§9).</p>
+        <div class="regblock">
+          <div class="rbhead"><span class="rbrange">$20–$27</span><span class="rbname">Sprites</span></div>
+          <div class="reg alias"><span class="a">$20</span><span class="nm">SPRATTR</span><span class="rv">$00</span><span class="d">Attribute table base, ×<code>$80</code> <em>(= <code>$05</code>)</em></span></div>
+          <div class="reg alias"><span class="a">$21</span><span class="nm">SPRPAT</span><span class="rv">$00</span><span class="d">Pattern table base, ×<code>$800</code> <em>(= <code>$06</code>)</em></span></div>
+          <div class="reg"><span class="a">$22</span><span class="nm">SPRCOUNT</span><span class="rv">$20</span><span class="d">Active sprite slots, 0–64; larger values act as 64. Slots at or above this index are not evaluated.</span></div>
+          <div class="reg"><span class="a">$23</span><span class="nm">SPRCTRL</span><span class="rv">$27</span><span class="d">b0 sprites enable; b1 collision detection enable; b2 <code>$D0</code> terminates the sprite list; b3 detailed collision reporting; b5:4 bit depth (00 = 1, 01 = 2, 10 = 4, 11 = 8); b7:6 reserved</span></div>
+          <div class="reg"><span class="a">$24</span><span class="nm">SPRLIMIT</span><span class="rv">$10</span><span class="d">Maximum sprites drawn per scanline, 1–32; larger values act as 32. 0 draws no sprites and reports an overflow on every line a sprite covers.</span></div>
+          <div class="reg"><span class="a">$25</span><span class="nm">SPRPAL</span><span class="rv">$00</span><span class="d">b3:0 palette group high bits for sprites — <code>LxPAL</code>'s equivalent; b7:4 ignored</span></div>
+          <div class="reg rsv"><span class="a">$26–$27</span><span class="nm">—</span><span class="rv">—</span><span class="d">Reserved</span></div>
+        </div>
+        <p>Sprite size and magnification live in <code>MODE1</code> b1:b0, as on the TMS9918. They are not duplicated here. While <code>VMODE</code> = <code>$0</code> the bit-depth field is ignored, b2 acts as set, <code>SPRPAL</code> is ignored, and sprites render with TMS9918 semantics (§9).</p>
+        <p><code>SPRCTRL</code> resets to <code>$27</code> — enabled, collision on, <code>$D0</code> terminator active, detailed collision off, 4bpp.</p>
+        <p><code>SPRLIMIT</code> resets to 16: the most sprites the firmware draws on the worst-case line with a quarter of the line to spare (§18). Any value up to 32 works — the worst case at 32 still builds in time, with less in hand, and a line that ever does not is shown as §18's <a href="#late-lines"><em>Late lines</em></a> says. It is also a way to reproduce a low per-line limit for period-correct flicker, should anyone want it.</p>
+        <div class="regblock">
+          <div class="rbhead"><span class="rbrange">$28–$7F</span><span class="rbname">Reserved</span></div>
+          <div class="reg rsv"><span class="a">$28–$7F</span><span class="nm">&mdash;</span><span class="rv">&mdash;</span><span class="d">Write 0. Reserved for a second sprite bank, raster effect tables, additional layers, or a blitter (§19). A reserved register — here, <code>$17</code>, <code>$1F</code> or <code>$26</code>–<code>$27</code> — stores what is written and has no effect.</span></div>
+        </div>
+      </section>
+
+      <!-- ============ s6 ============ -->
+      <section id="s6">
+        <span class="sec-num">Section 6</span>
+        <h2>Status Registers</h2>
+        <p>Reading a status port returns the register named by b3:0 of that port's <code>STATSEL</code>. Sixteen are defined.</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th>#</th><th>Name</th><th>Contents</th></tr></thead>
+            <tbody>
+              <tr><td>0</td><td><code>STAT0</code></td><td>b7 <strong>F</strong> — a picture has ended, set <strong>regardless of <code>IRQEN</code></strong>; b6 <strong>OVF</strong> — a sprite has been dropped; b5 <strong>COL</strong> — two sprites have collided; b4:0 low five bits of the first sprite dropped, 0 while OVF is clear. All four since <code>STAT0</code> was last read</td></tr>
+              <tr><td>1</td><td><code>STAT1</code></td><td>b0 vblank, b1 scanline compare, b2 overflow, b3 collision — the latched sources that are still <strong>enabled</strong> in <code>IRQEN</code>; b7:4 reserved</td></tr>
+              <tr><td>2</td><td><code>STAT2</code></td><td>Current display line, low 8 bits. Lines 256–261 alias to 0–5; <code>STAT3</code> b0 disambiguates.</td></tr>
+              <tr><td>3</td><td><code>STAT3</code></td><td>b0 vertical blanking: the display line is at or past the current mode's active line count, borders included; b1 horizontal blanking, during either VGA line of the display line (see below); b7:2 reserved</td></tr>
+              <tr><td>4</td><td><code>STAT4</code></td><td><strong><code>$AC</code></strong> — identification byte</td></tr>
+              <tr><td>5</td><td><code>STAT5</code></td><td>Firmware version, BCD: high nibble major, low nibble minor</td></tr>
+              <tr><td>6</td><td><code>STAT6</code></td><td>Capabilities: b0 two layers, b1 8bpp layer, b2 sprite flip, b3 hardware scroll, b4 scanline IRQ, b5 64 KB VRAM, b7:6 reserved (b6 for a blitter, §19)</td></tr>
+              <tr><td>7</td><td><code>STAT7</code></td><td>Full index (0–63) of the first sprite dropped on the most recent overflowing line since <code>STAT0</code> was last read; 0 if none</td></tr>
+              <tr><td>8–15</td><td><code>STAT8</code>–<code>STAT15</code></td><td>Collision bitmap — bit <em>s</em> mod 8 of <code>STAT(8 + s/8)</code>, <em>s</em>/8 rounded down, is set if sprite <em>s</em> has collided since <code>STAT0</code> was last read. Only maintained while <code>SPRCTRL</code> b3 is set.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><code>STAT0</code> keeps the TMS9918's shape exactly, including the five-bit sprite field, so that code testing <code>bit VC_STATUS</code> / <code>bmi</code> for vblank still works.</p>
+        <p><strong>b7 is a flag, not an interrupt.</strong> It is the TMS9918's F bit: it sets when the active picture ends, whether or not <code>IRQEN</code> b0 is on, because <code>IRQEN</code> governs the <code>/INT</code> pin and nothing else. Polling <code>STAT0</code> for vertical blank with interrupts disabled is a common idiom and it has to work. The other interrupt sources do not appear in b7 at all — read <code>STAT1</code> for those.</p>
+        <p><strong>The flags are sticky.</strong> Nothing clears <code>F</code>, <code>OVF</code>, <code>COL</code>, the index field, <code>STAT7</code> or the collision map but a read of <code>STAT0</code> or a reset (§15), however many frames go by — as on the TMS9918, so a program that looks once a second still sees the collision that happened in between.</p>
+        <p><strong>Acknowledgement.</strong> The two reads clear different things, and that is what makes port B safe for an interrupt handler:</p>
+        <ul><li><strong>Reading <code>STAT0</code></strong> clears <code>F</code>, <code>OVF</code>, <code>COL</code> and the index field, <code>STAT7</code> and the collision map — and the <code>STAT1</code> latches for vertical blank, overflow and collision, the interrupts those flags stand for. A TMS9918 handler that reads status to acknowledge its interrupt still does.</li><li><strong>Reading <code>STAT1</code></strong> clears every <code>STAT1</code> latch, and nothing else.</li></ul>
+        <p>So a handler on port B reads <code>STAT1</code>, and foreground code polling <code>STAT0</code> on port A still finds <code>F</code> set. Read <code>STAT7</code> and the collision map before <code>STAT0</code>, which clears them.</p>
+        <p><code>STAT3</code> b1 is advisory. A status read is served from a byte staged before the read arrives (§2), so it can lag the raster; nothing finer than a display line should be timed from it.</p>
+        <p>Reading any status register resets that port's command flip-flop.</p>
+      </section>
+
+      <!-- ============ s7 ============ -->
+      <section id="s7">
+        <span class="sec-num">Section 7</span>
+        <h2>Video RAM</h2>
+        <p><strong>64 KB</strong>, flat, addressed as a 16-bit space. No banking is visible to software beyond <code>VBANK</code> supplying the top two address bits.</p>
+        <p>64 KB is four times the TMS9918 and takes a 1 MHz 65C02 a quarter of a second to fill end to end. More would be memory the CPU cannot realistically populate. <code>VBANK</code> is specified as a full byte so a later revision can grow to 4 MB without changing the command protocol.</p>
+        <p>Every structure is placed by a base register. This is the <strong>recommended</strong> layout for graphics mode, not a requirement:</p>
+        <figure>
+          <div class="figframe">
+            <svg viewBox="0 0 700 470" role="img" aria-label="The recommended 64 KB VRAM layout drawn to scale. The five tables occupy 4.3 KB at the bottom of the address space; layer 0 patterns, layer 1 patterns and sprite patterns occupy 40 KB; the palette is 512 bytes at $FC00. A detail column expands the table region.">
+              <!-- scale: 65536 bytes over 400px, y 30..430, x 70..130 -->
+              <text x="70" y="20" font-size="10.5" fill="var(--ink-3)" letter-spacing="1.2">64 KB TO SCALE</text>
+              <text x="478" y="48" font-size="10.5" fill="var(--ink-3)" letter-spacing="1.2">TABLE REGION EXPANDED</text>
+
+              <!-- bracket from main top band to detail column -->
+              <path d="M130 30 L430 60 M130 56.6 L430 260" stroke="var(--rule-2)" stroke-width="1" fill="none" stroke-dasharray="3 3"/>
+
+              <!-- main column bands -->
+              <rect x="70" y="30"     width="60" height="26.6"  fill="var(--accent)"   stroke="var(--panel)" stroke-width=".5"/>
+              <rect x="70" y="56.6"   width="60" height="73.4"  fill="var(--panel-3)"  stroke="var(--panel)" stroke-width=".5"/>
+              <rect x="70" y="130"    width="60" height="100"   fill="var(--accent-2)" stroke="var(--panel)" stroke-width=".5"/>
+              <rect x="70" y="230"    width="60" height="100"   fill="var(--accent-2)" stroke="var(--panel)" stroke-width=".5"/>
+              <rect x="70" y="330"    width="60" height="50"    fill="var(--amber)"    stroke="var(--panel)" stroke-width=".5"/>
+              <rect x="70" y="380"    width="60" height="43.75" fill="var(--panel-3)"  stroke="var(--panel)" stroke-width=".5"/>
+              <rect x="70" y="423.75" width="60" height="3.15"  fill="var(--cyan)"/>
+              <rect x="70" y="426.9"  width="60" height="3.1"   fill="var(--panel-3)"/>
+              <rect x="70" y="30" width="60" height="400" fill="none" stroke="var(--rule-2)" stroke-width="1"/>
+
+              <!-- main column addresses -->
+              <g font-size="10.5" fill="var(--ink-3)" text-anchor="end">
+                <text x="62" y="34">$0000</text>
+                <text x="62" y="60.6">$1100</text>
+                <text x="62" y="134">$4000</text>
+                <text x="62" y="234">$8000</text>
+                <text x="62" y="334">$C000</text>
+                <text x="62" y="384">$E000</text>
+                <text x="62" y="433">$FFFF</text>
+              </g>
+              <!-- main column labels -->
+              <g font-size="11" fill="currentColor">
+                <text x="138" y="47">tables &mdash; 4.3 KB</text>
+                <text x="138" y="97" fill="var(--ink-3)">free &mdash; 12 KB</text>
+                <text x="138" y="184">layer 0 patterns &mdash; 16 KB</text>
+                <text x="138" y="284">layer 1 patterns &mdash; 16 KB</text>
+                <text x="138" y="359">sprite patterns &mdash; 8 KB</text>
+                <text x="138" y="405" fill="var(--ink-3)">free &mdash; 7 KB</text>
+              </g>
+              <!-- leaders for the two thin bands -->
+              <path d="M130 425.3 L152 419" stroke="var(--rule-2)" stroke-width="1" fill="none"/>
+              <path d="M130 428.5 L152 440" stroke="var(--rule-2)" stroke-width="1" fill="none"/>
+              <text x="156" y="422" font-size="11" fill="currentColor">palette &mdash; 512 B at $FC00</text>
+              <text x="156" y="443" font-size="11" fill="var(--ink-3)">free &mdash; 512 B</text>
+
+              <!-- detail column: 4352 bytes over 200px, y 60..260, x 430..470 -->
+              <rect x="430" y="60"    width="40" height="47.06" fill="var(--accent)" opacity=".9" stroke="var(--panel)" stroke-width=".5"/>
+              <rect x="430" y="107.06" width="40" height="47.06" fill="var(--accent)" opacity=".62" stroke="var(--panel)" stroke-width=".5"/>
+              <rect x="430" y="154.12" width="40" height="47.06" fill="var(--accent)" opacity=".9" stroke="var(--panel)" stroke-width=".5"/>
+              <rect x="430" y="201.18" width="40" height="47.06" fill="var(--accent)" opacity=".62" stroke="var(--panel)" stroke-width=".5"/>
+              <rect x="430" y="248.24" width="40" height="11.76" fill="var(--green)" stroke="var(--panel)" stroke-width=".5"/>
+              <rect x="430" y="60" width="40" height="200" fill="none" stroke="var(--rule-2)" stroke-width="1"/>
+
+              <g font-size="10.5" fill="var(--ink-3)" text-anchor="end">
+                <text x="424" y="64">$0000</text>
+                <text x="424" y="111">$0400</text>
+                <text x="424" y="158">$0800</text>
+                <text x="424" y="205">$0C00</text>
+                <text x="424" y="252">$1000</text>
+              </g>
+              <g font-size="11" fill="currentColor">
+                <text x="478" y="87">L0 name table &mdash; 960 B</text>
+                <text x="478" y="134">L0 attribute table &mdash; 960 B</text>
+                <text x="478" y="181">L1 name table &mdash; 960 B</text>
+                <text x="478" y="228">L1 attribute table &mdash; 960 B</text>
+                <text x="478" y="258">sprite attributes &mdash; 256 B</text>
+              </g>
+            </svg>
+          </div>
+          <figcaption><b>4.3 KB of tables govern 40 KB of pattern data.</b> Every base register is free to move these anywhere; only the alignment granularity is fixed. The 960-byte tables each sit in their own 1 KB block, leaving 64 bytes of each block unused.</figcaption>
+        </figure>
+<pre><code>  $0000 - $03BF   Layer 0 name table            960 B    L0NAME = $00
+  $0400 - $07BF   Layer 0 attribute table       960 B    L0ATTR = $01
+  $0800 - $0BBF   Layer 1 name table            960 B    L1NAME = $02
+  $0C00 - $0FBF   Layer 1 attribute table       960 B    L1ATTR = $03
+  $1000 - $10FF   Sprite attribute table        256 B    SPRATTR = $20
+  $1100 - $3FFF   free                           12 KB
+  $4000 - $7FFF   Layer 0 pattern table          16 KB   L0PAT = $08
+  $8000 - $BFFF   Layer 1 pattern table          16 KB   L1PAT = $10
+  $C000 - $DFFF   Sprite pattern table            8 KB   SPRPAT = $18
+  $E000 - $FBFF   free                            7 KB
+  $FC00 - $FDFF   Palette                       512 B    PALBASE = $3F
+  $FE00 - $FFFF   free                          512 B</code></pre>
+        <p>Text mode after reset keeps today's layout, which the existing Kernal already programs:</p>
+<pre><code>  $0000 - $03BF   Layer 0 name table            960 B    L0NAME = $00
+  $0800 - $0FFF   Layer 0 pattern table           2 KB   L0PAT = $01
+  $FC00 - $FDFF   Palette                       512 B</code></pre>
+        <p>Alignment rules:</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Structure</th><th>Base register granularity</th><th>Size</th></tr></thead>
+            <tbody>
+              <tr><td>Name table</td><td>1 KB</td><td>768, 960 or 1200 B, by geometry</td></tr>
+              <tr><td>Attribute table</td><td>1 KB (×<code>$40</code> for layer 0 in the legacy submode, §9)</td><td>per cell: as the name table; per pattern group: 32 B; per pattern row: 2 KB</td></tr>
+              <tr><td>Pattern table</td><td>2 KB</td><td>2 KB (text), up to 16 KB (graphics)</td></tr>
+              <tr><td>Sprite attribute table</td><td>128 B</td><td>256 B</td></tr>
+              <tr><td>Sprite pattern table</td><td>2 KB</td><td>8 KB for 256 patterns at 4bpp, 16 KB at 8bpp</td></tr>
+              <tr><td>Palette</td><td>1 KB</td><td>512 B</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The name table is 960 bytes in <strong>both</strong> Text and Graphics — 40 × 24 and 32 × 30 are the same count — so a swap between them needs no reallocation, and Graphics I's 768 bytes fit in the same 1 KB block. Full mode is the exception at 1200 bytes, which spans two 1 KB blocks; budget 2 KB for each of its tables. The attribute table, when per-cell, always has exactly the same geometry as the name table it belongs to. A per-pattern-row table is 2 KB, so it does not fit the 1 KB slot the layout above gives an attribute table.</p>
+        <p>Every table address wraps at 64 KB: a table whose base plus offset passes <code>$FFFF</code> continues at <code>$0000</code>.</p>
+      </section>
+
+      <!-- ============ s8 ============ -->
+      <section id="s8">
+        <span class="sec-num">Section 8</span>
+        <h2>The Tile Engine</h2>
+        <p>Both layers, in every mode, are the same engine: a <strong>name table</strong> mapping screen cells to pattern indices, a <strong>pattern table</strong> of pixel data, and a <strong>source of color</strong> for each cell. Mode selection (§9) chooses the geometry; <code>LxCTRL</code> chooses everything else, per layer.</p>
+        <h3>Bit depth — <code>LxCTRL</code> b1:b0</h3>
+        <div class="tw">
+          <table>
+            <thead><tr><th class="c">b1:b0</th><th class="c">Depth</th><th class="num">Bytes per 8×8 tile</th><th class="c">Colors per cell</th><th class="num">Tiles</th><th class="num">Full set</th><th class="num">Upload @ 1 MHz</th></tr></thead>
+            <tbody>
+              <tr><td class="c">00</td><td class="c">1bpp</td><td class="num">8</td><td class="c">2, independent fg and bg</td><td class="num">256</td><td class="num">2 KB</td><td class="num">8 ms</td></tr>
+              <tr><td class="c">01</td><td class="c">2bpp</td><td class="num">16</td><td class="c">4</td><td class="num">512</td><td class="num">8 KB</td><td class="num">33 ms</td></tr>
+              <tr><td class="c">10</td><td class="c">4bpp</td><td class="num">32</td><td class="c">16</td><td class="num">512</td><td class="num">16 KB</td><td class="num">66 ms</td></tr>
+              <tr><td class="c">11</td><td class="c">8bpp</td><td class="num">64</td><td class="c">256</td><td class="num">256</td><td class="num">16 KB</td><td class="num">66 ms</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The pattern index is the name table byte, plus attribute b7 as a ninth bit at 2 and 4bpp when there is an attribute byte (§8's color byte, below) — which is why those two depths reach 512 tiles and 1bpp and 8bpp reach 256. A tile's pattern starts at <code>LxPAT × $800 + index × bytes per tile</code>. Upload times are at §4's ceiling.</p>
+        <p>Patterns are stored row by row from the top, pixels left to right, the most significant bit or nibble leftmost — 1, 2, 4 or 8 bytes per row.</p>
+        <p>In text mode the cell is 6 pixels wide, at every depth: the leftmost 6 pixels of each row are drawn and the rest ignored. At 1bpp that is the top 6 bits of one byte, which is the TMS9918 text format exactly, and the format of the character set in AC6502 ROM at <code>$B800</code>. A horizontally flipped Text cell mirrors the six pixels drawn, not all eight.</p>
+        <p>The low depths are not a consolation prize. VRAM is not the binding constraint on this machine — <strong>upload time is</strong> — and a 1bpp tile set costs a quarter of what a 4bpp one costs to get into the VDP. A full 1bpp set, 256 tiles, is 2 KB and 8 ms at 1 MHz; the same 256 tiles at 4bpp are 8 KB and 33 ms, two frames' worth. 8bpp is the odd one out: it costs the most VRAM but is the <em>cheapest to render</em>, because there is no unpacking to do.</p>
+        <h3>Attribute source — <code>LxCTRL</code> b3:b2</h3>
+        <p>Where the color byte for a cell comes from:</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th class="c">b3:b2</th><th>Source</th><th>Address of the color byte</th><th class="num">Bytes</th></tr></thead>
+            <tbody>
+              <tr><td class="c">00</td><td>Per cell</td><td><code>LxATTR + cell</code></td><td class="num">768, 960 or 1200</td></tr>
+              <tr><td class="c">01</td><td>Per pattern group</td><td><code>LxATTR + (pattern &gt;&gt; 3)</code></td><td class="num">32</td></tr>
+              <tr><td class="c">10</td><td>Per pattern row</td><td><code>LxATTR + (pattern × 8) + row</code></td><td class="num">2 KB</td></tr>
+              <tr><td class="c">11</td><td>None</td><td><em>no fetch</em> — see below</td><td class="num">0</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>Per cell</strong> is the general case, and the only one in which two cells sharing a pattern can have different colors. <strong>Per pattern group</strong> is the TMS9918's Graphics I color table: one byte per eight consecutive patterns, 32 bytes for the whole screen. <strong>Per pattern row</strong> is Graphics II's scheme: one color byte per pattern row, so an 8×8 pattern carries eight fg/bg pairs down its height.</p>
+        <p>Sources 01 and 10 are meant for 1bpp. At 2, 4 and 8bpp they still fetch a byte from the same address and use it as an attribute byte: per pattern group indexes by the 8-bit name byte, so the ninth bit of the byte it finds moves all eight names in the group; per pattern row gives each pixel row of a cell its own attribute byte, looked up by the row before any vertical flip is applied.</p>
+        <p>Per-pattern-group is what makes Graphics I fall out of the engine rather than needing a mode of its own. Per-pattern-row is the one genuinely useful thing Graphics II could do that nothing else could — eight color pairs down the height of a pattern — kept here as a feature of the engine even though legacy Graphics II itself is not supported (§19).</p>
+        <p><strong>None</strong> means no attribute fetch at all. At 1bpp the whole layer is colored by <code>COLOR</code> (register <code>$07</code>) — which is what today's text mode does, and why the existing Kernal needs no changes. At 2bpp the layer uses sub-palette 0 of the quarter <code>LxPAL</code> selects; at 4bpp it draws from palette row <code>LxPAL</code>; at 8bpp the value is the palette index. In every case there is no flipping, no priority and no ninth pattern-index bit.</p>
+        <h3>The color byte</h3>
+        <p><strong>At 1bpp</strong> it is a pair of nibbles, foreground in b7:4 and background in b3:0, each indexing the 16-entry group selected by <code>LxPAL</code>:</p>
+<pre><code>  b7 b6 b5 b4 | b3 b2 b1 b0
+  foreground  | background</code></pre>
+        <p>This is the TMS9918 convention unchanged, which is why <code>VideoSetColor</code> still means what it means and a Graphics I color table still colors what it colored.</p>
+        <p><strong>At 2, 4 and 8bpp</strong> it is an attribute byte:</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th class="c">Bit</th><th>2bpp and 4bpp</th><th>8bpp</th></tr></thead>
+            <tbody>
+              <tr><td class="c">b3:0</td><td>sub-palette</td><td><em>ignored</em></td></tr>
+              <tr><td class="c">b4</td><td>flip horizontally</td><td>flip horizontally</td></tr>
+              <tr><td class="c">b5</td><td>flip vertically</td><td>flip vertically</td></tr>
+              <tr><td class="c">b6</td><td>priority — §12 level 4 on layer 0, 6 on layer 1: in front of ordinary sprites, and a layer 0 tile in front of an ordinary layer 1 tile too</td><td>same</td></tr>
+              <tr><td class="c">b7</td><td>pattern index bit 8 → 512 tiles</td><td><em>ignored</em></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Palette mapping</h3>
+        <p>A <strong>palette group</strong> is <code>2^bpp</code> consecutive palette entries. The group number is <code>LxPAL × 16 + subpal</code>, and the palette index of a pixel is <code>(group × 2^bpp + value) &amp; $FF</code>. In practice:</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th class="c">Depth</th><th class="num">Group size</th><th class="num">Groups available</th><th>Palette index of a pixel</th></tr></thead>
+            <tbody>
+              <tr><td class="c">1bpp</td><td class="num">—</td><td class="num">—</td><td><code>LxPAL × 16 + nibble</code> — fg or bg, as a 4-bit index</td></tr>
+              <tr><td class="c">2bpp</td><td class="num">4</td><td class="num">64</td><td><code>(LxPAL &amp; 3) × 64 + subpal × 4 + value</code></td></tr>
+              <tr><td class="c">4bpp</td><td class="num">16</td><td class="num">16</td><td><code>subpal × 16 + value</code>; with no attribute byte, <code>LxPAL × 16 + value</code></td></tr>
+              <tr><td class="c">8bpp</td><td class="num">256</td><td class="num">1</td><td><code>value</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>At 4bpp the sixteen groups already cover the whole palette, so the formula leaves nothing of <code>LxPAL</code> whenever an attribute byte carries a sub-palette. With attribute source "none" there is no such byte, and <code>LxPAL</code> is the sub-palette: the layer draws from palette row <code>LxPAL</code>. At 2bpp its low two bits pick which quarter of the palette the sixty-four groups are drawn from, so all 256 entries stay reachable. At 1bpp it picks which sixteen colors the fg/bg nibbles name.</p>
+        <h3>Transparency</h3>
+        <p>A pixel whose value is 0 within its group is transparent, unless <code>LxCTRL</code> b5 (index 0 opaque) is set. At 1bpp this applies to <strong>both</strong> nibbles — a foreground nibble of 0 is as transparent as a background nibble of 0, exactly as TMS9918 color 0 is. In the legacy submode layer 0's b5 is ignored and its index 0 is always transparent (§9); layer 1's b5 still applies.</p>
+        <p>Setting index 0 opaque gives a layer the full <code>2^bpp</code> colors and makes it occlude everything behind it. Layer 0 resets that way — though the legacy submode it resets into ignores the bit (§9) — and layer 1 does not.</p>
+      </section>
+
+      <!-- ============ s9 ============ -->
+      <section id="s9">
+        <span class="sec-num">Section 9</span>
+        <h2>Display Modes</h2>
+        <p><code>VMODE</code> (register <code>$0D</code>) b3:0 selects the geometry. Everything else about a layer comes from <code>LxCTRL</code> (§8).</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th class="c"><code>VMODE</code></th><th>Mode</th><th>Cells</th><th class="c">Cell</th><th>Pixels</th><th class="num">Name table</th><th>Position in the frame</th></tr></thead>
+            <tbody>
+              <tr><td class="c"><code>$0</code></td><td><strong>Legacy</strong></td><td>from <code>M1</code>/<code>M2</code>/<code>M3</code></td><td class="c"></td><td></td><td class="num"></td><td>see below</td></tr>
+              <tr><td class="c"><code>$1</code></td><td><strong>Text</strong></td><td>40 × 24</td><td class="c">6 × 8</td><td>240 × 192</td><td class="num">960 B</td><td>x 40–279, y 24–215</td></tr>
+              <tr><td class="c"><code>$2</code></td><td><strong>Compact</strong></td><td>32 × 24</td><td class="c">8 × 8</td><td>256 × 192</td><td class="num">768 B</td><td>x 32–287, y 24–215</td></tr>
+              <tr><td class="c"><code>$3</code></td><td><strong>Graphics</strong></td><td>32 × 30</td><td class="c">8 × 8</td><td>256 × 240</td><td class="num">960 B</td><td>x 32–287, y 0–239</td></tr>
+              <tr><td class="c"><code>$4</code></td><td><strong>Full</strong></td><td>40 × 30</td><td class="c">8 × 8</td><td>320 × 240</td><td class="num">1200 B</td><td>the whole frame</td></tr>
+              <tr><td class="c"><code>$5</code>–<code>$F</code></td><td>reserved — behaves as <code>$0</code></td><td></td><td class="c"></td><td></td><td class="num"></td><td></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>Full mode</strong> fills the 320 × 240 frame edge to edge — no border, square cells on a 4:3 monitor. It is the mode for anything that wants the whole screen: a title page, a game field with no letterboxing, or a 40 × 30 text display six rows taller than Text mode and with square characters, by running it at 1bpp with per-cell attributes.</p>
+        <p>It costs three small things and nothing else. Its name and attribute tables are 1200 bytes rather than 960, so each occupies two 1 KB blocks instead of one. Its horizontal scroll needs nine bits (§13). And 320 pixels of layer per line is 25% more layer work than 256, which makes it the most expensive mode in the design: its worst-case line is the one §18's budget is measured against.</p>
+        <p>The names describe geometry and nothing else. <strong>Compact</strong> is the TMS9918's Graphics I grid — which is why a legacy Graphics I program lands there — but it is not "Graphics I": new software can run that 32 × 24 grid at 4bpp with per-cell attributes and flipping, and can equally run <strong>Graphics</strong> at 1bpp with a 32-byte color table if that is what the art wants. Geometry and coloring are orthogonal, and only the legacy submode pins particular combinations.</p>
+        <p>Compact exists for software that wants the 192-line height and its top and bottom borders, or simply wants a smaller name table and a cheaper line. Graphics is the one most new software should reach for.</p>
+        <p><code>VMODE</code> <code>$1</code> and <code>$3</code> both use a 960-byte name table, so a mode change between them needs no reallocation.</p>
+        <h3>The legacy submode</h3>
+        <p><code>VMODE</code> = <code>$0</code>, the reset value, hands mode selection to the TMS9918's <code>M1</code>, <code>M2</code> and <code>M3</code> bits — <code>MODE1</code> b4, <code>MODE1</code> b3 and <code>MODE0</code> b1 — and pins layer 0's bit depth and attribute source to match. <code>L0CTRL</code>'s depth and attribute fields are ignored while this is in effect, and so is its opacity bit: index 0 is always transparent, as TMS9918 color 0 is, whatever <code>L0CTRL</code> b5 holds. Its enable bit still applies. So do <code>L0SCRX</code>, <code>L0SCRY</code>, <code>L0CTRL</code> b6 and <code>L0PAL</code>, which a legacy program never writes, and layer 1 is unaffected. A reserved <code>VMODE</code> value, <code>$5</code>–<code>$F</code>, behaves exactly as <code>$0</code>.</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th class="c"><code>M1</code></th><th class="c"><code>M2</code></th><th class="c"><code>M3</code></th><th>TMS9918 mode</th><th>Geometry</th><th class="c">L0 depth</th><th>L0 attribute source</th></tr></thead>
+            <tbody>
+              <tr><td class="c">1</td><td class="c">×</td><td class="c">×</td><td>Text</td><td>40 × 24</td><td class="c">1bpp</td><td>none — <code>COLOR</code> colors the screen; no sprites</td></tr>
+              <tr><td class="c">0</td><td class="c">0</td><td class="c">0</td><td>Graphics I</td><td>32 × 24</td><td class="c">1bpp</td><td>per pattern group, base = <code>L0ATTR</code> × <code>$40</code></td></tr>
+              <tr><td class="c">0</td><td class="c">0</td><td class="c">1</td><td>Graphics II</td><td>32 × 24</td><td class="c">1bpp</td><td><em>not supported</em> — falls back to Graphics I</td></tr>
+              <tr><td class="c">0</td><td class="c">1</td><td class="c">×</td><td>Multicolor</td><td>32 × 24</td><td class="c">1bpp</td><td><em>not supported</em> — falls back to Graphics I</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>One register reinterpretation applies, and only here: <strong><code>L0ATTR</code> is scaled by <code>$40</code>, not <code>$400</code></strong>, so that a Graphics I program's 32-byte color table lands where it wrote it.</p>
+        <p>Graphics II and Multicolor are not implemented. A program selecting either gets Graphics I geometry and coloring and will draw the wrong thing — but it will draw <em>something</em> rather than hanging the raster. There is no capability bit for them; the detection probe in §16 is the signal, since a program that finds this VDP rather than a TMS9918 already knows it should be using <code>VMODE</code> instead. §19 sets out why Graphics II was cut.</p>
+        <p>Sprites in the legacy submode take TMS9918 semantics, whatever <code>SPRCTRL</code> and <code>SPRPAL</code> hold:</p>
+        <ul><li>1 bit per pixel, 8 bytes per 8 × 8 pattern; a 16 × 16 sprite with index N draws patterns N to N + 3 as its quadrants, from <code>SPRPAT × $800 + N × 8</code></li><li>a sprite's first row is drawn on display line <strong>Y + 1</strong>, and Y of <code>$E1</code>–<code>$FF</code> means −31…−1, so <code>$FF</code> puts the first row on line 0</li><li>attribute b3:0 is a direct index into palette row 0; color 0 is invisible, and still collides</li><li>attribute b7 is the early-clock bit, shifting the sprite 32 pixels left rather than adding 256 to X; b4–b6 are ignored</li><li>a slot whose Y is <code>$D0</code> always ends the list</li><li>in Text mode there are no sprites: none is evaluated, drawn, counted or collided</li></ul>
+        <p><code>SPRCTRL</code> b0, b1 and b3, <code>SPRCOUNT</code> and <code>SPRLIMIT</code> still apply. At their reset values a legacy program sees up to 16 sprites on a line where a TMS9918 showed four.</p>
+        <h3>What this buys</h3>
+        <p>Text mode and Graphics I both run exactly as they do today — but for the per-line sprite limit — which means the unmodified BIOS boots (§17) and <code>graphics-1.asm</code> still draws what it drew. Neither cost the engine anything: Text is a geometry plus "no attribute fetch", and Graphics I is the Compact geometry plus one attribute-source value. The compatibility is a consequence of the design rather than a layer bolted onto it, which is why it is worth having — and why Graphics II, which <em>would</em> have been a bolted-on layer, is not here.</p>
+        <h3>Recommended starting point for new software</h3>
+<pre><code>  lda #$03                      <span class="cm">; Graphics: 32x30 of 8x8</span>
+  sta VC_REG
+  lda #($80 | $0D)              <span class="cm">; register $0D = VMODE</span>
+  sta VC_REG
+
+  lda #%00110010                <span class="cm">; 4bpp, per-cell attributes, enabled, index 0 opaque</span>
+  sta VC_REG
+  lda #($80 | $15)              <span class="cm">; register $15 = L0CTRL</span>
+  sta VC_REG
+
+  lda #$01                      <span class="cm">; attribute table at $0400, clear of the name table (§7)</span>
+  sta VC_REG
+  lda #($80 | $11)              <span class="cm">; register $11 = L0ATTR</span>
+  sta VC_REG</code></pre>
+        <p>Then upload the tables, place or disable the sprites — <code>SPRCTRL</code> b0, or clear b2 and set <code>SPRCOUNT</code>, since <code>$D0</code> is on a 240-line screen (§10) — and turn the display on with <code>MODE1</code> b6.</p>
+      </section>
+
+      <!-- ============ s10 ============ -->
+      <section id="s10">
+        <span class="sec-num">Section 10</span>
+        <h2>Sprites</h2>
+        <p>64 sprite slots, up to 32 drawn per scanline, at 1, 2, 4 or 8 bits per pixel.</p>
+        <p><strong>Attribute table</strong> — 4 bytes per slot, up to 64 slots = 256 bytes. Only slots below <code>SPRCOUNT</code> are evaluated.</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Offset</th><th>Contents</th></tr></thead>
+            <tbody>
+              <tr><td>+0</td><td><strong>Y</strong> — top edge, as a display line (§3). 0–239 position the sprite down the picture; 241–255 mean −15…−1, entering from the top; 240 is the first row below a 240-line picture, and in the 192-line modes 192–240 are all below it. The legacy submode reads this byte as the TMS9918 did (§9).</td></tr>
+              <tr><td>+1</td><td><strong>X</strong> — left edge, bits 7:0</td></tr>
+              <tr><td>+2</td><td><strong>Pattern</strong> — index into the sprite pattern table</td></tr>
+              <tr><td>+3</td><td><strong>Attributes</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Attribute byte:</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Bit</th><th>Meaning</th></tr></thead>
+            <tbody>
+              <tr><td>b3:0</td><td>Sub-palette, 0–15</td></tr>
+              <tr><td>b4</td><td>Flip horizontally</td></tr>
+              <tr><td>b5</td><td>Flip vertically</td></tr>
+              <tr><td>b6</td><td>Priority — 0: behind layer 1, 1: in front of layer 1</td></tr>
+              <tr><td>b7</td><td>X bit 8 — see below</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>Horizontal position.</strong> X is a 9-bit value: bits 7:0 from attribute offset +1, bit 8 from attribute b7. Values <strong>0–383</strong> are coordinates, covering the widest mode with room to spare; values <strong>384–511</strong> mean −128…−1, which is how a sprite enters from the left. One rule in every <code>VMODE</code> mode — −128 is four times the width of a magnified 16 × 16 sprite — and the early-clock bit in the legacy submode (§9).</p>
+        <p><strong>X and Y are relative to the picture</strong>, not the frame: X = 0 is the picture's left edge, x 32 of the frame in Compact. Sprites are clipped to the picture and never drawn in the border.</p>
+        <p><strong>Ending the list.</strong> <code>SPRCOUNT</code> always bounds the table, which makes evaluation a fixed cost. In addition, while <code>SPRCTRL</code> b2 is set — the reset state, and forced in the legacy submode — a slot whose Y is <code>$D0</code> ends the list there, as on the TMS9918.</p>
+        <p>Y = <code>$D0</code> is row 208, which is off the bottom of a 192-line legacy screen but <strong>on</strong> a 240-line Graphics screen. Software using the full height should clear <code>SPRCTRL</code> b2 and rely on <code>SPRCOUNT</code>; software that wants the familiar idiom can leave it alone. Keeping both costs one bit and one comparison.</p>
+        <p><strong>Patterns</strong> — depth from <code>SPRCTRL</code> b5:4, value 0 always transparent.</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Size</th><th class="num">1bpp</th><th class="num">2bpp</th><th class="num">4bpp</th><th class="num">8bpp</th><th>Layout</th></tr></thead>
+            <tbody>
+              <tr><td>8 × 8</td><td class="num">8 B</td><td class="num">16 B</td><td class="num">32 B</td><td class="num">64 B</td><td>one row at a time, MSB/high nibble leftmost</td></tr>
+              <tr><td>16 × 16</td><td class="num">32 B</td><td class="num">64 B</td><td class="num">128 B</td><td class="num">256 B</td><td>four 8 × 8 patterns — the sprite's index N and N + 1, N + 2, N + 3 — as quadrants in TMS9918 order: top-left, bottom-left, top-right, bottom-right</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>The pattern index counts 8 × 8 patterns</strong>, whatever the sprite size: pattern N starts at <code>SPRPAT × $800 + N × B</code>, where B is the 8 × 8 size at the depth — 8, 16, 32 or 64 bytes. That is the TMS9918's rule at every depth, and it is why §7's 8 KB holds 256 patterns at 4bpp.</p>
+        <p>Sprite palette mapping follows §8's formula with <code>SPRPAL</code> in <code>LxPAL</code>'s place: the palette index of a sprite pixel is <code>((SPRPAL × 16 + subpal) × 2^bpp + value) &amp; $FF</code>. At 1bpp that is <code>((SPRPAL × 16 + subpal) × 2 + 1) &amp; $FF</code> — the formula, not §8's 1bpp nibble row. The legacy submode has its own rule (§9).</p>
+        <p>Size is global, from <code>MODE1</code> b1. <code>MODE1</code> b0 magnifies every sprite ×2, giving 16 × 16 or 32 × 32 on screen. Flipping applies to the whole sprite, quadrant arrangement included.</p>
+        <p><strong>Per-line limit.</strong> Sprites are evaluated in table order, on the lines of the picture only. When more than <code>SPRLIMIT</code> sprites cover a line, the excess — highest indices first — is dropped for that line only. A sprite covers a line if its rows do, even when it lies wholly off the picture to the left or right, so it counts toward the limit. <code>STAT0</code> b6 is set; <code>STAT0</code> b4:0 holds the first sprite dropped since <code>STAT0</code> was last read, and <code>STAT7</code> the first dropped on the most recent overflowing line. Sprites do not flicker; if you want flicker you must implement it yourself.</p>
+        <p><strong>Priority among sprites.</strong> Lower table index wins, as on the TMS9918, and it is settled before the layers are: the lowest-index sprite with a non-transparent pixel owns that pixel, and only then does its attribute b6 set the level it competes with the layers at (§12). A higher-index sprite does not show through a lower-index one, even where the lower one loses to a layer.</p>
+        <p><strong>Collision.</strong> When <code>SPRCTRL</code> b1 is set — the reset state — any two non-transparent sprite pixels landing on the same pixel of the picture set <code>STAT0</code> b5 and, if enabled, raise an interrupt, once a frame (§14). This is the TMS9918's flag, with the TMS9918's limitation: it says <em>something</em> collided, not what. Sprites dropped by the per-line limit do not collide.</p>
+        <p><strong>Detailed collision.</strong> Setting <code>SPRCTRL</code> b3 additionally records <strong>which</strong> sprites were involved, as a 64-bit map across <code>STAT8</code>–<code>STAT15</code>. Both members of every colliding pair are marked. The map accumulates until <code>STAT0</code> is read, with the <code>COL</code> bit it details (§6). b3 does nothing while b1 is clear.</p>
+        <p>This is opt-in because it is the one collision feature with a real cost: working out which sprites every collision involved is roughly 2,500 extra cycles on a worst-case line (§18). Leave b3 clear and you pay nothing; the plain sticky bit needs no owner tracking at all.</p>
+        <p>Collision is tested before priority resolution, so a sprite hidden behind a layer still collides.</p>
+      </section>
+
+      <!-- ============ s11 ============ -->
+      <section id="s11">
+        <span class="sec-num">Section 11</span>
+        <h2>Palette</h2>
+        <p>512 bytes at <code>PALBASE</code>, 256 entries of 12-bit RGB.</p>
+<pre><code>  entry n + 0:  %0000RRRR
+  entry n + 1:  %GGGGBBBB</code></pre>
+        <p>The high nibble of the first byte is ignored.</p>
+        <p>How the palette is divided into groups depends on bit depth — §8 has the rule and the table. At 4bpp it is 16 groups of 16; at 2bpp, 64 groups of 4; at 8bpp the division does not apply. In every case the entry at value 0 within a group is the transparency slot: no layer or sprite drawing at that group's depth uses its stored color, except a layer with <code>LxCTRL</code> b5 set. Entries are shared across depths, though — one depth's transparency slot is an ordinary color at another — and the backdrop, <code>(L0PAL × 16) + (COLOR &amp; $0F)</code>, can be any entry.</p>
+        <p><strong>The backdrop</strong> — the color behind every layer and the border outside the active area — is palette entry <code>(L0PAL × 16) + (COLOR &amp; $0F)</code>, taken for each display line as §3 builds it, border included.</p>
+        <p><strong>Writes take effect immediately.</strong> The VDP holds a cache of the palette as expanded RGB pairs and snoops VRAM writes that fall inside the 512-byte window at <code>PALBASE</code>, updating the cache on the spot; the next line built uses it (§3). There is no dirty flag to set and no reload command. Moving <code>PALBASE</code> re-reads the whole window.</p>
+        <p><strong>Default palette.</strong> Reset writes a default palette into VRAM at <code>$FC00</code> and loads the cache from it. It is organized as sixteen rows of sixteen — so that a 4bpp sub-palette selector picks a row — after the Commander X16's arrangement:</p>
+        <figure>
+          <div class="palwrap">
+            <div class="palgrid" id="palgrid"></div>
+            <div class="palkey">
+              <span><i></i> index 0 of each row &mdash; the transparency slot</span>
+              <span>row = 4bpp sub-palette</span>
+              <span>column = pixel value 0&ndash;15</span>
+            </div>
+          </div>
+          <figcaption>The full 256-entry default palette, every swatch rendered from the spec's 12-bit values. <b>Row 0 is the sixteen TMS9918 colors the ACE shows today</b>, so the same nibble means the same color it did before; rows 2&ndash;15 are generated from a formula rather than hand-picked.</figcaption>
+        </figure>
+        <div class="tw">
+          <table>
+            <thead><tr><th class="c">Row</th><th>Contents</th></tr></thead>
+            <tbody>
+              <tr><td class="c">0</td><td>The sixteen TMS9918 colors the ACE shows today, index 0 transparent</td></tr>
+              <tr><td class="c">1</td><td>Grayscale ramp, <code>$000</code> to <code>$FFF</code></td></tr>
+              <tr><td class="c">2–13</td><td>Twelve hues at roughly 30° intervals — red, orange, yellow, chartreuse, green, spring green, cyan, azure, blue, violet, magenta, rose</td></tr>
+              <tr><td class="c">14</td><td>Brown / sepia</td></tr>
+              <tr><td class="c">15</td><td>Blue-grey</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Each hue row is a sixteen-step ramp, dark at index 0, the pure hue at index 7, tinted toward white at index 15 — so a 4bpp tile that selects one row gets a complete shading ramp for that hue, and picking a row is picking a color scheme.</p>
+        <p>Values, as 12-bit <code>$RGB</code>:</p>
+<pre><code>  row   0    1    2    3    4    5    6    7    8    9    A    B    C    D    E    F
+  ---  ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+   0   000  000  2C4  6D7  55E  77F  C55  4EE  F55  F77  CB5  DC8  2A4  C5B  CCC  FFF
+   1   000  111  222  333  444  555  666  777  888  999  AAA  BBB  CCC  DDD  EEE  FFF
+   2   200  400  600  800  900  B00  D00  F00  F22  F33  F55  F77  F88  FAA  FCC  FDD
+   3   210  420  630  840  950  B60  D70  F80  F92  FA3  FA5  FB7  FC8  FDA  FDC  FED
+   4   220  440  660  880  990  BB0  DD0  FF0  FF2  FF3  FF5  FF7  FF8  FFA  FFC  FFD
+   5   120  240  360  480  590  6B0  7D0  8F0  9F2  AF3  AF5  BF7  CF8  DFA  DFC  EFD
+   6   020  040  060  080  090  0B0  0D0  0F0  2F2  3F3  5F5  7F7  8F8  AFA  CFC  DFD
+   7   021  042  063  084  095  0B6  0D7  0F8  2F9  3FA  5FA  7FB  8FC  AFD  CFD  DFE
+   8   022  044  066  088  099  0BB  0DD  0FF  2FF  3FF  5FF  7FF  8FF  AFF  CFF  DFF
+   9   012  024  036  048  059  06B  07D  08F  29F  3AF  5AF  7BF  8CF  ADF  CDF  DEF
+   A   002  004  006  008  009  00B  00D  00F  22F  33F  55F  77F  88F  AAF  CCF  DDF
+   B   102  204  306  408  509  60B  70D  80F  92F  A3F  A5F  B7F  C8F  DAF  DCF  EDF
+   C   202  404  606  808  909  B0B  D0D  F0F  F2F  F3F  F5F  F7F  F8F  FAF  FCF  FDF
+   D   201  402  603  804  905  B06  D07  F08  F29  F3A  F5A  F7B  F8C  FAD  FCD  FDE
+   E   110  321  431  642  742  852  A63  B73  B84  C96  CA7  DB8  DBA  ECB  EDC  FEE
+   F   112  223  334  446  468  579  68A  79C  8AC  9AD  ABD  BCD  BCE  CDE  DEE  EEF</code></pre>
+        <p>Row 0 is taken from the values the AC6502 documentation publishes for the TMS9918's sixteen colors, quantized to 4 bits per channel — so the same nibble means the same color it does today, and <code>COLOR = $1F</code> is black on white with no software change.</p>
+        <p><strong>The table is normative.</strong> Rows 2–15 were generated, not hand-picked, so they can be regenerated at a different depth or ramp shape. The generator takes each row's index 7 entry as its base — the twelve hues, and <code>$B73</code> and <code>$79C</code> for the two neutral rows:</p>
+<pre><code>def ramp(base):                         <span class="cm"># base = pure hue, 4 bits per channel</span>
+    out = []
+    for n in range(16):
+        if n &lt;= 7:  out.append(tuple(round(b * (n + 1) / 8) for b in base))
+        else:       out.append(tuple(b + round((15 - b) * (n - 7) / 9) for b in base))
+    return out</code></pre>
+        <p>The <code>/ 9</code> in the upper half is deliberate: <code>/ 8</code> would end every ramp at pure white and waste fourteen entries on the same color.</p>
+        <p><code>round</code> there is Python's, which breaks a tie toward the even number. C's <code>round()</code> breaks it away from zero and gives <code>$335</code>, <code>$456</code> and <code>$68B</code> for three entries of row F where the table has <code>$334</code>, <code>$446</code> and <code>$68A</code>. Transcribe the table rather than regenerating it.</p>
+        <div class="note"><p>Reset clobbers <code>$FC00</code>–<code>$FDFF</code>. Nothing in the reset-time memory map lives there.</p></div>
+      </section>
+
+      <!-- ============ s12 ============ -->
+      <section id="s12">
+        <span class="sec-num">Section 12</span>
+        <h2>Compositing and Priority</h2>
+        <p>Each pixel gathers candidates from the backdrop, both layers and the sprites. Each candidate carries a priority level; the highest non-transparent candidate wins.</p>
+        <figure>
+          <div class="sk-note" style="margin-bottom:6px"><span>Front</span><span>Level</span></div>
+          <div class="stack">
+            <div class="stk l1"><span class="lv">6</span><span class="sw" style="background:var(--accent-2)"></span><span class="lb"><b>Layer 1</b> tile with attribute b6 set</span><span class="tg">priority bit</span></div>
+            <div class="stk"><span class="lv">5</span><span class="sw" style="background:var(--amber)"></span><span class="lb"><b>Sprite</b> with attribute b6 set</span><span class="tg">priority bit</span></div>
+            <div class="stk l1"><span class="lv">4</span><span class="sw" style="background:var(--accent)"></span><span class="lb"><b>Layer 0</b> tile with attribute b6 set</span><span class="tg">priority bit</span></div>
+            <div class="stk l1 dfl"><span class="lv">3</span><span class="sw" style="background:var(--accent-2)"></span><span class="lb"><b>Layer 1</b> tile, normal</span><span class="tg">default</span></div>
+            <div class="stk dfl"><span class="lv">2</span><span class="sw" style="background:var(--amber)"></span><span class="lb"><b>Sprite</b> with attribute b6 clear</span><span class="tg">default</span></div>
+            <div class="stk dfl"><span class="lv">1</span><span class="sw" style="background:var(--accent)"></span><span class="lb"><b>Layer 0</b> tile, normal</span><span class="tg">default</span></div>
+            <div class="stk dfl"><span class="lv">0</span><span class="sw" style="background:var(--cyan)"></span><span class="lb"><b>Backdrop</b></span><span class="tg">default</span></div>
+          </div>
+          <div class="sk-note" style="margin-top:6px"><span>Back</span><span></span></div>
+          <figcaption>Seven priority levels from one bit per tile and per sprite. The four marked <b>default</b> are the arrangement with no priority bits set anywhere: backdrop, layer 0, sprites, layer 1.</figcaption>
+        </figure>
+        <p>The default arrangement — no priority bits set anywhere — is backdrop, layer 0, sprites, layer 1, back to front. Setting a layer 0 tile's priority bit lifts that tile above ordinary sprites, which is how a sprite walks behind scenery — and above an ordinary layer 1 tile, level 4 over level 3. Setting a sprite's priority bit lifts it above layer 1, which is how a cursor or a health bar stays on top of everything.</p>
+        <p>Only a cell with an attribute byte has a priority bit: a 1bpp layer, or one whose attribute source is "none", is always at level 1 or 3 (§8). Legacy sprites ignore b6 and are always at level 2 (§9). The sprites resolve among themselves first, by table index, and the winning sprite's b6 is what competes here (§10).</p>
+        <p>A disabled layer contributes nothing. Outside the legacy submode's layer 0 (§9), a layer whose <code>LxCTRL</code> b5 (index 0 opaque) is set never contributes a transparent pixel, so it occludes everything below it.</p>
+        <p>Collision detection considers only sprite-against-sprite overlap, before priority resolution. A sprite hidden behind a layer still collides.</p>
+      </section>
+
+      <!-- ============ s13 ============ -->
+      <section id="s13">
+        <span class="sec-num">Section 13</span>
+        <h2>Scrolling</h2>
+        <p><code>LxSCRX</code> and <code>LxSCRY</code> offset each layer's view into its map, in pixels, independently, with wrapping. Scrolling costs nothing per frame — it is two register writes.</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Mode</th><th>Map size</th><th>X wraps at</th><th>Y wraps at</th></tr></thead>
+            <tbody>
+              <tr><td>Text</td><td>240 × 192</td><td>240</td><td>192</td></tr>
+              <tr><td>Compact</td><td>256 × 192</td><td>256</td><td>192</td></tr>
+              <tr><td>Graphics</td><td>256 × 240</td><td>256</td><td>240</td></tr>
+              <tr><td>Full</td><td>320 × 240</td><td>320</td><td>240</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><code>LxSCRX</code> is 9 bits — the register plus <code>LxCTRL</code> b6 — because Full mode is 320 pixels wide and an 8-bit register could only reach 255 of them. The other modes leave b6 clear, but it is still added if set. Exactly, for a pixel at picture column x on display line y, with map width W and height H:</p>
+<pre><code>  mapX = (x + ((LxCTRL.b6 × 256 + LxSCRX) mod W)) mod W
+  mapY = (y + (LxSCRY mod H)) mod H</code></pre>
+        <p>So increasing <code>LxSCRX</code> moves the picture left and increasing <code>LxSCRY</code> moves it up. The cell, its attribute and its pattern pixel all come from the map position.</p>
+        <p>The map is the same size as the screen, so the map wraps around onto itself. To scroll through content larger than one screen, write the incoming row or column into the cells the scroll is about to expose — the standard technique, and at one row of 32 or 40 bytes per 8 pixels of travel it is well within a 1 MHz budget.</p>
+        <p>The most immediate use is text. The Kernal's <code>VideoScroll</code> currently moves 920 bytes through a RAM buffer, one 40-byte row at a time, 23 times, at roughly 30,000 cycles — about 30 ms at 1 MHz, nearly two frames. Hardware scrolling replaces it with one register write plus 40 stores to clear the newly exposed row: about 500 cycles. See §17.</p>
+        <p><strong>Granularity is per pixel, in both axes, in every mode</strong> — including text. There is no cost to this: the renderer does the same arithmetic either way, and software that only wants whole-row scrolling simply writes multiples of 8. The Kernal should do exactly that, keeping a row origin and writing <code>row × 8</code>, and can then ignore that the hardware is finer than it needs. Smooth scrolling is there for anything that wants it — a credits roll, a menu, a message line — without the Kernal having to know.</p>
+        <p>Scroll values are sampled per display line, as §3 builds each one, so writing <code>LxSCRX</code> from a scanline interrupt bends the layer from two lines below <code>IRQLINE</code>. The scroll registers apply in the legacy submode too (§9).</p>
+      </section>
+
+      <!-- ============ s14 ============ -->
+      <section id="s14">
+        <span class="sec-num">Section 14</span>
+        <h2>Interrupts</h2>
+        <p><code>/INT</code> is asserted while any latched source is still enabled, and released when acknowledged. It is level-driven and shares the AC6502 IRQ line, so a handler must chain to the Kernal's as described in the AC6502 interrupt documentation.</p>
+        <p>A frame begins at screen line 0 (§3): display line 0 in Graphics and Full, 238 in Text and Compact, where the 24 lines before the picture are top border.</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Source</th><th class="c"><code>IRQEN</code> bit</th><th class="c">Latched in <code>STAT1</code></th><th>Fires</th></tr></thead>
+            <tbody>
+              <tr><td>Vertical blank</td><td class="c">b0</td><td class="c">b0</td><td>End of the active picture — the start of display line 192 in Text and Compact, 240 in Graphics and Full. Exactly once a frame</td></tr>
+              <tr><td>Scanline compare</td><td class="c">b1</td><td class="c">b1</td><td>Start of the line matching <code>IRQLINE</code>; <code>STAT2</code> reads <code>IRQLINE</code> in the handler. Every match, so a handler that reprograms <code>IRQLINE</code> gets another</td></tr>
+              <tr><td>Sprite overflow</td><td class="c">b2</td><td class="c">b2</td><td>As the frame's first line that drops a sprite is built (§3). At most once a frame</td></tr>
+              <tr><td>Sprite collision</td><td class="c">b3</td><td class="c">b3</td><td>As the frame's first colliding pixel is built. At most once a frame</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><code>MODE1</code> b5 is an alias for <code>IRQEN</code> b0, so legacy code that enables the vblank interrupt through register 1 still works. <code>STAT0</code> b7 sets at the end of the picture regardless of <code>IRQEN</code>, so software can poll for vertical blank without enabling an interrupt at all (§6).</p>
+        <p><strong>A source latches only while it is enabled.</strong> A source that fires while its <code>IRQEN</code> bit is clear leaves no trace in <code>STAT1</code>, so a handler reading it sees its own interrupts and nothing else. <code>STAT1</code> reads the latches masked by <code>IRQEN</code> as it is now, and <code>/INT</code> is asserted exactly while that is non-zero: clearing a source's <code>IRQEN</code> bit releases <code>/INT</code> without acknowledging it, and setting the bit again before anything is read asserts <code>/INT</code> again — as a TMS9918's <code>F AND IE</code> does. The flags in <code>STAT0</code> are not interrupts and do not follow this rule — b7, b6 and b5 set whether or not anything is enabled, which is what makes polling work (§6).</p>
+        <p>"At most once a frame" holds however quickly a handler acknowledges: an overflow acknowledged the moment it arrives is not raised again by the next overflowing line of the same frame. Overflow and collision belong to the frame whose line is being built, so in Graphics and Full the ones on display line 0 arrive as the frame before begins display line 261.</p>
+        <p><strong>Vertical blank across a change of picture height.</strong> Precisely, vertical blank fires at the first line start of a frame whose screen line is at or past the end of the picture in the mode in effect as that line begins — screen line 216 in Text and Compact, 240 in Graphics and Full. Without a mode change that is display line 192 or 240. With one it is still exactly once: a change from 240 lines to 192 made after screen line 216 raises it as the next line begins, and a change from 192 to 240 made after it has fired does not raise it again. Every geometry's picture has ended by screen line 240, so no frame goes without one.</p>
+        <p>Acknowledge by reading <code>STAT1</code>, which clears every latch, or <code>STAT0</code>, which clears the vertical blank, overflow and collision latches with its flags (§6).</p>
+        <h3>The vertical blanking window</h3>
+        <p>Vertical blank fires when the <strong>picture</strong> ends, not when the frame does, so the window between the flag and the next visible line is everything that is not active display — bottom border, blanking and top border together:</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Mode</th><th class="num">Active</th><th class="num">Window</th><th class="num">Time</th><th class="num">Cycles @ 1 MHz</th><th class="num">@ 2 MHz</th></tr></thead>
+            <tbody>
+              <tr><td>Text, Compact</td><td class="num">192 lines</td><td class="num">70 lines and the odd VGA line (§3)</td><td class="num">4.48 ms</td><td class="num">~4,480</td><td class="num">~8,960</td></tr>
+              <tr><td>Graphics, Full</td><td class="num">240 lines</td><td class="num">22 lines and the odd VGA line</td><td class="num">1.43 ms</td><td class="num">~1,430</td><td class="num">~2,860</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The 192-line figure is the TMS9918's 70 lines and half a line more — which is the point. Software written against a real VDP gets the window it was written for.</p>
+        <p><strong>The 240-line modes give up two thirds of it.</strong> That is the true cost of a full-height picture, and it is easy to miss: Graphics and Full have no borders to hide work in, so roughly 1,400 cycles is all the tear-free time there is. Filling a 960-byte name table takes about 8,600. Two ways out, both standard:</p>
+        <ul><li><strong>Update behind the raster.</strong> Set <code>IRQLINE</code> partway down the picture and, in the handler, rewrite the rows the beam has already passed. The window becomes as large as the part of the screen you are willing to update late.</li><li><strong>Accept the tear</strong> where it does not show — a distant background layer, or a cell the player is not looking at.</li></ul>
+        <p>Nothing here is new; it is the same arithmetic every full-screen 8-bit game has done. It is written down because the mode table makes 240 lines look free.</p>
+        <p><code>IRQLINE</code> is eight bits and display lines run to 261, so lines 256–261 — the last six, in the top border in the 192-line modes and in blanking in the 240-line ones — cannot be selected. Nothing useful happens there.</p>
+        <p><strong>Scanline interrupts are expensive on this CPU.</strong> One compare register means one interrupt per frame unless the handler reprograms <code>IRQLINE</code> on its way out. Entry and exit alone cost roughly 50 cycles before the handler does anything useful; at 1 MHz, an interrupt every eight lines costs about 10% of the machine on overhead alone. Reserve them for a handful of raster splits — a status bar, a palette change, a scroll seam — rather than a per-line effect.</p>
+      </section>
+
+      <!-- ============ s15 ============ -->
+      <section id="s15">
+        <span class="sec-num">Section 15</span>
+        <h2>Reset State</h2>
+        <p>After <code>RST</code>:</p>
+        <ul><li>All registers take the reset values in §5. <code>VMODE</code> = <code>$0</code>, so the legacy submode is in effect and <code>M1</code>/<code>M2</code>/<code>M3</code> select the mode — which, with <code>MODE0</code> = <code>MODE1</code> = <code>$00</code>, is Graphics I. Display <strong>off</strong>, interrupts disabled, layer 1 disabled, sprites enabled with <code>SPRCOUNT = 32</code>, <code>SPRLIMIT = 16</code> and the <code>$D0</code> terminator active. <code>L0CTRL</code> holds <code>$3C</code>, but the legacy submode overrides its depth, attribute source and opacity: layer 0 is Graphics I, colored per pattern group from a 32-byte table at <code>L0ATTR × $40</code> = <code>$0000</code>.</li><li>VRAM contents are <strong>undefined</strong> except <code>$FC00</code>–<code>$FDFF</code>, which holds the default palette. Software must not rely on the rest being zero.</li><li>The palette cache is loaded from the default palette.</li><li>Both port pairs: pointer 0, direction read, prefetch byte 0, flip-flop cleared, <code>STATSEL</code> 0.</li><li>The raster does not stop. The screen line being scanned carries on, the frame's vertical blank is not raised a second time, and the display line is numbered for the reset mode — a 192-line one — from the next line start (§3). Where the raster stands at power-on is undefined.</li><li><code>/INT</code> released; every <code>STAT0</code> flag, <code>STAT7</code>, the collision map and every <code>STAT1</code> latch clear.</li></ul>
+        <p>The existing Kernal's <code>InitVideo</code> — eight register writes of <code>$00 $D0 $00 $00 $01 $00 $00 $1F</code> followed by a 2 KB character set upload — takes this to a working 40 × 24 black-on-white text screen with no changes.</p>
+      </section>
+
+      <!-- ============ s16 ============ -->
+      <section id="s16">
+        <span class="sec-num">Section 16</span>
+        <h2>Detection</h2>
+<pre><code><span class="cm">; Returns carry set if a 6502-PICOVDP is fitted</span>
+DetectVdp:
+  lda VC_STATUS                 <span class="cm">; resynchronize the command flip-flop (§4)</span>
+  lda #$04                      <span class="cm">; select STAT4</span>
+  sta VC_REG
+  lda #$8F                      <span class="cm">; register $0F | $80</span>
+  sta VC_REG
+  lda VC_STATUS
+  cmp #$AC
+  beq @found
+  clc
+  rts
+@found:
+  lda #$00                      <span class="cm">; put STAT0 back</span>
+  sta VC_REG
+  lda #$8F
+  sta VC_REG
+  sec
+  rts</code></pre>
+        <div class="note"><p>On a real TMS9918 only three register bits are decoded, so <code>$8F</code> writes register 7 — the payload <code>$04</code> becomes transparent-on-dark-blue. The probe leaves the screen colors changed there: run it before <code>VideoSetColor</code>, or save and restore register 7 around it. Both status reads also clear the TMS9918's <code>F</code>, fifth-sprite and collision flags.</p><p>A TMS9918 status byte can itself read <code>$AC</code> — <code>F</code> and <code>C</code> set, sprite field 12 — which is why the listing reads status once first: with the flags cleared, a false match needs a frame to end and two sprites to collide within the probe's few dozen cycles. Software that must never be fooled can confirm with <code>STAT6</code>. On this card that first read clears <code>STAT0</code>'s flags too, if <code>STATSEL_A</code> is 0 (§6).</p></div>
+        <p><code>STAT5</code> gives the firmware version and <code>STAT6</code> the capability bits, for software that wants to degrade gracefully across future firmware.</p>
+      </section>
+
+      <!-- ============ s17 ============ -->
+      <section id="s17">
+        <span class="sec-num">Section 17</span>
+        <h2>BIOS Impact</h2>
+        <p>The Kernal touches the VDP in 32 places, all in <code>Kernal.asm</code>. BASIC, the Monitor and Wozmon touch it nowhere.</p>
+        <h3>Works unmodified</h3>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Routine</th><th>Why</th></tr></thead>
+            <tbody>
+              <tr><td><code>ProbeVideo</code></td><td>Writes <code>$A5</code> to <code>$0000</code> and reads it back through the prefetch (§4)</td></tr>
+              <tr><td><code>InitVideo</code></td><td><code>$D0</code> to register 1 selects text mode; registers 2 and 4 place the name and pattern tables where this VDP expects them</td></tr>
+              <tr><td><code>InitCharacters</code></td><td>Text patterns are still 1bpp, 8 bytes per character, 2 KB at <code>$0800</code></td></tr>
+              <tr><td><code>VideoClear</code></td><td>960-byte name table at <code>$0000</code></td></tr>
+              <tr><td><code>VideoSetCursor</code>, <code>VideoGetCursor</code></td><td>Address arithmetic is unchanged: row × 40 + column</td></tr>
+              <tr><td><code>VideoPutChar</code>, <code>VideoChroutRaw</code></td><td>Command protocol unchanged</td></tr>
+              <tr><td><code>VideoSetColor</code></td><td><code>COLOR</code> register semantics unchanged; the default palette makes the same nibble values the same colors</td></tr>
+              <tr><td><code>VideoScroll</code></td><td>Works, but see below</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>That is the whole text path. <strong>No BIOS change is required to boot.</strong></p>
+        <h3>Worth changing</h3>
+        <p><strong><code>VideoScroll</code>.</strong> The current implementation costs ~30,000 cycles per line scrolled — 23 rows × (40 reads + 40 writes + address setup), about 30 ms at 1 MHz. Replacing it with a hardware scroll — guarded by §16's probe for as long as a Kernal must also run on a TMS9918, where register <code>$14</code> is register 4, the pattern table base:</p>
+<pre><code><span class="cm">; Scroll up one text line</span>
+  lda VID_SCROLL_Y
+  clc
+  adc #8
+  cmp #192
+  bcc @noWrap
+  sbc #192
+@noWrap:
+  sta VID_SCROLL_Y
+  sta VC_REG
+  lda #($80 | $14)              <span class="cm">; register $14 = L0SCRY</span>
+  sta VC_REG
+  <span class="cm">; then clear the row that just appeared at the bottom</span></code></pre>
+        <p>About 500 cycles including the row clear and the address of the row to clear — roughly 60× faster. The cost is that the Kernal must track a scroll origin (<code>VID_SCROLL_Y</code> above is a new variable, not an existing one) and fold it into the row × 40 + column address calculation, which is one addition and a modulo-960 wrap.</p>
+        <p><strong>Port B for interrupt handlers.</strong> The Kernal brackets no VDP work with <code>sei</code>/<code>cli</code> today, and its own interrupt handler never touches the VDP; the hazard is a user handler installed through <code>IRQ_PTR</code> landing between the two writes of a command. On this card that handler uses port B (<code>$9C02</code>/<code>$9C03</code>), acknowledges through <code>STAT1</code>, and restores <code>VBANK</code> and <code>VINC</code> if it writes them (§4, §6). Worth adopting as a convention across the Kernal and in documentation — on this card only: on a TMS9918, <code>$9C02</code>/<code>$9C03</code> reach the same port as <code>$9C00</code>/<code>$9C01</code>.</p>
+        <p><strong>New Kernal entry points to consider.</strong> Nothing here is required, but the following would make the new capabilities reachable from BASIC and from ordinary assembly without a programmer having to drive registers by hand: set mode, set a palette entry, set layer scroll, load a tile set, place a sprite, enable a layer.</p>
+        <h3>Breaks</h3>
+        <div class="tw">
+          <table>
+            <thead><tr><th>What</th><th>Effect</th></tr></thead>
+            <tbody>
+              <tr><td>Graphics II</td><td>Programs using it get Graphics I geometry and will draw garbage. <code>graphics-2.asm</code> (6502-DOCS, <code>samples/assembly/</code>) and the Graphics II part of the documentation's graphics chapter need rewriting.</td></tr>
+              <tr><td>Multicolor mode</td><td>Same — Graphics I geometry, wrong picture. <code>multicolor.asm</code> in the same place.</td></tr>
+              <tr><td>16 KB VRAM wrap</td><td>A pointer running off <code>$3FFF</code> now continues into <code>$4000</code> instead of wrapping to <code>$0000</code>.</td></tr>
+              <tr><td>Register decode</td><td>A register number above 7 no longer aliases onto 0–7. The F18A unlock sequence, and <code>f18a-detect.asm</code>, write VDP registers instead.</td></tr>
+              <tr><td><code>$9C02</code>/<code>$9C03</code></td><td>No longer mirrors of <code>$9C00</code>/<code>$9C01</code>: they are port B.</td></tr>
+              <tr><td>Sprites per line</td><td>16 by default, not 4: a program that relied on the fifth sprite vanishing, or on the fifth-sprite flag, sees neither until 17 cover a line — 33 if it raises <code>SPRLIMIT</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Text mode and Graphics I keep working, so the BIOS boots untouched and <code>graphics-1.asm</code> (6502-DOCS, <code>samples/assembly/</code>) still runs. Both should gain a note that they are legacy modes and that Graphics and Full supersede them.</p>
+        <p>The natural replacement for <code>graphics-2.asm</code> is Graphics mode at 1bpp with the per-pattern-row attribute source — the same technique Graphics II used for its coloring, without the three-bank name indexing. It will not be a line-for-line port, because it no longer needs to be: 256 tiles with a color pair per row, or 512 at 4bpp with 16 colors each, is a different proposition from 768 monochrome ones.</p>
+        <p>Sprites keep TMS9918 semantics — one color, Y + 1, <code>$D0</code> terminator, early-clock bit, no sprites in Text (§9) — for as long as the program stays in the legacy submode, which it does by never writing <code>VMODE</code>.</p>
+        <p>The emulator's <code>src/core/IO/Video.ts</code> has had the same treatment the firmware needs, and is the reference implementation (§18).</p>
+      </section>
+
+      <!-- ============ s18 ============ -->
+      <section id="s18">
+        <span class="sec-num">Section 18</span>
+        <h2>Implementation Notes</h2>
+        <h3>Firmware shape</h3>
+        <p>The PICO9918 structure carries over, with both cores building the picture. Core 0 drives VGA timing: at the start of each screen line (every second VGA line) its sync program raises an interrupt, and core 0 signals core 1, whose interrupt is §3's latch. Core 1's renderer then evaluates the sprites and divides the next display line between the cores at a column chosen to balance them. Each core builds its half of the line — both layers and the sprites, by §12's priorities, into a 320-byte palette-index line of its own — and expands its columns through a 256-entry <code>uint32</code> lookup (one source pixel → two output pixels) into the RGB buffer the line is sent from. All of it happens within the current display line, which is what §3's latch point gives the renderer. Bus accesses arrive as PIO interrupts on core 1.</p>
+        <p>No pixel of a line depends on any other column's, so the halves are exact wherever the line is divided: priority among sprites and collision are resolved within each half's own pixels. Every status change — overflow, collision, their interrupts — is published by core 1, once both halves are built.</p>
+        <p>What changes:</p>
+        <ul><li><code>vrEmuTms9918</code> is not used. The renderer is new.</li><li>Core 0, which in the PICO9918 does nothing but VGA, builds half of every line.</li><li><code>tmsRead.pio</code> and its handler are rewritten: MODE1 is sampled alongside MODE, and a second port's prefetch and status byte have to be staged beside the first's, which the 32-bit word the read program works from has no room for (§2).</li><li><code>tmsWrite</code> needs no PIO change — MODE1 already arrives in bit 31 of the FIFO word. Only the handler changes.</li><li>Two sets of pointer/prefetch/flip-flop state instead of one.</li><li>VRAM grows from 16 KB to 64 KB. Comfortable in 520 KB.</li></ul>
+        <h3>Unpacking tables</h3>
+        <p>A lookup from one pattern byte plus a group number to output bytes applies the palette group during unpacking:</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th class="c">Depth</th><th>Table</th><th class="num">Size</th><th>Per tile row</th></tr></thead>
+            <tbody>
+              <tr><td class="c">1bpp</td><td>16 nibble-values → 4 bytes of mask, selecting fg or bg</td><td class="num">64 B</td><td>two loads, two 32-bit stores</td></tr>
+              <tr><td class="c">2bpp</td><td>256 byte-values → 4 values, the group added</td><td class="num">1 KB</td><td>two loads, two 32-bit stores</td></tr>
+              <tr><td class="c">4bpp</td><td>256 byte-values × 16 groups → 2 bytes</td><td class="num">8 KB</td><td>four loads, two 32-bit stores</td></tr>
+              <tr><td class="c">8bpp</td><td>none</td><td class="num">—</td><td>two 32-bit loads, two stores</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The 4bpp table is the one worth building. Measured against the best arithmetic unpacking, it saves 16% of an opaque 4bpp layer's cycles and 4% of a merged one's.</p>
+        <h3>Measured per-scanline budget</h3>
+        <p>A display line is two VGA lines, 63.56 µs, and the renderer has one display line to build the next: <strong>22,371 cycles</strong> at 352 MHz. These figures are measured on an RP2350 (a Raspberry Pi Pico 2, the PRO's silicon), with a renderer built to this design. The worst case measured is:</p>
+        <ul><li>both layers scrolled, with per-cell attributes, flips and priority</li><li>64 sprite slots covering the line</li><li>every sprite pixel solid, and every sprite colliding with its neighbour</li></ul>
+        <figure>
+          <div class="figframe">
+            <svg viewBox="0 0 700 232" role="img" aria-label="Measured cycles per display line in Full mode at 4bpp, against the 22,371-cycle budget at 352 MHz. On one core the worst-case line with 32 16 by 16 sprites takes 24,780 cycles and does not fit. Split across both cores, 32 magnified sprites with detailed collision take 21,850 cycles, 2 percent spare, and at SPRLIMIT 16 they take 16,862, 25 percent spare.">
+              <!-- scale: 0..26,000 cycles over x 50..650 -->
+              <g stroke="var(--rule)" stroke-width="1">
+                <line x1="165.38" y1="30" x2="165.38" y2="186"/>
+                <line x1="280.77" y1="30" x2="280.77" y2="186"/>
+                <line x1="396.15" y1="30" x2="396.15" y2="186"/>
+                <line x1="511.54" y1="30" x2="511.54" y2="186"/>
+                <line x1="626.92" y1="30" x2="626.92" y2="186"/>
+              </g>
+              <text x="50" y="22" font-size="11" font-weight="600" fill="currentColor">One core &middot; 32 &times; 16 sprites</text>
+              <rect x="50" y="30" width="65.68" height="30" fill="var(--accent)"/>
+              <rect x="115.68" y="30" width="115.87" height="30" fill="var(--accent-2)"/>
+              <rect x="231.55" y="30" width="29.03" height="30" fill="var(--amber)" opacity=".55"/>
+              <rect x="260.58" y="30" width="232.78" height="30" fill="var(--amber)"/>
+              <rect x="493.36" y="30" width="38.35" height="30" fill="var(--cyan)"/>
+              <rect x="531.71" y="30" width="70.15" height="30" fill="var(--ink-3)"/>
+              <rect x="601.86" y="30" width="19.98" height="30" fill="var(--ink-2)" opacity=".5"/>
+              <text x="628" y="50" font-size="11" fill="var(--red)">24,780</text>
+              <text x="50" y="90" font-size="11" font-weight="600" fill="currentColor">Split across cores &middot; 32 magnified, detailed collision</text>
+              <rect x="50" y="98" width="504.23" height="22" fill="var(--accent)" fill-opacity=".28" stroke="var(--accent)" stroke-width="1.5"/>
+              <text x="574" y="114" font-size="11" fill="currentColor">21,850 &middot; 2% spare</text>
+              <text x="50" y="144" font-size="11" font-weight="600" fill="currentColor">Split &middot; the same sprites at SPRLIMIT 16</text>
+              <rect x="50" y="152" width="389.12" height="22" fill="var(--green-soft)" stroke="var(--green)" stroke-width="1.5"/>
+              <text x="445" y="168" font-size="11" fill="var(--green)">16,862 &middot; 25% spare</text>
+              <line x1="566.26" y1="26" x2="566.26" y2="186" stroke="var(--red)" stroke-width="1.5" stroke-dasharray="4 3"/>
+              <text x="560" y="90" font-size="10.5" fill="var(--red)" text-anchor="end">budget 22,371</text>
+              <g stroke="var(--rule-2)" stroke-width="1">
+                <line x1="50" y1="186" x2="650" y2="186"/>
+                <line x1="50" y1="186" x2="50" y2="192"/>
+                <line x1="165.38" y1="186" x2="165.38" y2="192"/>
+                <line x1="280.77" y1="186" x2="280.77" y2="192"/>
+                <line x1="396.15" y1="186" x2="396.15" y2="192"/>
+                <line x1="511.54" y1="186" x2="511.54" y2="192"/>
+                <line x1="626.92" y1="186" x2="626.92" y2="192"/>
+              </g>
+              <g font-size="10.5" fill="var(--ink-3)" text-anchor="middle">
+                <text x="50" y="206">0</text>
+                <text x="165.38" y="206">5,000</text>
+                <text x="280.77" y="206">10,000</text>
+                <text x="396.15" y="206">15,000</text>
+                <text x="511.54" y="206">20,000</text>
+                <text x="626.92" y="206">25,000</text>
+              </g>
+              <text x="350" y="226" font-size="10.5" fill="var(--ink-3)" text-anchor="middle" letter-spacing="1">CYCLES PER DISPLAY LINE, FULL MODE 4BPP, AT 352 MHZ</text>
+            </svg>
+          </div>
+          <div class="legend">
+            <div class="lgi"><span class="sw" style="background:var(--accent)"></span><span>Layer 0, 320 px, 4bpp</span><span class="v">2,846</span></div>
+            <div class="lgi"><span class="sw" style="background:var(--accent-2)"></span><span>Layer 1, 320 px, 4bpp with transparency merge</span><span class="v">5,021</span></div>
+            <div class="lgi"><span class="sw" style="background:var(--amber);opacity:.55"></span><span>Sprite evaluation, 64 slots</span><span class="v">1,258</span></div>
+            <div class="lgi"><span class="sw" style="background:var(--amber)"></span><span>Sprite composite, 32 × 16 px</span><span class="v">10,087</span></div>
+            <div class="lgi"><span class="sw" style="background:var(--cyan)"></span><span>Border and palette expansion, 320 px</span><span class="v">1,662</span></div>
+            <div class="lgi"><span class="sw" style="background:var(--ink-3)"></span><span>Bus interrupt service, 32 accesses at 2 MHz</span><span class="v">3,040</span></div>
+            <div class="lgi"><span class="sw" style="background:var(--ink-2);opacity:.5"></span><span>Line start: register snapshot, 32 VRAM writes</span><span class="v">866</span></div>
+            <div class="lgi tot"><span class="sw" style="background:currentColor"></span><span>Total, one core</span><span class="v">24,780</span></div>
+            <div class="lgi"><span class="sw" style="background:var(--panel-3)"></span><span><em>plus</em> detailed collision (<code>SPRCTRL</code> b3), when enabled</span><span class="v"><em>2,530</em></span></div>
+            <div class="lgi"><span class="sw" style="background:var(--panel-3)"></span><span><em>plus</em> magnified sprites</span><span class="v"><em>3,185</em></span></div>
+          </div>
+          <figcaption>Measured cycles per display line, drawn to scale against the budget at 352 MHz. <b>One core cannot build the worst-case line in time; split across both cores, every measured worst case fits.</b> The split bars run from latch to expanded output with the bus and VGA interrupts running.</figcaption>
+        </figure>
+        <p>One core cannot build that line in time. That is why the sprites are built on core 0. Split that way, with the bus and VGA interrupts running for real, the longest line from latch to expanded output at 352 MHz is:</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Full mode, 4bpp, two layers</th><th class="num">32 sprites on the line</th><th class="num">Spare</th><th class="num">16 sprites on the line</th><th class="num">Spare</th></tr></thead>
+            <tbody>
+              <tr><td>16 × 16 sprites</td><td class="num">19,448</td><td class="num">13%</td><td class="num">16,475</td><td class="num">26%</td></tr>
+              <tr><td>16 × 16, detailed collision</td><td class="num">20,255</td><td class="num">9%</td><td class="num">16,501</td><td class="num">26%</td></tr>
+              <tr><td>Magnified</td><td class="num">20,962</td><td class="num">6%</td><td class="num">16,800</td><td class="num">25%</td></tr>
+              <tr><td>Magnified, detailed collision</td><td class="num">21,850</td><td class="num">2%</td><td class="num">16,862</td><td class="num">25%</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Every geometry and depth fits, and Full mode at 4bpp is the worst of them. <code>SPRLIMIT</code> resets to 16 (§5), so the reset state keeps a quarter of the worst line spare; software that wants 32 sprites a line sets it, and the worst case still fits. Without sprites, Full mode's two 4bpp layers take 13,435 cycles with bus service and line start: 40% of the line spare.</p>
+        <p>Bit depth moves the layers' cost less than it might seem. 8bpp is the cheapest layer to render and 4bpp the dearest, but only about 30% apart, because most of a cell's cost is fetching its name, attribute and pattern and merging it by priority. Sprite cost barely depends on depth. Depth costs VRAM and upload time more than render time.</p>
+        <p>The budget is measured at 352 MHz, and the firmware runs there (§2).</p>
+        <h3 id="measured-firmware">Measured with the firmware</h3>
+        <p>The figures above are from the timing spike. The firmware, whose renderer implements this document and builds each line in two halves (Firmware shape, above), was measured on the same silicon over the same worst cases, at 352 MHz, with VGA's interrupts running and snapshots streaming over USB. The longest line from latch to expanded output, with no bus traffic:</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Full mode, 4bpp, two layers</th><th class="num">32 sprites on the line</th><th class="num">Spare</th><th class="num">16 sprites on the line</th><th class="num">Spare</th></tr></thead>
+            <tbody>
+              <tr><td>16 × 16 sprites</td><td class="num">17,009</td><td class="num">24%</td><td class="num">13,368</td><td class="num">40%</td></tr>
+              <tr><td>16 × 16, detailed collision</td><td class="num">18,921</td><td class="num">15%</td><td class="num">14,232</td><td class="num">36%</td></tr>
+              <tr><td>Magnified</td><td class="num">18,319</td><td class="num">18%</td><td class="num">14,305</td><td class="num">36%</td></tr>
+              <tr><td>Magnified, detailed collision</td><td class="num">20,164</td><td class="num">10%</td><td class="num">15,470</td><td class="num">31%</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>No line was late in any geometry, depth or sprite setting, run for ten minutes between them, nor in the last row of the table, run ten minutes alone. Full mode at 4bpp is still the worst.</p>
+        <p>With the bus stand-in the spike's table assumed — a VRAM write every 2 µs, on the core that takes the bus — the same lines take:</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Full mode, 4bpp, two layers, bus every 2 µs</th><th class="num">32 sprites on the line</th><th class="num">Spare</th><th class="num">16 sprites on the line</th><th class="num">Spare</th></tr></thead>
+            <tbody>
+              <tr><td>16 × 16 sprites</td><td class="num">21,005</td><td class="num">6%</td><td class="num">16,990</td><td class="num">24%</td></tr>
+              <tr><td>16 × 16, detailed collision</td><td class="num">27,885</td><td class="num bad">late</td><td class="num">18,025</td><td class="num">19%</td></tr>
+              <tr><td>Magnified</td><td class="num">23,009</td><td class="num bad">late</td><td class="num">17,667</td><td class="num">21%</td></tr>
+              <tr><td>Magnified, detailed collision</td><td class="num">80,364</td><td class="num bad">late</td><td class="num">18,874</td><td class="num">16%</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>So at the reset <code>SPRLIMIT</code> of 16 every case fits, with 16–24% of the line spare rather than a quarter. At 32 under that traffic, detailed collision or magnification makes lines late in Full mode at 2 and 4bpp, and both together do in Full mode at 1 and 8bpp and in Graphics mode at 2 and 4bpp. The real bus interface's cost, under a real CPU, is measured on the PRO.</p>
+        <h3 id="late-lines">Late lines</h3>
+        <p>A line is late if its build has not finished when its first VGA line begins. No line was late in any case measured above. But the worst of them has little spare, and traffic heavier than the measurement's is conceivable, so a late line is specified:</p>
+        <ul><li>It shows the most recently completed line again, for both of its VGA lines.</li><li>Its build still runs to the end. Overflow and collision found in it reach <code>STAT0</code>, <code>STAT1</code>, <code>STAT7</code>, the collision map and <code>/INT</code> exactly as they would have (§6, §14).</li><li>Nothing else is affected. The display line counter, the next line's latch (§3), VRAM, the palette and the registers all carry on as if the line had been on time.</li></ul>
+        <p>The firmware counts late lines in its debug build.</p>
+        <h3>Build order</h3>
+        <ol><li>Register model and VRAM in the emulator (<code>Video.ts</code>) — cheap to iterate. <em>Done: <code>6502-EMULATOR</code> 3.0.0, <code>v3-vdp</code> branch, which implements the whole of this specification.</em></li><li>Scanline renderer spike on the RP2350, timed, no bus interface. <em>Done: measured above, with the sprites on core 0.</em></li><li>Bus interface: four ports, two pointer sets, PIO change.</li><li>Text mode via the legacy submode, and boot the unmodified BIOS.</li><li><code>VMODE</code>, the remaining geometries, and the attribute sources — legacy Graphics I falls out here, and <code>graphics-1.asm</code> becomes the regression test.</li><li>Bit depths 2, 4 and 8; layer 1; scrolling.</li><li>Sprites.</li><li>Interrupts.</li><li>Kernal changes: hardware scroll, port B in the IRQ handler, new entry points.</li></ol>
+        <p>Step 4 is the milestone worth reaching first: an unmodified BIOS booting to an <code>OK</code> prompt on a VDP with none of the TMS9918 left inside it.</p>
+        <h3>The emulator as reference</h3>
+        <p><code>6502-EMULATOR</code>'s <code>src/core/IO/Video.ts</code> implements every section of this document, cites them by number, and is held to it by unit tests and by golden frames of real programs. Where firmware and emulator disagree, one of them is wrong, and it is settled in this document first. Two cartridges written for this card, in the emulator's <code>samples/</code>, make test programs: <code>vdp-modes</code> cycles the four geometries at 1, 2, 4 and 8bpp, and <code>vdp-layers</code> scrolls two 4bpp layers in Full mode past sprites at §12's levels 1 to 6.</p>
+        <p>It approximates the hardware in a few places, none of which a program should be able to rely on:</p>
+        <ul><li><strong>Frame timing.</strong> 262 equal display lines at exactly 60 Hz, with no odd VGA line: its vertical blanking windows are 70 and 22 lines, about 0.6% and 2% short of §14's times. The golden frame numbers of the two cartridges assume this, and will not line up on hardware.</li><li><strong><code>STAT3</code> b1</strong> is modelled as the last fifth of each of a display line's two VGA lines, measured from the start of the display line.</li><li><strong><code>STAT5</code></strong> reports the revision of this document, <code>$04</code>, having no firmware of its own.</li><li><strong>A cold start</strong> — a power cycle — zeroes VRAM before the palette is installed, and starts the raster at display line 0 of the reset mode, screen line 24. §15 leaves both undefined.</li><li>It presents a frame to its host when the frame's last row has been built.</li><li>It builds every line in time, so it never shows a late line (§18).</li></ul>
+      </section>
+
+      <!-- ============ s19 ============ -->
+      <section id="s19">
+        <span class="sec-num">Section 19</span>
+        <h2>Deliberate Omissions and Future Space</h2>
+        <h4>No blitter</h4>
+        <p>A fill/copy engine would be the single largest practical win for a 1 MHz CPU — clearing a 960-byte table would go from 3.8 ms to nothing — and it is nearly free to implement, being a <code>memset</code> on the Pico. It is left out to keep this revision a pure VDP. Registers <code>$28</code>–<code>$2F</code> are the natural home if it is added later; <code>STAT6</code> b6 is reserved to advertise it.</p>
+        <h4>No per-sprite size</h4>
+        <p>The attribute byte is full. A fifth attribute byte, or a second sprite bank with a wider entry, would solve it.</p>
+        <h4>No Multicolor mode</h4>
+        <p>Its 4 × 4 blocks come from the pattern table directly with no name indirection, which is a render path shared with nothing else. Graphics at 4bpp does everything it did and more.</p>
+        <h4>No Graphics II</h4>
+        <p>This one was close, and was in an earlier draft. It works by splitting the screen into thirds and giving each third its own 2 KB pattern bank, so that all 768 cells of a 32 × 24 screen can hold a unique 8 × 8 pattern — the TMS9918's way of faking a bitmap mode. Reproducing it needs a 10-bit pattern index that exists nowhere else in the design, <code>L0PAT</code> and <code>L0ATTR</code> read as bit flags rather than as base addresses, and the R3/R4 name-index masks, which are fiddly enough to get subtly wrong. The earlier draft skipped the masks and carried a caveat that a masked program "will render incorrectly" — and a mode that silently mis-renders in an undocumented corner is worth less than a mode that is honestly absent.</p>
+        <p>What it offered that the new engine does not is <strong>768 unique monochrome cells</strong>. What the new engine offers instead is 512 tiles with 16 colors each, which is a straight trade up for anything that was using Graphics II as a drawing surface. Its coloring scheme survives as attribute source <code>10</code> (§8), available at any geometry and any time.</p>
+        <p>If a true drawing surface is ever wanted, a linear bitmap mode is the better answer than Graphics II was: 1bpp over 256 × 240 is 7.5 KB and 31 ms to upload, 2bpp is 15 KB and 61 ms. Both are plausible on this CPU; 4bpp at 30 KB and 123 ms is not.</p>
+        <h4>No sprite-to-layer collision</h4>
+        <p>The NES's sprite-0 hit exists to time raster splits; real scanline interrupts make it unnecessary here.</p>
+        <h4>No wider text mode</h4>
+        <p>6 × 8 cells at 40 columns leave the frame 80 pixels wide of border. Full mode at 1bpp with per-cell attributes is the wider text screen this design has: 40 × 30 of 8 × 8, no border. What is not here is a 6-pixel cell across the whole 320 pixels — 53 columns — which would be a fifth geometry; <code>VMODE</code> <code>$5</code>–<code>$F</code> are free for it.</p>
+        <h4>No maps larger than the screen</h4>
+        <p>Name tables the size of the screen — 768, 960 or 1200 bytes — keep every mode at 1 or 2 KB of alignment, at the cost of making scrolling a write-the-incoming-edge exercise. A larger map would be a <code>LxCTRL</code> bit selecting a 64 × 64 name table at 4 KB.</p>
+        <h4>No raster/display list</h4>
+        <p>Per-scanline register changes must come from the CPU through scanline interrupts, which are expensive here. A table of <code>(line, register, value)</code> triples executed by the VDP would make raster effects free.</p>
+      </section>
+
+      <!-- ============ resolved ============ -->
+      <section id="resolved">
+        <span class="sec-num">Appendix</span>
+        <h2>Resolved Design Questions</h2>
+        <p>Recorded so the reasoning does not have to be reconstructed later.</p>
+        <h4>Text mode keeps its second layer</h4>
+        <p>Layer 1 in text mode costs render time that a single-layer text screen does not need, but it is the same code path as everywhere else and switching it off is one bit. A status bar or a frame held on one layer while the other scrolls is worth having available.</p>
+        <h4>Scrolling is per-pixel in both axes, in every mode</h4>
+        <p>The renderer does the same arithmetic either way, so row granularity would be an artificial limit. The Kernal should write multiples of 8 and ignore that the hardware is finer (§13).</p>
+        <h4>Both list terminators are kept</h4>
+        <p><code>SPRCOUNT</code> always bounds the sprite table — it makes evaluation a fixed cost and is what new software should use — and <code>SPRCTRL</code> b2 additionally re-enables the TMS9918's <code>$D0</code> terminator, which resets active. Software using the full 240-line height clears it, because <code>$D0</code> is row 208 and therefore on screen; legacy software never touches it, and the legacy submode forces it on regardless (§9). One bit, one comparison, no compromise either way.</p>
+        <p><strong>The default palette is 16 rows of 16</strong> (§11): the TMS9918 colors, a grayscale ramp, twelve hue ramps and two neutral ramps. Rows 2–15 are generated from a published formula rather than hand-picked, so the arrangement can be regenerated if the ramp shape turns out wrong in practice.</p>
+        <h4>The display line follows the raster</h4>
+        <p>The VGA raster cannot move, so a change between a 192-line and a 240-line picture has to show up somewhere. Three places were weighed. Counting display lines from the top of the frame would remove the jump, but at the price of every raster split in the 192-line modes moving 24 lines under a mode change, which is what counting from the picture exists to prevent (§3). Deferring a change of height to the next frame would confine the jump to vertical blanking, but make that one kind of mode change take effect a frame late, unlike every other. So the jump happens where the change does, at the next line start, and §14 defines vertical blank by the screen line so that the frame it happens in still has exactly one. Software that changes height with the display off, during vertical blank — as mode changes are normally made — never sees it.</p>
+        <h4>Collision detection is layered</h4>
+        <p>The TMS9918's single sticky bit stays, at no cost. Detailed per-sprite reporting — a 64-bit map across <code>STAT8</code>–<code>STAT15</code> — is available behind <code>SPRCTRL</code> b3, off at reset, because it is the one collision feature that costs real cycles (roughly 2,500 on a worst-case line, measured, for tracking which sprite owns each pixel). Anyone who never enables it pays nothing, and the compatible behavior is the default.</p>
+        <h4>Full mode keeps two layers and 32 sprites a line; the sprites move to core 0</h4>
+        <p>Measured on the RP2350 (§18), one core cannot build Full mode's worst-case line in time at either clock preset. The remedies draft 0.3 listed were a 352 MHz clock, a lower default <code>SPRLIMIT</code>, and Full mode as a single-layer mode. They do not get there either, alone or together, without giving up features, and a single-layer Full mode would have broken software already written for two layers. Building the sprites on the second core does: every measured worst case fits at 352 MHz. <code>SPRLIMIT</code> still resets to 16, so the reset state keeps a quarter of the worst line spare as the spike measured it — 16–24% as the firmware measured it under the same bus stand-in, and 31–40% without (<a href="#measured-firmware">§18</a>) — and a late line is specified for anything heavier than was measured.</p>
+        <h4>The 4bpp unpacking table stays</h4>
+        <p>It saves 16% of an opaque 4bpp layer's build and 4% of a merged one's against the best arithmetic unpacking. That is less than draft 0.3 assumed, but it costs 1.5% of the SRAM.</p>
+      </section>
+
+      <!-- ============ open ============ -->
+      <section id="open">
+        <span class="sec-num">Appendix</span>
+        <h2>Still Open</h2>
+        <p>Nothing structural. The three questions the last draft left open are resolved above: Graphics II is cut (§19), Full mode is in (§9), and 512 tiles per layer stay — which commits attribute bit 7 permanently and rules out using it for a second priority level or a per-tile depth override.</p>
+        <p>What remains is measurement, not design:</p>
+        <ol><li><s><strong>Time Full mode first.</strong></s> Resolved in draft 0.4: measured (§18), with the sprites moved to core 0 — see <a href="#resolved">Resolved Design Questions</a>.</li><li><s><strong>Confirm the 4bpp unpacking table earns its 8 KB.</strong></s> Resolved in draft 0.4: it does, by less than assumed.</li><li><strong>Check that the palette's hue ramps are usable in practice</strong> rather than merely evenly spaced. They are generated from a formula (§11) precisely so that the answer can be "no" cheaply.</li><li><strong>How fresh the status byte can be.</strong> The read program serves status from a byte staged before the read (§2); how far that lags decides whether <code>STAT3</code> b1 and <code>STAT2</code> can be trusted to the line.</li></ol>
+        <p>Draft 0.2 closed the questions the emulator raised while implementing draft 0.1, draft 0.3 the ones planning the firmware against the VGA raster raised, and draft 0.4 the first two above, on silicon; they are listed under Revision History.</p>
+      </section>
+
+      <!-- ============ history ============ -->
+      <section id="history">
+        <span class="sec-num">Appendix</span>
+        <h2>Revision History</h2>
+        <h3>Draft 0.4</h3>
+        <p>Measured on the RP2350, with a renderer built to this design. Normative changes:</p>
+        <ul><li><strong><code>SPRLIMIT</code> resets to 16</strong>, not 32 (§5, §15). Every other reset value is unchanged. A legacy program sees up to 16 sprites on a line by default (§9, §17).</li><li><strong>A late line is specified</strong> (§18). It shows the most recently completed line again; its overflow and collision, and everything else, are unaffected.</li></ul>
+        <p>Also: §18's budget is measured rather than estimated, and the firmware builds sprites on core 0; the design is budgeted at 352 MHz (§2). Still Open 1 and 2 are resolved. Detailed collision costs roughly 2,500 cycles, not 500 (§10).</p>
+        <p>The emulator implements it and reports <code>STAT5</code> = <code>$04</code>. No index or VRAM golden moved; the structural goldens record the new <code>SPRLIMIT</code>.</p>
+        <p>Amended when the firmware first ran (informative; nothing normative changed): §2 names the PRO's MCU precisely, the RP2354A; §18 describes the firmware building each line in two halves, one a core, and records the budget it measured.</p>
+        <h3>Draft 0.3</h3>
+        <p>Settled while planning the firmware, against the VGA raster the hardware drives — which the emulator does not have, so checking draft 0.2 against it could not raise these. Normative changes:</p>
+        <ul><li><strong>Screen lines</strong> (§3). The frame is 262 screen lines and one odd VGA line whatever the mode, and the display line is the screen line less the picture's top border. The odd VGA line follows screen line 261: display line 261 in Graphics and Full, but display line 237 in Text and Compact, where draft 0.2 put it after 261 — among the top border's visible rows.</li><li><strong>A change between a 192-line and a 240-line geometry moves the display line numbering by 24</strong> at the next line start (§3). Draft 0.2 said the counter was not re-based, which a raster that cannot move does not allow: the picture would have sat 24 rows out of place.</li><li><strong>A frame begins at screen line 0, and vertical blank fires exactly once in it</strong> (§14), defined by the screen line so that a change of picture height cannot skip it or raise it twice. Without a mode change nothing moves: the events fall on the same display lines as before.</li><li><strong>Reset does not stop the raster</strong> (§15). Draft 0.2 restarted the display line counter at 0, which firmware cannot do without restarting the monitor's sync. Where the raster stands at power-on is undefined; the emulator starts it at display line 0 (§18).</li></ul>
+        <p>The emulator implements all of it and reports <code>STAT5</code> = <code>$03</code>. No golden frame moved.</p>
+        <h3>Draft 0.2</h3>
+        <p>Settled while implementing draft 0.1 in the emulator, and against the PICO9918 firmware source. Normative changes:</p>
+        <ul><li><strong>The legacy submode is TMS9918-exact</strong> where draft 0.1 said so and did not specify how (§9): index 0 always transparent whatever <code>L0CTRL</code> b5 holds; sprite Y drawn at Y + 1 with <code>$E1</code>–<code>$FF</code> negative; <code>$D0</code> always terminates; attribute b4–b6 and <code>SPRPAL</code> ignored; b3:0 an index into palette row 0; no sprites in Text.</li><li><strong>Status reads are split, and the flags are sticky</strong> (§6, §14). A <code>STAT0</code> read clears its flags, <code>STAT7</code>, the collision map and the matching latches; a <code>STAT1</code> read clears the latches only. Nothing else but a reset clears the flags. Vertical blank, overflow and collision fire at most once a frame; <code>/INT</code> and <code>STAT1</code> are masked by <code>IRQEN</code> as it is now.</li><li><strong><code>LxPAL</code> is the palette row</strong> of a 4bpp layer with attribute source "none" (§8).</li><li><strong>A sprite's pattern index counts 8 × 8 patterns</strong>, with no bits ignored; a 16 × 16 sprite at index N uses N to N + 3 (§10).</li><li><strong>Timing</strong> (§3, §14): 262 display lines numbered 0–261 and an odd VGA line; line N built from the state at the start of line N − 1; the scanline compare at the start of the matching line; the border taken per line.</li><li><strong>Stated where draft 0.1 was silent:</strong> the port protocol's prefetch, pointer and flip-flop rules and <code>VBANK</code> sampling (§4); what each out-of-range register value does (§5); <code>STAT3</code>'s bits, the 16 status registers and selector width (§6); table address wrap (§7); sources 01 and 10 at 2/4/8bpp, and flipped Text cells (§8); reserved <code>VMODE</code> values and what the legacy submode leaves live (§9); sprite coordinates relative to the picture, clipping, what counts toward the per-line limit and collision, and priority among sprites before the layers (§10); the palette's ignored nibble and normative table (§11); the scroll formula (§13); display off and mid-frame mode changes (§3); the full reset state (§15).</li></ul>
+        <p>Corrections: the per-line budget was priced against one VGA line rather than two (§2, §18); core 0 and core 1 were the wrong way round (§18); the read-side PIO change is a rewrite, not one word (§2); the stock firmware's 252 MHz default (§2); 1bpp reaches 256 tiles, not 512 (§8); upload figures are a ceiling (§4); the §19 text-mode note predated Full mode; §16's probe resynchronizes the flip-flop; §17's scroll estimate and its missing breaks.</p>
+      </section>
+
+      <footer>
+        <span>6502-PICOVDP &middot; draft 0.4 &middot; implemented in the emulator, and in firmware but for the bus</span>
+        <span>AC6502 family &middot; PICO9918 PRO v2.0</span>
+      </footer>
+
+    </main>
+  </div>
+</div>
+
+<script>
+/* The default palette, exactly as §11 publishes it: 16 rows of 16 12-bit values. */
+var PAL = [
+  ["000","000","2C4","6D7","55E","77F","C55","4EE","F55","F77","CB5","DC8","2A4","C5B","CCC","FFF"],
+  ["000","111","222","333","444","555","666","777","888","999","AAA","BBB","CCC","DDD","EEE","FFF"],
+  ["200","400","600","800","900","B00","D00","F00","F22","F33","F55","F77","F88","FAA","FCC","FDD"],
+  ["210","420","630","840","950","B60","D70","F80","F92","FA3","FA5","FB7","FC8","FDA","FDC","FED"],
+  ["220","440","660","880","990","BB0","DD0","FF0","FF2","FF3","FF5","FF7","FF8","FFA","FFC","FFD"],
+  ["120","240","360","480","590","6B0","7D0","8F0","9F2","AF3","AF5","BF7","CF8","DFA","DFC","EFD"],
+  ["020","040","060","080","090","0B0","0D0","0F0","2F2","3F3","5F5","7F7","8F8","AFA","CFC","DFD"],
+  ["021","042","063","084","095","0B6","0D7","0F8","2F9","3FA","5FA","7FB","8FC","AFD","CFD","DFE"],
+  ["022","044","066","088","099","0BB","0DD","0FF","2FF","3FF","5FF","7FF","8FF","AFF","CFF","DFF"],
+  ["012","024","036","048","059","06B","07D","08F","29F","3AF","5AF","7BF","8CF","ADF","CDF","DEF"],
+  ["002","004","006","008","009","00B","00D","00F","22F","33F","55F","77F","88F","AAF","CCF","DDF"],
+  ["102","204","306","408","509","60B","70D","80F","92F","A3F","A5F","B7F","C8F","DAF","DCF","EDF"],
+  ["202","404","606","808","909","B0B","D0D","F0F","F2F","F3F","F5F","F7F","F8F","FAF","FCF","FDF"],
+  ["201","402","603","804","905","B06","D07","F08","F29","F3A","F5A","F7B","F8C","FAD","FCD","FDE"],
+  ["110","321","431","642","742","852","A63","B73","B84","C96","CA7","DB8","DBA","ECB","EDC","FEE"],
+  ["112","223","334","446","468","579","68A","79C","8AC","9AD","ABD","BCD","BCE","CDE","DEE","EEF"]
+];
+var ROWNAMES = ["TMS9918 set","Grayscale","Red","Orange","Yellow","Chartreuse","Green","Spring green",
+  "Cyan","Azure","Blue","Violet","Magenta","Rose","Brown / sepia","Blue-grey"];
+var HEX = "0123456789ABCDEF";
+
+(function () {
+  var host = document.getElementById("palgrid");
+  if (!host) return;
+  var out = "";
+
+  /* column header: pixel value 0-F */
+  out += '<div class="palrow head"><span></span>';
+  for (var c = 0; c < 16; c++) out += '<span class="ph">' + HEX[c] + "</span>";
+  out += "<span></span></div>";
+
+  for (var r = 0; r < 16; r++) {
+    out += '<div class="palrow"><span class="rl">' + HEX[r] + "</span>";
+    for (var i = 0; i < 16; i++) {
+      var v = PAL[r][i];
+      var css = "#" + v[0] + v[0] + v[1] + v[1] + v[2] + v[2];
+      out += '<span class="sw-cell' + (i === 0 ? " zero" : "") + '" style="background:' + css +
+             '" title="row ' + HEX[r] + ", index " + HEX[i] + " — $" + v + '"></span>';
+    }
+    out += '<span class="rn">' + ROWNAMES[r] + "</span></div>";
+  }
+  host.innerHTML = out;
+})();
+</script>

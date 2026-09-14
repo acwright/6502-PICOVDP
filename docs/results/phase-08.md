@@ -529,8 +529,9 @@ Differences from the plan
 10. **SPEC.md changed, informatively, in all three copies:** §2 names the
     RP2354A, §18 describes the halves and records Phase 8's budget, and the
     Resolved Design Question on `SPRLIMIT` quotes both measurements. Nothing
-    normative moved and no golden changed. The published HTML rendering was not
-    found on this machine and is not updated.
+    normative moved and no golden changed. The HTML rendering, published from
+    outside the repo until then, was updated after the phase's commit and now
+    lives at `docs/SPEC.html`.
 11. **Emulator:** `docs/VDP-SPEC.md` only.
 
 ---

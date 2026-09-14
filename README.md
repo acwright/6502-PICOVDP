@@ -7,6 +7,8 @@ package).
 
 - [SPEC.md](SPEC.md) — what the VDP does (draft 0.4). `6502-EMULATOR`'s
   `Video.ts` on its `v3-vdp` branch is the reference implementation.
+  [docs/SPEC.html](docs/SPEC.html) is the same document, rendered, and is kept in
+  step with it.
 - [PLAN.md](PLAN.md) — how the firmware is built, proven and delivered.
 - [docs/TRACE.md](docs/TRACE.md) — the format of the port traces the goldens
   are replayed from.
