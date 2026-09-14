@@ -1,10 +1,12 @@
 // The render side: building a line from the latched card, and colouring it.
 //
-// Reads only render_reg, render_vram, render_screen_line and the palette cache
-// (PLAN.md section 3).
+// Reads only render_reg, render_vram, render_screen_line, the palette cache and
+// the sprites the latch evaluated (PLAN.md section 3).
 //
 // Phase 5: the backdrop and border (§3, §11), display off, and both layers
-// through the tile engine (tiles.c). The sprites (Phase 6) draw over them.
+// through the tile engine (tiles.c).
+// Phase 6: the levels the layers leave for the sprites (sprites.c), and the
+// whole line built the way the two cores divide it.
 
 #include "vdp_internal.h"
 
@@ -14,11 +16,6 @@
 // line as §3 builds it, border included.
 static inline uint8_t backdrop(const vdp_t *v) {
     return (uint8_t)(((v->render_reg[VDP_REG_L0PAL] & 0x0f) << 4) | (v->render_reg[VDP_REG_COLOR] & 0x0f));
-}
-
-int vdp_split_choose(const vdp_t *v) {
-    (void)v;
-    return VDP_WIDTH;
 }
 
 // §3: the frame row render_screen_line, whole — the picture at its origin and
@@ -39,33 +36,33 @@ void VDP_HOT(vdp_build_layers)(vdp_t *v, uint8_t *indices) {
     if (!(v->render_reg[VDP_REG_MODE1] & VDP_MODE1_DISP)) return;
 
     // Layer 0, then layer 1 over it (§12). At 1bpp neither carries a priority
-    // bit, so levels 1 and 3 are this order and nothing more.
+    // bit, so levels 1 and 3 are this order and nothing more. A line with
+    // sprites on it records each pixel's level, which they are drawn against.
     uint8_t *picture = indices + g->origin_x;
-    if (v->render_reg[VDP_REG_L0CTRL] & VDP_LXCTRL_ENABLE) vdp_draw_layer(v, 0, line, g, legacy, picture);
-    if (v->render_reg[VDP_REG_L1CTRL] & VDP_LXCTRL_ENABLE) vdp_draw_layer(v, 1, line, g, VDP_LEGACY_NONE, picture);
+    uint8_t *levels = NULL;
+    if (v->sprite_count) {
+        levels = v->level;
+        memset(levels, VDP_LEVEL_BACKDROP, g->width);
+    }
+    if (v->render_reg[VDP_REG_L0CTRL] & VDP_LXCTRL_ENABLE) {
+        vdp_draw_layer(v, 0, line, g, legacy, picture, levels, VDP_LEVEL_LAYER0);
+    }
+    if (v->render_reg[VDP_REG_L1CTRL] & VDP_LXCTRL_ENABLE) {
+        vdp_draw_layer(v, 1, line, g, VDP_LEGACY_NONE, picture, levels, VDP_LEVEL_LAYER1);
+    }
 }
 
-void vdp_build_sprites(const vdp_t *v, vdp_sprline_t *s, int x0, int x1) {
-    (void)v;
-    s->x0 = x0;
-    s->x1 = x1;
-}
-
-void vdp_draw_sprites(vdp_t *v, uint8_t *indices, int x0, int x1) {
-    (void)v;
-    (void)indices;
-    (void)x0;
-    (void)x1;
-}
-
-void vdp_merge_sprites(vdp_t *v, uint8_t *indices, const vdp_sprline_t *s) {
-    (void)v;
-    (void)indices;
-    (void)s;
-}
-
+// A whole line on one thread, divided as the firmware divides it between its
+// two cores (PLAN.md section 3): the sprites left of the split into a sprite
+// line, the layers, the sprites right of it, then the merge. Any split gives
+// the same row and the same status (tests/unit/test_sprites).
 void vdp_build_line(vdp_t *v, uint8_t *indices) {
+    vdp_sprline_t core0;
+    int split = vdp_split_choose(v);
+    vdp_build_sprites(v, &core0, 0, split);
     vdp_build_layers(v, indices);
+    vdp_draw_sprites(v, indices, split, VDP_WIDTH);
+    vdp_merge_sprites(v, indices, &core0);
 }
 
 // §3: each index to its colour, twice across. Each cache entry holds the pair.

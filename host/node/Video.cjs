@@ -25,8 +25,13 @@
  * Phase 3: ports, registers, VRAM, palette, and the debugger's view of them.
  * Phase 4: the display line, status and interrupts.
  * Phase 5: the picture, through the tile engine.
+ * Phase 6: sprites. With PICOVDP_SPLIT_CHECK set, every row is built a second
+ * time with the two cores' division at another column, and a row or status
+ * that differs throws (PLAN.md section 3: "the reference check builds each line
+ * both ways"). Publishing a line's collisions twice changes nothing.
  *
  *   PICOVDP_NODE_BINARY   the addon, if not build/host/host/node/picovdp.node
+ *   PICOVDP_SPLIT_CHECK   build every row at a second split, and compare
  */
 
 const { join } = require('node:path')
@@ -35,6 +40,8 @@ const CP437 = require('./cp437.cjs')
 const binary =
   process.env.PICOVDP_NODE_BINARY ?? join(__dirname, '..', '..', 'build', 'host', 'host', 'node', 'picovdp.node')
 const core = require(binary)
+
+const SPLIT_CHECK = Boolean(process.env.PICOVDP_SPLIT_CHECK)
 
 const DISPLAY_WIDTH = 320
 const DISPLAY_HEIGHT = 240
@@ -155,7 +162,8 @@ class Video {
   buildRow(row) {
     const start = row * DISPLAY_WIDTH
     const indices = this.backIndexBuffer.subarray(start, start + DISPLAY_WIDTH)
-    core.buildLine(this.card, indices)
+    if (SPLIT_CHECK) this.buildRowTwice(row, indices)
+    else core.buildLine(this.card, indices)
     core.expandLine(this.card, indices, this.rgbLine)
     for (let x = 0; x < DISPLAY_WIDTH; x++) {
       const bgr = this.rgbLine[x * 2]
@@ -169,6 +177,28 @@ class Video {
       this.backBuffer.copy(this.buffer)
       this.indexBuffer.set(this.backIndexBuffer)
       this.frameReady = true
+    }
+  }
+
+  /**
+   * The row at the split the core chooses, then again at the next of the
+   * 32-pixel columns 0-320 in turn; both rows, and STAT0 and the collision map
+   * after each, must agree.
+   */
+  buildRowTwice(row, indices) {
+    const chosen = core.splitChoose(this.card)
+    core.buildLineAt(this.card, indices, chosen)
+    const status = () => [0, 8, 9, 10, 11, 12, 13, 14, 15].map((select) => core.status(this.card, select)).join()
+    const first = { row: Uint8Array.from(indices), status: status(), interrupt: core.intAsserted(this.card) }
+    this.splitTurn = ((this.splitTurn ?? 0) + 1) % 11
+    const other = this.splitTurn * 32
+    core.buildLineAt(this.card, indices, other)
+    const x = indices.findIndex((index, at) => index !== first.row[at])
+    if (x >= 0 || status() !== first.status || core.intAsserted(this.card) !== first.interrupt) {
+      throw new Error(
+        `picovdp: row ${row} differs split at ${other} from at ${chosen}` +
+          (x >= 0 ? `, first at x ${x}: ${indices[x]}, not ${first.row[x]}` : `, in status ${status()}, not ${first.status}`)
+      )
     }
   }
 

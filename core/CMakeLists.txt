@@ -1,6 +1,6 @@
 # The portable core (PLAN.md section 3): no pico-sdk, no hardware (rule 5).
 # Built on both platforms from the start, so the RP2350 toolchain keeps it honest.
-add_library(picovdp_core STATIC bus.c geometry.c line.c palette.c render.c status.c tiles.c)
+add_library(picovdp_core STATIC bus.c geometry.c line.c palette.c render.c sprites.c status.c tiles.c)
 target_include_directories(picovdp_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(picovdp_core PRIVATE picovdp_warnings)
 

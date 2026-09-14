@@ -42,6 +42,7 @@
 #define VDP_REG_SPRCOUNT 0x22
 #define VDP_REG_SPRCTRL 0x23
 #define VDP_REG_SPRLIMIT 0x24
+#define VDP_REG_SPRPAL 0x25
 
 // MODE0 and MODE1 bits (§5, §9).
 #define VDP_MODE0_M3 0x02
@@ -49,6 +50,8 @@
 #define VDP_MODE1_IE 0x20
 #define VDP_MODE1_M1 0x10
 #define VDP_MODE1_M2 0x08
+#define VDP_MODE1_SIZE16 0x02    // §10: 16 x 16 sprites
+#define VDP_MODE1_MAG 0x01       // §10: every sprite x2
 
 // IRQEN and STAT1 bits (§14).
 #define VDP_IRQ_VBLANK 0x01
@@ -164,9 +167,33 @@ const vdp_geometry_t *vdp_geometry(const uint8_t *reg, vdp_legacy_mode_t *legacy
 // Draw layer 0 or 1's display line `line`, 0 to g->lines - 1, into the
 // picture's g->width pixels, over what they hold. `legacy` is the legacy mode
 // pinning the layer (§9): layer 0's in the legacy submode, else
-// VDP_LEGACY_NONE. A transparent pixel is left as it is.
+// VDP_LEGACY_NONE. A transparent pixel is left as it is. Where `levels` is not
+// NULL, each pixel written has its §12 level, `level`, recorded there, by
+// picture column, for the sprites to be judged against.
 void vdp_draw_layer(const vdp_t *v, unsigned layer, uint16_t line, const vdp_geometry_t *g,
-                    vdp_legacy_mode_t legacy, uint8_t *pixels);
+                    vdp_legacy_mode_t legacy, uint8_t *pixels, uint8_t *levels, uint8_t level);
+
+// ---- §12: priority levels ----
+
+#define VDP_LEVEL_BACKDROP 0
+#define VDP_LEVEL_LAYER0 1
+#define VDP_LEVEL_SPRITE 2
+#define VDP_LEVEL_LAYER1 3
+#define VDP_LEVEL_SPRITE_FRONT 5
+
+// ---- §10: sprites (sprites.c) ----
+
+// SPRCTRL (§5).
+#define VDP_SPRCTRL_ENABLE 0x01
+#define VDP_SPRCTRL_COLLISION 0x02
+#define VDP_SPRCTRL_TERMINATOR 0x04
+#define VDP_SPRCTRL_DETAILED 0x08
+#define VDP_SPRCTRL_DEPTH 0x30
+
+// §10: evaluate the sprites for the line the render side is about to build,
+// into v->sprite. With `publish`, a line that drops one reports its overflow
+// (§6, §14) as the latch does; a restored snapshot evaluates without.
+void vdp_sprites_evaluate(vdp_t *v, bool publish);
 
 // ---- §3, §6, §14: the raster, status and interrupts (status.c) ----
 

@@ -23,18 +23,16 @@
 //         Phase 4: the bus scope's stream and state, plus §3, §6, §14. Every
 //         read, status included; /INT after every operation and every tick;
 //         and every N operations all sixteen status registers, peeked, and the
-//         display line. Frames are not compared. Sprites are held off —
-//         whenever an operation leaves Video.ts's SPRCTRL b0 set, both cards
-//         have it cleared by a debugger's register write — because overflow and
-//         collision are Phase 6's; everything else in STAT0, STAT1 and /INT is
-//         compared exactly.
-//   tiles Phase 5: the status scope, plus §8 at 1bpp, §9 and the backdrop.
-//         Every frame either card presents: both must present it after the
-//         same tick, and its 76,800 indices must agree. Sprites are held off
-//         as in the status scope, and both layers are held at 1bpp — whenever
-//         an operation leaves Video.ts's L0CTRL or L1CTRL b1:0 non-zero, both
-//         cards have them cleared — because 2, 4 and 8bpp are Phase 7's. The
-//         legacy submode ignores L0CTRL's depth, so it runs unheld.
+//         display line. Frames are not compared. From Phase 6 sprites run, so
+//         overflow, collision, STAT7 and the collision map are compared too.
+//   tiles Phase 5: the status scope, plus §8 at 1bpp, §9 and the backdrop,
+//         and from Phase 6 §10's sprites and §12 against 1bpp layers. Every
+//         frame either card presents: both must present it after the same
+//         tick, and its 76,800 indices must agree. Both layers are held at
+//         1bpp — whenever an operation leaves Video.ts's L0CTRL or L1CTRL b1:0
+//         non-zero, both cards have them cleared — because 2, 4 and 8bpp are
+//         Phase 7's. The legacy submode ignores L0CTRL's depth, so it runs
+//         unheld. Sprites run at every depth.
 //   all   every read, /INT after every operation and every tick, and the frame
 //         every N operations.
 //
@@ -62,7 +60,9 @@ function main() {
   console.log(`stream: ${composition(ops)}`)
   const started = Date.now()
   const found = run(make, ops, options)
-  if (options.scope === 'status' || options.scope === 'tiles') console.log(`sprites held off ${held.count} time(s)`)
+  if (options.scope === 'status' || options.scope === 'tiles') {
+    console.log(`sprites: Video.ts's OVF set ${held.overflow} time(s), COL ${held.collision}, the collision map grew ${held.map}`)
+  }
   if (options.scope === 'tiles') console.log(`layers held at 1bpp ${held.depth} time(s); ${held.frames} frames compared, ${held.drawn} of them more than one colour`)
   if (!found) {
     console.log(`no divergence in ${((Date.now() - started) / 1000).toFixed(1)}s`)
@@ -80,11 +80,10 @@ function main() {
     `${base}.json`,
     JSON.stringify({ seed: options.seed, scope: options.scope, diverged: last.what, ops: minimal }, null, 1) + '\n'
   )
-  held.count = 0
   held.depth = 0
   run(make, minimal, options)
-  if (minimal.some((op) => op.x !== undefined || op.p !== undefined || op.g !== undefined) || held.count || held.depth) {
-    console.log(`wrote ${relative(REPO, base)}.json (it resets, pokes or holds sprites off, which a version 1 trace cannot hold)`)
+  if (minimal.some((op) => op.x !== undefined || op.p !== undefined || op.g !== undefined) || held.depth) {
+    console.log(`wrote ${relative(REPO, base)}.json (it resets, pokes or holds a depth, which a version 1 trace cannot hold)`)
   } else {
     writeFileSync(`${base}.vdpt.gz`, record(Reference, minimal, `fuzz-${options.seed}`))
     console.log(`wrote ${relative(REPO, base)}.json and .vdpt.gz`)
@@ -148,8 +147,15 @@ function generate(seed, count, scope) {
   const byte = () => (next() < 0.6 ? pick(VALUES) : Math.floor(next() * 256))
   const port = () => (next() < 0.8 ? 0 : 2) // port A mostly, B too
   const ops = []
+  // The status and tiles scopes add sprite scenes to the stream. The bus and
+  // all scopes draw no extra numbers, so their streams are as they were.
+  const scenes = scope === 'status' || scope === 'tiles'
 
   while (ops.length < count) {
+    if (scenes && next() < SCENE_CHANCE) {
+      spriteScene(ops, next, pick, byte, port())
+      continue
+    }
     const roll = next()
     const p = port()
     if (roll < 0.25) {
@@ -187,6 +193,54 @@ function generate(seed, count, scope) {
   return ops.slice(0, count)
 }
 
+/** How often, in the status and tiles scopes, a sprite scene is written. */
+const SCENE_CHANCE = 0.02
+
+/** §5: the registers a sprite scene sets. */
+const MODE1 = 0x01
+const SPRATTR = 0x20
+const SPRPAT = 0x21
+
+/**
+ * A sprite scene (§10), as a program writes one: the display on, perhaps a
+ * sprite size and magnification, a new attribute or pattern table base, and
+ * slots and patterns written through the data port. Y is biased onto the
+ * picture and its edges and patterns toward solid, so that sprites cover lines,
+ * overlap, collide and overflow; everything else is left to the stream.
+ */
+function spriteScene(ops, next, pick, byte, p) {
+  const register = (index, value) => ops.push({ w: p | 1, v: value }, { w: p | 1, v: 0x80 | index })
+  const pointAt = (address) => {
+    register(0x08, (address >> 14) & 3)
+    ops.push({ w: p | 1, v: address & 0xff }, { w: p | 1, v: ((address >> 8) & 0x3f) | 0x40 })
+  }
+  if (next() < 0.5) {
+    // DISP, and sometimes IE, M1 (legacy Text, no sprites), size and magnification.
+    register(MODE1, 0x40 | (next() < 0.3 ? 0x20 : 0) | (next() < 0.1 ? 0x10 : 0) | Math.floor(next() * 4))
+  }
+  if (next() < 0.3) register(SPRATTR, next() < 0.5 ? 0 : byte())
+  if (next() < 0.3) register(SPRPAT, next() < 0.5 ? 0 : byte())
+
+  if (next() < 0.7) {
+    // Slots from one at or near the start of a table, at whichever base SPRATTR holds.
+    const base = next() < 0.5 ? 0 : pick(SCENE_BASES)
+    pointAt(base + 4 * Math.floor(next() * 8))
+    for (let n = 1 + Math.floor(next() * 40); n > 0; n--) {
+      const y = next() < 0.8 ? Math.floor(next() * 240) : pick([0xd0, 0xe0, 0xe1, 0xf0, 0xf1, 0xff, 191, 192, 239, 240])
+      const x = next() < 0.8 ? Math.floor(next() * 256) : pick([0x00, 0x08, 0xf8, 0xff])
+      const pattern = next() < 0.7 ? Math.floor(next() * 8) : byte()
+      ops.push({ w: p, v: y }, { w: p, v: x }, { w: p, v: pattern }, { w: p, v: byte() })
+    }
+  } else {
+    const base = next() < 0.5 ? 0 : pick(SCENE_BASES)
+    pointAt(base + Math.floor(next() * 256))
+    for (let n = 8 + Math.floor(next() * 248); n > 0; n--) ops.push({ w: p, v: next() < 0.6 ? 0xff : byte() })
+  }
+}
+
+/** Where scenes write, besides $0000: sprite table bases a register value names. */
+const SCENE_BASES = [0x0080, 0x0800, 0x1000, 0x2000, 0x3800, 0x4000, 0x7f80, 0xf800]
+
 // ---- running ----
 
 const interrupt = (video) =>
@@ -216,16 +270,20 @@ function statusDifference(a, b) {
   return null
 }
 
-/** §5: SPRCTRL, and its enable bit (§10). */
-const SPRCTRL = 0x23
-const SPRCTRL_ENABLE = 0x01
-
 /** §5: LxCTRL, and its bit depth (§8). */
 const LXCTRL = [0x15, 0x1d]
 const LXCTRL_DEPTH = 0x03
 
-/** How often the status and tiles scopes held the sprites off, the tiles scope held the depth, and frames it compared, for the log. */
-const held = { count: 0, depth: 0, frames: 0, drawn: 0 }
+/**
+ * For the log: how often the tiles scope held the depth and the frames it
+ * compared, and how often Video.ts's OVF and COL were set and its collision
+ * map grew — that the stream reaches the sprites at all.
+ */
+const held = { depth: 0, frames: 0, drawn: 0, overflow: 0, collision: 0, map: 0 }
+
+/** §6: STAT0's sprite flags. */
+const STAT0_OVF = 0x40
+const STAT0_COL = 0x20
 
 /** The first difference in the card's bus-side state (§4, §5, §7, §11), or null. */
 function stateDifference(a, b) {
@@ -262,6 +320,7 @@ function run(make, ops, { checkEvery, scope }) {
   const status = scope === 'status' || tiles
   a.reset(true)
   b.reset(true)
+  const previous = { stat0: 0, map: 0n }
   const at = (index, what) => ({ index, what: `${describe(ops[index])}: ${what}` })
 
   for (let index = 0; index < ops.length; index++) {
@@ -301,12 +360,6 @@ function run(make, ops, { checkEvery, scope }) {
         a.reset(op.x)
         b.reset(op.x)
       }
-      if (status && a.getRegister(SPRCTRL) & SPRCTRL_ENABLE) {
-        const value = a.getRegister(SPRCTRL) & ~SPRCTRL_ENABLE
-        a.setRegister(SPRCTRL, value)
-        b.setRegister(SPRCTRL, value)
-        held.count++
-      }
       if (tiles) {
         for (const register of LXCTRL) {
           if (!(a.getRegister(register) & LXCTRL_DEPTH)) continue
@@ -324,6 +377,20 @@ function run(make, ops, { checkEvery, scope }) {
       }
       if (interrupt(a) !== interrupt(b)) return at(index, `/INT is ${interrupt(b) ? 1 : 0}, Video.ts's ${interrupt(a) ? 1 : 0}`)
       if (status) {
+        // Each time Video.ts's OVF or COL goes from clear to set, and each
+        // time its collision map gains a bit: that the sprites are reached.
+        const stat0 = a.peekStatus(0)
+        if (stat0 & ~previous.stat0 & STAT0_OVF) held.overflow++
+        if (stat0 & ~previous.stat0 & STAT0_COL) held.collision++
+        previous.stat0 = stat0
+        if (stat0 & STAT0_COL) {
+          let map = 0n
+          for (let select = 15; select >= 8; select--) map = (map << 8n) | BigInt(a.peekStatus(select))
+          if (map & ~previous.map) held.map++
+          previous.map = map
+        } else {
+          previous.map = 0n
+        }
         const difference = checkpoint ? statusDifference(a, b) ?? stateDifference(a, b) : null
         if (difference) return at(index, difference)
         continue

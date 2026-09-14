@@ -12,7 +12,7 @@ PRO running this firmware; every golden checkpoint the emulator holds reproduces
 byte for byte on the PRO; and the per-line budget, interrupt timing and status
 freshness are measured on the PRO and written back into SPEC.md.
 
-**Status:** Phases 0–5 done ([results](docs/results/)). Phase 1 measured
+**Status:** Phases 0–6 done ([results](docs/results/)). Phase 1 measured
 the line at 2.5–4× §18's estimates, and settled SPEC.md draft 0.4 from it: the
 sprites are built on core 0 (section 3), the clock is 352 MHz, `SPRLIMIT` resets
 to 16, and a late line is specified. Phase 2 exported the oracle: the fixtures'
@@ -23,7 +23,11 @@ it matches `Video.ts` over 10⁷ fuzzed operations. Phase 4 added the raster's
 line numbering, the sixteen status registers and the interrupts, and they match
 `Video.ts` in every read and in `/INT` over 10⁷ more. Phase 5 added the tile
 engine at 1bpp and the legacy submode: the `bios` goldens reproduce on the
-host, and every frame matches `Video.ts` over 10⁷ more. Phase 6 is next. The PRO
+host, and every frame matches `Video.ts` over 10⁷ more. Phase 6 added the
+sprites, evaluated at the latch and drawn divided between the cores: the
+`wizardslab` goldens reproduce on the host, every split column builds the same
+line, and reads, `/INT` and frames match `Video.ts` over 10⁷ more with sprites
+on. Phase 7 is next. The PRO
 is on order. Part A of this plan needs no PRO: it runs on the host, in the emulator
 and on a Raspberry Pi Pico 2.
 

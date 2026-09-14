@@ -176,6 +176,31 @@ static napi_value js_build_line(napi_env env, napi_callback_info info) {
     return undefined(env);
 }
 
+// buildLineAt(card, indices: Uint8Array(320), split): the same line as buildLine, with the
+// cores' division at picture column `split` rather than the one vdp_split_choose picks.
+static napi_value js_build_line_at(napi_env env, napi_callback_info info) {
+    napi_value argv[3];
+    vdp_t *v = card_args(env, info, 3, argv);
+    uint32_t split;
+    if (v == NULL || !uint_arg(env, argv[2], &split)) return NULL;
+    uint8_t *indices = typed_arg(env, argv[1], napi_uint8_array, VDP_WIDTH);
+    if (indices == NULL) return NULL;
+    vdp_sprline_t core0;
+    vdp_build_sprites(v, &core0, 0, (int)split);
+    vdp_build_layers(v, indices);
+    vdp_draw_sprites(v, indices, (int)split, VDP_WIDTH);
+    vdp_merge_sprites(v, indices, &core0);
+    return undefined(env);
+}
+
+// splitChoose(card): the picture column vdp_split_choose picks for the line being built.
+static napi_value js_split_choose(napi_env env, napi_callback_info info) {
+    napi_value argv[1];
+    vdp_t *v = card_args(env, info, 1, argv);
+    if (v == NULL) return NULL;
+    return uint_value(env, (uint32_t)vdp_split_choose(v));
+}
+
 // expandLine(card, indices: Uint8Array(320), rgb: Uint16Array(640))
 static napi_value js_expand_line(napi_env env, napi_callback_info info) {
     napi_value argv[3];
@@ -422,6 +447,8 @@ static napi_value init(napi_env env, napi_value exports) {
         FUNCTION("lineStart", js_line_start),
         FUNCTION("setHblank", js_set_hblank),
         FUNCTION("buildLine", js_build_line),
+        FUNCTION("buildLineAt", js_build_line_at),
+        FUNCTION("splitChoose", js_split_choose),
         FUNCTION("expandLine", js_expand_line),
         FUNCTION("intAsserted", js_int_asserted),
         FUNCTION("getRegister", js_get_register),

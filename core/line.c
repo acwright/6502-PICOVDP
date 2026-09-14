@@ -44,6 +44,7 @@ void vdp_reset(vdp_t *v, bool power_on) {
         v->dirty_pages = 0;
         vdp_palette_reload(v);
         v->render_screen_line = (uint16_t)((v->screen_line + 1) % VDP_SCREEN_LINES);
+        vdp_sprites_evaluate(v, false);
         v->hblank = false;
         return;
     }
@@ -103,6 +104,10 @@ void VDP_HOT(vdp_line_start)(vdp_t *v, uint16_t screen_line) {
 
     // The line built now is the next one: screen line 0 as 261 begins (§3).
     v->render_screen_line = (uint16_t)((v->screen_line + 1) % VDP_SCREEN_LINES);
+
+    // Its sprites, from the render side as it now stands. An overflow is
+    // reported here, at the latch (§14); a collision only as the build finds it.
+    vdp_sprites_evaluate(v, true);
 }
 
 void vdp_set_hblank(vdp_t *v, bool hblank) {

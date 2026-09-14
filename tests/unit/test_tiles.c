@@ -15,7 +15,7 @@
 enum {
     MODE1 = 0x01, L0NAME_LEGACY = 0x02, L0ATTR_LEGACY = 0x03, L0PAT_LEGACY = 0x04, COLOR = 0x07,
     VMODE = 0x0d, L0NAME = 0x10, L0ATTR = 0x11, L0PAT = 0x12, L0SCRX = 0x13, L0CTRL = 0x15, L0PAL = 0x16,
-    L0SCRY = 0x14, L1NAME = 0x18, L1ATTR = 0x19, L1PAT = 0x1a, L1CTRL = 0x1d, L1PAL = 0x1e,
+    L0SCRY = 0x14, L1NAME = 0x18, L1ATTR = 0x19, L1PAT = 0x1a, L1CTRL = 0x1d, L1PAL = 0x1e, SPRCTRL = 0x23,
 };
 
 enum { DISP = 0x40, M1 = 0x10, ENABLE = 0x10, OPAQUE = 0x20 };
@@ -316,6 +316,7 @@ TEST(a_scroll_splits_a_cell_partway_into_its_pattern) {
     set_reg(v, COLOR, 0x10);                // COLOR's pair: fg 1, bg 0
     set_reg(v, L0CTRL, ENABLE | OPAQUE | (3 << 2));
     set_reg(v, L0PAT, 0x08);                // $4000
+    set_reg(v, SPRCTRL, 0x26);              // sprites off: their table is the name table here (§10)
     poke(v, 0x0000 + 1, 1);                 // cell (1, 0): pattern 1
     poke(v, 0x4000 + 8, 0xc9);              // pattern 1, row 0: XX..X..X
     poke(v, 0x4000 + 8 + 5, 0xff);          // row 5: solid

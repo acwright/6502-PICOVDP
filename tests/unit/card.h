@@ -7,7 +7,7 @@
 #include "vdp.h"
 #include "vdp_debug.h"
 
-// A card, power-on reset. vdp_t is about 135 KB: on the heap, not the stack.
+// A card, power-on reset. vdp_t is about 137 KB: on the heap, not the stack.
 static inline vdp_t *new_card(void) {
     vdp_t *v = malloc(sizeof *v);
     if (v == NULL) abort();

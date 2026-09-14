@@ -94,4 +94,7 @@ void vdp_debug_restore(vdp_t *v, const vdp_snapshot_t *s, const uint8_t *vram) {
     v->journal_count = 0;
     v->dirty_pages = 0;
     vdp_palette_reload(v);
+    // The sprites of the line it was saved building. Their overflow, if any,
+    // was reported before the save, and is in stat0 already.
+    vdp_sprites_evaluate(v, false);
 }

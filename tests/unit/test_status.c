@@ -32,6 +32,9 @@ static vdp_t *card_in(uint8_t vmode) {
     vdp_t *v = new_card();
     set_reg(v, 0x01, 0x40);
     set_reg(v, VMODE, vmode);
+    // Sprites off: power-on VRAM is zeroed, which puts all 32 slots at Y 0 and
+    // overflows the top lines (§10). Their status is test_sprites'.
+    set_reg(v, 0x23, 0x26);
     return v;
 }
 

@@ -14,8 +14,12 @@
 // (§13) from the start, because the walk is the same loop either way. 2, 4 and
 // 8bpp draw nothing until Phase 7, which adds them, the attribute byte and the
 // compositor that the byte's priority bit needs.
+//
+// Phase 6: each pixel written records its §12 level, for the sprites.
 
 #include "vdp_internal.h"
+
+#include <string.h>
 
 // §8: a pattern is 8 rows; at 1bpp, one byte to a row.
 #define CELL_HEIGHT 8
@@ -33,7 +37,7 @@
 static const uint8_t layer_block[2] = {VDP_REG_L0NAME, VDP_REG_L1NAME};
 
 void VDP_HOT(vdp_draw_layer)(const vdp_t *v, unsigned layer, uint16_t line, const vdp_geometry_t *g,
-                             vdp_legacy_mode_t legacy, uint8_t *pixels) {
+                             vdp_legacy_mode_t legacy, uint8_t *pixels, uint8_t *levels, uint8_t level) {
     const uint8_t *reg = v->render_reg + layer_block[layer];
     const uint8_t *vram = v->render_vram;
     uint8_t control = reg[LREG_CTRL];
@@ -118,12 +122,15 @@ void VDP_HOT(vdp_draw_layer)(const vdp_t *v, unsigned layer, uint16_t line, cons
         if (fg_opaque && bg_opaque) {
             // Every pixel written: the BIOS console's loop, with no branch.
             for (unsigned i = 0; i < count; i++, bits <<= 1) out[i] = (bits & 0x80) ? fg : bg;
+            if (levels) memset(levels + x, level, count);
         } else {
             // A transparent pixel is one not written, which leaves what is
             // behind it: the backdrop, or layer 0 under layer 1 (§12).
             for (unsigned i = 0; i < count; i++, bits <<= 1) {
                 bool on = (bits & 0x80) != 0;
-                if (on ? fg_opaque : bg_opaque) out[i] = on ? fg : bg;
+                if (!(on ? fg_opaque : bg_opaque)) continue;
+                out[i] = on ? fg : bg;
+                if (levels) levels[x + i] = level;
             }
         }
 

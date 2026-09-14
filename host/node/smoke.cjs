@@ -12,7 +12,7 @@ assert.ok(binary, 'usage: smoke.cjs <picovdp.node>')
 process.env.PICOVDP_NODE_BINARY = binary
 
 const core = require(binary)
-for (const name of ['create', 'reset', 'read', 'write', 'lineStart', 'setHblank', 'buildLine', 'expandLine', 'intAsserted',
+for (const name of ['create', 'reset', 'read', 'write', 'lineStart', 'setHblank', 'buildLine', 'buildLineAt', 'splitChoose', 'expandLine', 'intAsserted',
   'getRegister', 'setRegister', 'getVram', 'setVram', 'portState', 'status', 'displayLine', 'paletteEntry', 'mode', 'stats', 'save', 'restore']) {
   assert.equal(typeof core[name], 'function', `the binding has no ${name}`)
 }

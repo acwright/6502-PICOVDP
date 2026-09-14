@@ -14,3 +14,4 @@ picovdp_unit_test(test_palette    # §11
 picovdp_unit_test(test_reset)     # §15
 picovdp_unit_test(test_status)    # §3's line numbering, §6, §14
 picovdp_unit_test(test_tiles)     # §8 at 1bpp, §9, the backdrop and border
+picovdp_unit_test(test_sprites)   # §10, §9's legacy sprites, §12 at 1bpp, the cores' split
