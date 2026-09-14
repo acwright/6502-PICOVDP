@@ -1,0 +1,167 @@
+[
+ {
+  "fixture": "bios",
+  "checkpoint": "ok",
+  "frame": 419,
+  "ops": 4230,
+  "reads": 1,
+  "stat5": 0,
+  "bytes": 13624,
+  "seconds": 7.5,
+  "problems": []
+ },
+ {
+  "fixture": "bios",
+  "checkpoint": "screenful",
+  "frame": 639,
+  "ops": 4623,
+  "reads": 1,
+  "stat5": 0,
+  "bytes": 15406,
+  "seconds": 11.1,
+  "problems": []
+ },
+ {
+  "fixture": "bios",
+  "checkpoint": "scroll",
+  "frame": 840,
+  "ops": 12597,
+  "reads": 3681,
+  "stat5": 0,
+  "bytes": 43360,
+  "seconds": 14.5,
+  "problems": []
+ },
+ {
+  "fixture": "wizardslab",
+  "checkpoint": "frame-60",
+  "frame": 59,
+  "ops": 92373,
+  "reads": 86224,
+  "stat5": 0,
+  "bytes": 267226,
+  "seconds": 1.5,
+  "problems": []
+ },
+ {
+  "fixture": "wizardslab",
+  "checkpoint": "frame-180",
+  "frame": 179,
+  "ops": 294440,
+  "reads": 288255,
+  "stat5": 0,
+  "bytes": 843728,
+  "seconds": 3.5,
+  "problems": []
+ },
+ {
+  "fixture": "wizardslab",
+  "checkpoint": "frame-300",
+  "frame": 299,
+  "ops": 496322,
+  "reads": 490083,
+  "stat5": 0,
+  "bytes": 1419740,
+  "seconds": 5.6,
+  "problems": []
+ },
+ {
+  "fixture": "wizardslab",
+  "checkpoint": "frame-600",
+  "frame": 599,
+  "ops": 1001098,
+  "reads": 994751,
+  "stat5": 0,
+  "bytes": 2859924,
+  "seconds": 10.8,
+  "problems": []
+ },
+ {
+  "fixture": "vdp-modes",
+  "checkpoint": "text",
+  "frame": 35,
+  "ops": 59665,
+  "reads": 53591,
+  "stat5": 0,
+  "bytes": 175698,
+  "seconds": 1.1,
+  "problems": []
+ },
+ {
+  "fixture": "vdp-modes",
+  "checkpoint": "compact",
+  "frame": 98,
+  "ops": 168677,
+  "reads": 160985,
+  "stat5": 0,
+  "bytes": 492734,
+  "seconds": 2.2,
+  "problems": []
+ },
+ {
+  "fixture": "vdp-modes",
+  "checkpoint": "graphics",
+  "frame": 162,
+  "ops": 279275,
+  "reads": 269547,
+  "stat5": 0,
+  "bytes": 814454,
+  "seconds": 3.3,
+  "problems": []
+ },
+ {
+  "fixture": "vdp-modes",
+  "checkpoint": "full",
+  "frame": 226,
+  "ops": 390489,
+  "reads": 378521,
+  "stat5": 0,
+  "bytes": 1137460,
+  "seconds": 4.3,
+  "problems": []
+ },
+ {
+  "fixture": "vdp-layers",
+  "checkpoint": "parallax",
+  "frame": 89,
+  "ops": 122313,
+  "reads": 114465,
+  "stat5": 0,
+  "bytes": 375442,
+  "seconds": 2,
+  "problems": []
+ },
+ {
+  "fixture": "vdp-layers",
+  "checkpoint": "scroll-bit8-l1",
+  "frame": 179,
+  "ops": 287521,
+  "reads": 278773,
+  "stat5": 0,
+  "bytes": 847338,
+  "seconds": 3.6,
+  "problems": []
+ },
+ {
+  "fixture": "vdp-layers",
+  "checkpoint": "occluded",
+  "frame": 239,
+  "ops": 397669,
+  "reads": 388321,
+  "stat5": 0,
+  "bytes": 1161948,
+  "seconds": 4.6,
+  "problems": []
+ },
+ {
+  "fixture": "vdp-layers",
+  "checkpoint": "scroll-bit8-l0",
+  "frame": 299,
+  "ops": 507806,
+  "reads": 497858,
+  "stat5": 0,
+  "bytes": 1476542,
+  "seconds": 5.6,
+  "problems": []
+ }
+]

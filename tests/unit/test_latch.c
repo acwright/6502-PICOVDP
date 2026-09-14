@@ -89,7 +89,7 @@ TEST(journal_overflow_copies_pages) {
     write_entry(v, 0x21, 0x9ab);
     uint8_t byte = 0x77;
     store(v, 0xfff0, &byte, 1);
-    CHECK_EQ(VDP_JOURNAL_ENTRIES, v->journal_count);
+    CHECK_EQ(VDP_JOURNAL_ENTRIES, v->journal_tail - v->journal_head);
     CHECK(v->dirty_pages != 0);
 
     vdp_line_start(v, 1);
@@ -97,7 +97,7 @@ TEST(journal_overflow_copies_pages) {
     CHECK_EQ(0x9ab, (uint16_t)(((v->render_vram[0xfc42] & 0xf) << 8) | v->render_vram[0xfc43]));
     CHECK_EQ(cached(0x9ab), v->palette[0x21]);
     CHECK_EQ(1, vdp_debug_stats(v).journal_overflows);
-    CHECK_EQ(0, v->journal_count);
+    CHECK_EQ(0, v->journal_tail - v->journal_head);
     CHECK_EQ(0, (long long)v->dirty_pages);
 
     // A line within the journal does not count.
@@ -193,10 +193,243 @@ TEST(random_traffic_keeps_the_render_side_in_step) {
     free(v);
 }
 
+// The firmware's latch in halves (§18's late lines): a render side that catches
+// up after the bus has moved on still takes each line from its own latch — the
+// registers, VRAM and palette as they stood then, and the line's number.
+TEST(a_late_catch_up_takes_the_card_as_it_stood) {
+    vdp_t *v = new_card();
+    set_reg(v, 0x07, 0x01);
+    uint8_t byte = 0x11;
+    store(v, 0x2000, &byte, 1);
+    write_entry(v, 7, 0x100);
+    vdp_latch(v, 40, 1000);
+
+    set_reg(v, 0x07, 0x02);
+    byte = 0x22;
+    store(v, 0x2000, &byte, 1);
+    write_entry(v, 7, 0x200);
+    vdp_latch(v, 41, 1001);
+
+    set_reg(v, 0x07, 0x03);
+    byte = 0x33;
+    store(v, 0x2000, &byte, 1);
+    write_entry(v, 7, 0x300);
+    CHECK_EQ(41, v->screen_line);  // the bus side is at the latest latch
+
+    CHECK(vdp_catch_up(v));
+    CHECK_EQ(41, v->render_screen_line);
+    CHECK_EQ(1000, v->render_tag);
+    CHECK_EQ(0x01, v->render_reg[0x07]);
+    CHECK_EQ(0x11, v->render_vram[0x2000]);
+    CHECK_EQ(cached(0x100), v->palette[7]);
+
+    CHECK(vdp_catch_up(v));
+    CHECK_EQ(42, v->render_screen_line);
+    CHECK_EQ(1001, v->render_tag);
+    CHECK_EQ(0x02, v->render_reg[0x07]);
+    CHECK_EQ(0x22, v->render_vram[0x2000]);
+    CHECK_EQ(cached(0x200), v->palette[7]);
+
+    CHECK(!vdp_catch_up(v));  // nothing more: the third set of writes waits for a latch
+    CHECK_EQ(0x22, v->render_vram[0x2000]);
+    vdp_latch(v, 42, 1002);
+    CHECK(vdp_catch_up(v));
+    CHECK(render_in_step(v));
+    free(v);
+}
+
+// A ring of VDP_LATCHES: the latches after it fills are merged into its newest,
+// counted, and the render side jumps to the last of them.
+TEST(a_full_ring_merges_into_its_newest) {
+    vdp_t *v = new_card();
+    for (unsigned n = 0; n < VDP_LATCHES + 3; n++) {
+        set_reg(v, 0x07, (uint8_t)n);
+        uint8_t byte = (uint8_t)(0x40 + n);
+        store(v, (uint16_t)(0x3000 + n), &byte, 1);
+        vdp_latch(v, (uint16_t)(100 + n), n);
+    }
+    CHECK_EQ(3, vdp_debug_stats(v).latches_merged);
+    for (unsigned n = 0; n < VDP_LATCHES; n++) {
+        CHECK(vdp_catch_up(v));
+        unsigned latch = n < VDP_LATCHES - 1 ? n : VDP_LATCHES + 2;
+        CHECK_EQ(latch, v->render_tag);
+        CHECK_EQ(101 + latch, v->render_screen_line);
+        CHECK_EQ(latch, v->render_reg[0x07]);
+        CHECK_EQ(0x40 + latch, v->render_vram[0x3000 + latch]);
+    }
+    CHECK(!vdp_catch_up(v));
+    CHECK(render_in_step(v));
+    free(v);
+}
+
+// The overflow a catch-up's evaluation finds, and a build's collisions, reach
+// status only through vdp_publish — which the firmware takes with the bus held
+// off — and each only once.
+TEST(status_waits_for_the_publish) {
+    vdp_t *v = new_card();
+    set_reg(v, 0x01, 0x40);   // display on, legacy Graphics I: 192 lines at screen line 24
+    set_reg(v, 0x24, 1);      // SPRLIMIT 1
+    set_reg(v, 0x0a, 0x0c);   // IRQEN: overflow and collision
+    set_reg(v, 0x05, 0x00);   // SPRATTR at $0000
+    for (unsigned n = 0; n < 2; n++) {
+        uint8_t slot[] = {50, 100, 0, 0x0f};
+        store(v, (uint16_t)(4 * n), slot, 4);
+    }
+    uint8_t terminator = 0xd0;
+    store(v, 8, &terminator, 1);
+
+    vdp_latch(v, 74, 0);      // builds display line 51: legacy sprites start at Y + 1
+    CHECK(vdp_catch_up(v));
+    CHECK_EQ(1, v->sprite_count);
+    CHECK_EQ(0, v->stat0);
+    CHECK(!vdp_int_asserted(v));
+    vdp_publish(v, NULL, NULL);
+    CHECK_EQ(0x41, v->stat0);
+    CHECK_EQ(1, v->overflow_sprite);
+    CHECK(vdp_int_asserted(v));
+    CHECK_EQ(0x41, vdp_read(v, 1));
+    vdp_publish(v, NULL, NULL);     // published once
+    CHECK_EQ(0, v->stat0);
+    free(v);
+}
+
+// Random traffic with the render side catching up late — for long stretches
+// not at all, so the ring fills and merges — against a card that takes every
+// latch whole the instant it falls (vdp_line_start). Each line the late card
+// catches up must match the prompt card's render side at the same latch:
+// registers, VRAM, the palette cache, the line's number and the sprites
+// evaluated for it. Data-port reads must agree too. Status reads are left out:
+// when a status reaches STAT0 is exactly what differs (vdp_publish). So are
+// bursts past the journal: a page copy is the one thing a late catch-up takes
+// from the bus copy as it is now.
+TEST(late_catch_ups_take_what_prompt_ones_do) {
+    vdp_t *late = new_card();
+    vdp_t *prompt = new_card();
+    enum { WRITE, READ, POKE, RST, LATCH };
+    typedef struct {
+        uint8_t kind, port, value;
+        uint16_t address;
+        uint32_t tag;
+    } op_t;
+    static op_t log[8192];
+    size_t logged = 0;
+    static const uint8_t registers[] = {0x01, 0x07, 0x08, 0x09, 0x0c, 0x0d, 0x10, 0x15, 0x16, 0x20, 0x21, 0x22, 0x23, 0x24};
+    unsigned latches = 0, caught = 0, behind = 0, sprites = 0, dropped = 0, reads = 0;
+    uint16_t screen = 0;
+    bool in_step = true;
+    random_state = 99;
+
+    for (unsigned step = 0; step < 600000 && in_step; step++) {
+        // Stretches of 1,000 steps with the render side left behind.
+        bool lagging = (step / 1000) % 3 == 2;
+        uint32_t roll = random_next() % 1000;
+        unsigned pair = random_next() & 1;
+        op_t ops[2];
+        unsigned count = 1;
+        if (roll < 100) {
+            uint8_t reg = registers[random_next() % sizeof registers];
+            // PALBASE among the top 8 KB; MODE1 with the display on, in any legacy mode.
+            uint8_t value = reg == 0x0c   ? (uint8_t)(0x38 + random_next() % 8)
+                            : reg == 0x01 ? (uint8_t)(0x40 | (random_next() & 0x1b))
+                                          : (uint8_t)random_next();
+            ops[0] = (op_t){WRITE, (uint8_t)(2 * pair + 1), value, 0, 0};
+            ops[1] = (op_t){WRITE, (uint8_t)(2 * pair + 1), (uint8_t)(0x80 | reg), 0, 0};
+            count = 2;
+        } else if (roll < 160) {
+            uint16_t address = random_next() & 1 ? (uint16_t)(0xe000 + random_next() % 0x2000) : (uint16_t)random_next();
+            ops[0] = (op_t){WRITE, (uint8_t)(2 * pair + 1), (uint8_t)address, 0, 0};
+            ops[1] = (op_t){WRITE, (uint8_t)(2 * pair + 1), (uint8_t)(((address >> 8) & 0x3f) | (random_next() & 0x40)), 0, 0};
+            count = 2;
+        } else if (roll < 500) {
+            ops[0] = (op_t){WRITE, (uint8_t)(2 * pair), (uint8_t)random_next(), 0, 0};
+        } else if (roll < 600) {
+            ops[0] = (op_t){READ, (uint8_t)(2 * pair), 0, 0, 0};
+        } else if (roll < 650) {
+            ops[0] = (op_t){POKE, 0, (uint8_t)random_next(), (uint16_t)(random_next() & 1 ? 0xf000 + random_next() % 0x1000 : random_next() % 0x400), 0};
+        } else if (roll < 651) {
+            // RST pokes the palette's 512 bytes: only while the journal has room for them.
+            if (lagging || late->journal_tail - late->journal_head > 256) continue;
+            ops[0] = (op_t){RST, 0, 0, 0, 0};
+        } else if (roll < 700) {
+            screen = (uint16_t)((screen + 1) % VDP_SCREEN_LINES);
+            ops[0] = (op_t){LATCH, 0, 0, screen, ++latches};
+        } else {
+            if ((lagging && roll < 995) || !vdp_catch_up(late)) continue;
+            caught++;
+            if (late->latch_tail != late->latch_head) behind++;
+            if (late->sprite_count) sprites++;
+            if (late->render_overflow) dropped++;
+            // The prompt card plays the log up to that latch.
+            size_t played = 0;
+            for (;;) {
+                const op_t *o = &log[played++];
+                if (o->kind == WRITE) vdp_write(prompt, o->port, o->value);
+                else if (o->kind == READ) CHECK_EQ(o->value, vdp_read(prompt, o->port));
+                else if (o->kind == POKE) vdp_debug_set_vram(prompt, o->address, o->value);
+                else if (o->kind == RST) vdp_reset(prompt, false);
+                else {
+                    prompt->stat0 = 0;  // so OVF below is this latch's alone
+                    vdp_line_start(prompt, o->address);
+                    if (o->tag == late->render_tag) break;
+                }
+            }
+            memmove(log, log + played, (logged - played) * sizeof log[0]);
+            logged -= played;
+
+            in_step = memcmp(late->render_reg, prompt->render_reg, VDP_REGISTERS) == 0 &&
+                      memcmp(late->render_vram, prompt->render_vram, VDP_VRAM_SIZE) == 0 &&
+                      memcmp(late->palette, prompt->palette, sizeof late->palette) == 0 &&
+                      late->render_screen_line == prompt->render_screen_line &&
+                      late->sprite_count == prompt->sprite_count &&
+                      memcmp(late->sprite, prompt->sprite, late->sprite_count * sizeof late->sprite[0]) == 0;
+            CHECK(in_step);
+            // The prompt card reported its overflow at the latch; the late one holds the same.
+            CHECK_EQ(prompt->stat0 & 0x40 ? 1 : 0, late->render_overflow ? 1 : 0);
+            vdp_publish(late, NULL, NULL);
+            if (!in_step) {
+                printf("  out of step at catch-up %u, render tag %u: reg %d vram %d palette %d line %u/%u sprites %u/%u overflows %u\n",
+                       caught, late->render_tag, memcmp(late->render_reg, prompt->render_reg, VDP_REGISTERS) != 0,
+                       memcmp(late->render_vram, prompt->render_vram, VDP_VRAM_SIZE) != 0,
+                       memcmp(late->palette, prompt->palette, sizeof late->palette) != 0, late->render_screen_line,
+                       prompt->render_screen_line, late->sprite_count, prompt->sprite_count, late->journal_overflows);
+            }
+            continue;
+        }
+
+        for (unsigned i = 0; i < count; i++) {
+            op_t *o = &ops[i];
+            if (o->kind == WRITE) vdp_write(late, o->port, o->value);
+            else if (o->kind == READ) o->value = vdp_read(late, o->port), reads++;
+            else if (o->kind == POKE) vdp_debug_set_vram(late, o->address, o->value);
+            else if (o->kind == RST) vdp_reset(late, false);
+            else vdp_latch(late, o->address, o->tag);
+            if (logged == sizeof log / sizeof log[0]) {
+                CHECK(logged < sizeof log / sizeof log[0]);
+                in_step = false;
+                break;
+            }
+            log[logged++] = *o;
+        }
+    }
+    printf("  %u latches, %u caught up: %u with more waiting, %u with sprites, %u dropping one; %u merged; %u reads\n",
+           latches, caught, behind, sprites, dropped, late->latches_merged, reads);
+    CHECK_EQ(0, late->journal_overflows);
+    CHECK(caught > 15000);
+    CHECK(behind > caught / 5);
+    CHECK(late->latches_merged > 500);
+    CHECK(sprites > caught / 20);
+    free(late);
+    free(prompt);
+}
+
 int main(void) {
     RUN(operations_after_the_latch_wait_for_the_next);
     RUN(journal_overflow_copies_pages);
     RUN(palbase_moves_within_a_line);
     RUN(random_traffic_keeps_the_render_side_in_step);
+    RUN(a_late_catch_up_takes_the_card_as_it_stood);
+    RUN(a_full_ring_merges_into_its_newest);
+    RUN(status_waits_for_the_publish);
+    RUN(late_catch_ups_take_what_prompt_ones_do);
     return TEST_RESULT();
 }

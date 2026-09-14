@@ -57,7 +57,7 @@ vdp_debug_mode_t vdp_debug_mode(const vdp_t *v) {
 }
 
 vdp_debug_stats_t vdp_debug_stats(const vdp_t *v) {
-    return (vdp_debug_stats_t){.journal_overflows = v->journal_overflows};
+    return (vdp_debug_stats_t){.journal_overflows = v->journal_overflows, .latches_merged = v->latches_merged};
 }
 
 void vdp_debug_save(const vdp_t *v, vdp_snapshot_t *s, uint8_t *vram) {
@@ -88,13 +88,17 @@ void vdp_debug_restore(vdp_t *v, const vdp_snapshot_t *s, const uint8_t *vram) {
     memcpy(v->collision_map, s->collision_map, sizeof v->collision_map);
     memcpy(v->vram, vram, VDP_VRAM_SIZE);
 
-    memcpy(v->render_vram, v->vram, sizeof v->render_vram);
+    memcpy(v->render_vram, v->vram, VDP_VRAM_SIZE);
+    vdp_render_guard(v);
     memcpy(v->render_reg, v->reg, sizeof v->render_reg);
     v->render_screen_line = (uint16_t)((v->screen_line + 1) % VDP_SCREEN_LINES);
-    v->journal_count = 0;
+    v->journal_head = v->journal_tail = 0;
     v->dirty_pages = 0;
+    v->latch_head = v->latch_tail = 0;
     vdp_palette_reload(v);
     // The sprites of the line it was saved building. Their overflow, if any,
     // was reported before the save, and is in stat0 already.
-    vdp_sprites_evaluate(v, false);
+    vdp_sprites_evaluate(v);
+    v->render_overflow = 0;
+    v->half.collided = false;
 }

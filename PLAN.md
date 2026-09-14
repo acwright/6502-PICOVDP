@@ -12,7 +12,7 @@ PRO running this firmware; every golden checkpoint the emulator holds reproduces
 byte for byte on the PRO; and the per-line budget, interrupt timing and status
 freshness are measured on the PRO and written back into SPEC.md.
 
-**Status:** Phases 0–7 done ([results](docs/results/)). Phase 1 measured
+**Status:** Phases 0–8 done ([results](docs/results/)). Phase 1 measured
 the line at 2.5–4× §18's estimates, and settled SPEC.md draft 0.4 from it: the
 sprites are built on core 0 (section 3), the clock is 352 MHz, `SPRLIMIT` resets
 to 16, and a late line is specified. Phase 2 exported the oracle: the fixtures'
@@ -31,8 +31,14 @@ on. Phase 7 added 2, 4 and 8bpp, the attribute byte, layer 1's contest with
 layer 0 and the 4bpp table: the whole oracle — all fifteen checkpoints —
 reproduces on the host through both the Node adapter and the pure-C
 `host/replay`, all 342 tests of `Video.test.ts` pass against the core, and
-10⁵ frames of random layer scenes match `Video.ts`. Phase 8 is next. The PRO
-is on order. Part A of this plan needs no PRO: it runs on the host, in the emulator
+10⁵ frames of random layer scenes match `Video.ts`. Phase 8 put all of it but
+the bus on a Pico 2, after rewriting the renderer a word at a time and building
+each row in two halves, one a core: all fifteen checkpoints reproduce on the
+board by injection, Phase 1's worst cases run ten minutes with no late line while
+snapshots stream, a late line on purpose repeats its predecessor with status
+untouched, and faults are recovered over USB. Under Phase 1's bus stand-in,
+`SPRLIMIT` 16 keeps 16–24% of the line, not 25%. Phase 9 is next. The PRO is on
+order. Part A of this plan needs no PRO: it runs on the host, in the emulator
 and on a Raspberry Pi Pico 2.
 
 ---
@@ -92,8 +98,8 @@ are written out as "section N".
 
 Everything SPEC.md specifies except the bus pins, the video DAC and the raster
 timing can be proven before the PRO exists: on the host against the emulator,
-and on a Pico 2's RP2350 — the same silicon as the PRO's RP2354A — by feeding it
-bus traffic over USB. When the PRO arrives, the hardware phases are left with
+and on a Pico 2's RP2350A — the same silicon as the PRO's RP2354A, which is an
+RP2350A with 2 MB of flash in the package — by feeding it bus traffic over USB. When the PRO arrives, the hardware phases are left with
 only what needs the PRO: the pins, the picture and the clock.
 
 ---
@@ -183,14 +189,16 @@ void    vdp_init(vdp_t *v, uint8_t version);                // power-on reset; S
 void    vdp_reset(vdp_t *v, bool power_on);                 // §15; RST leaves the raster running
 uint8_t vdp_read(vdp_t *v, unsigned port);                  // port = A1:A0, §4
 void    vdp_write(vdp_t *v, unsigned port, uint8_t value);  // §4
-void    vdp_line_start(vdp_t *v, uint16_t screen_line);     // a screen line begins, §3
+void    vdp_line_start(vdp_t *v, uint16_t screen_line);     // a screen line begins, §3: latch, catch up, publish (host)
+void    vdp_latch(vdp_t *v, uint16_t screen_line, uint32_t tag); // its bus side, as the line begins
+bool    vdp_catch_up(vdp_t *v);                             // its render side, when the renderer is ready
 void    vdp_set_hblank(vdp_t *v, bool hblank);              // STAT3 b1, from the platform, §6
-int     vdp_split_choose(const vdp_t *v);                   // the column the cores divide this line at
-void    vdp_build_layers(vdp_t *v, uint8_t *indices);       // 320 palette indices, both layers
-void    vdp_build_sprites(const vdp_t *v, vdp_sprline_t *s, int x0, int x1); // columns [x0, x1), no status
-void    vdp_draw_sprites(vdp_t *v, uint8_t *indices, int x0, int x1);        // straight into the line
-void    vdp_merge_sprites(vdp_t *v, uint8_t *indices, const vdp_sprline_t *s); // and publish its collisions
-void    vdp_build_line(vdp_t *v, uint8_t *indices);         // all of the above on one core (host)
+int     vdp_split_choose(const vdp_t *v);                   // the column the cores divide this row at
+void    vdp_build_half(const vdp_t *v, vdp_half_t *h, int x0, int x1); // columns [x0, x1): layers, sprites; no status
+void    vdp_expand_half(const vdp_t *v, const vdp_half_t *h, uint16_t *rgb);   // its columns, 12-bit 0x0BGR, ×2
+void    vdp_copy_half(const vdp_t *v, const vdp_half_t *h, uint8_t *indices);  // its columns as indices
+void    vdp_publish(vdp_t *v, const vdp_half_t *a, const vdp_half_t *b); // the row's overflow and collisions
+void    vdp_build_line(vdp_t *v, uint8_t *indices);         // both halves on one thread (host)
 void    vdp_expand_line(const vdp_t *v, const uint8_t *indices, uint16_t *rgb); // 12-bit 0x0BGR, ×2
 bool    vdp_int_asserted(const vdp_t *v);                   // §14
 ```
@@ -202,8 +210,10 @@ a release image need not.
 
 The core is split into a **bus side** — ports, register file, VRAM, status and
 interrupt latches, which `vdp_read`/`vdp_write` touch — and a **render side**,
-which only the build functions touch. `vdp_line_start` is the one place the two
-meet.
+which only the build functions touch. The latch is where the two meet:
+`vdp_latch` on the bus side, `vdp_catch_up` on the render side, and
+`vdp_publish` bringing what a row found back to status. `vdp_line_start` is all
+three at once.
 
 **Why the split exists.** SPEC §3 builds display line N from the registers, VRAM
 and palette *as they stand when line N − 1 begins*. On the RP2350 the build takes
@@ -213,31 +223,41 @@ its prefetched byte staged already (§4). So the renderer cannot read live state
 Instead:
 
 - **VRAM is held twice.** Bus writes land in the bus copy at once, so reads on
-  either port see them at once, and are appended to a journal.
-  `vdp_line_start` drains the journal into the render copy. The build reads only
-  the render copy, which does not change under it. A journal that overflows —
-  no 6502 can do it at 1024 entries a line, but the Nano's fastest profile might
-  — falls back to copying dirty 1 KB pages, and counts that it did. 128 KB of
-  VRAM is comfortable in 520 KB of SRAM.
-- **Registers are snapshotted** at `vdp_line_start`, with the derived per-line
-  state (geometry, bases, scroll, palette base) recomputed from them.
+  either port see them at once, and are appended to a journal, a ring of 1024.
+  The catch-up drains it, to where the latch found it, into the render copy. The
+  build reads only the render copy, which does not change under it. A journal
+  that overflows — no 6502 can do it at 1024 entries, but the Nano's fastest
+  profile might — falls back to copying dirty 1 KB pages, and counts that it did.
+  128 KB of VRAM is comfortable in 520 KB of SRAM.
+- **The latch comes in two halves** (Phase 8). `vdp_latch` runs in core 1's
+  interrupt as the line begins: the line's events (§14), and a record of the
+  register file and the journal's end. `vdp_catch_up` runs in the renderer when
+  it is ready for the line, which after a late line is later (§18), and brings
+  the render side to exactly that record. Records wait in a ring of 8; a latch
+  that finds it full is merged into the newest, and the line it held is never
+  built.
+- **Registers are snapshotted** by the latch, with the derived per-line state
+  (geometry, bases, scroll, palette base) recomputed from them.
 - **The palette cache** — 256 entries of paired 12-bit pixels, `x × $10001`, the
   way pico9918 doubles horizontally — is updated from journal entries that fall
   in the palette window as it drains, and re-read whole when `PALBASE` changes.
   That gives SPEC §11's "the next line built uses it" exactly.
-- **Sprite evaluation for the line about to be built runs in `vdp_line_start`**, so `OVF` and `STAT7`
-  are published at the latch, as §14 wants. Collision is only discovered while
-  compositing, so it is published from the build — by core 1, as it merges core
-  0's sprites; its lag within the line is measured in Phase 13.
-- **The sprites are built on two cores** (SPEC §18). `vdp_split_choose` picks a
-  column on a 32-pixel word boundary. `vdp_build_sprites` draws the sprites left of it
-  into a sprite line on core 0, reading only the render copy and writing no status,
-  while core 1 builds the layers and draws the sprites right of it. Core 1 merges the
-  sprite line and publishes its collisions. Each side's claim bitmap keeps
-  priority among sprites and collision exact. The column comes from the list's
-  length and the last line's measured costs, corrected a column a line: Phase 1
-  found a per-sprite estimate cost more than it saved. The host runs the same
-  functions on one thread, and the reference check builds each line both ways.
+- **Sprite evaluation for the line about to be built runs in the catch-up.**
+  Its overflow, and the collisions the build finds, reach status through
+  `vdp_publish`, which core 1 calls with its interrupts held off once the row is
+  built. Through `vdp_line_start` and `vdp_build_line` on the host that is at the
+  latch and in the build, as the emulator does; on the RP2350 it is within the
+  line, and its lag is measured in Phase 13.
+- **Each row is built in two halves, one a core** (SPEC §18, Phase 8).
+  `vdp_split_choose` picks a column on an 8-pixel boundary, balancing both
+  layers, the expansion and each sprite at its centre. Core 0 builds picture
+  columns left of it — both layers and the sprites — into a half of its own and
+  expands them into the row's buffer; core 1 does the same for the rest. Nothing
+  in a column depends on another's pixels, so the halves are exact: each has its
+  own claim bitmap for priority among sprites and collision. Neither writes
+  status; core 1 publishes both. The firmware moves the column 8 pixels a row
+  toward the core that finished first. The host runs the same functions on one
+  thread, and the reference check builds each line at many splits.
 - **The screen line is an input.** The raster belongs to the platform — the VGA
   driver on the RP2350, the adapter's model of `Video.ts` on the host — and
   `vdp_line_start` is told which of the 262 screen lines is beginning. The core
@@ -258,14 +278,20 @@ pico9918 sets none:
 
 | Core | Work | Priority |
 |---|---|---|
-| 0 | VGA sync/RGB DMA interrupt, from pico9918's driver. It now emits a line-start event for **all 262 display lines**, not only the 240 rows it asks core 1 to draw | highest on core 0 |
-| 0 | USB debug link (debug builds), watchdog feed, statistics | lowest interrupt on core 0 |
-| 0 | `vdp_build_sprites` for the columns left of the split, posted by core 1 through the inter-core FIFO | thread |
-| 1 | Bus PIO interrupts (read and write state machines), and the line-start latch raised from core 0 — equal priority, so they never preempt one another | highest on core 1 |
-| 1 | `vdp_split_choose`, post to core 0, `vdp_build_layers`, `vdp_draw_sprites` for the rest, wait for core 0, `vdp_merge_sprites`, `vdp_expand_line` — in thread mode, into the buffer the RGB DMA sends next. A line not finished in time is late (SPEC §18): the DMA sends the last completed buffer again, and the build finishes for its status | thread |
+| 0 | VGA: pico9918's driver, whose sync program now raises a PIO interrupt at the start of **every one of the 262 screen lines**. Its handler rings core 1's doorbell and starts the row's RGB buffer: the latest finished row, which is a late row's predecessor. The sync and RGB DMA interrupt beside it | highest on core 0 (`$00`) |
+| 0 | Core 0's half of each row, posted by core 1 through the inter-core FIFO: `vdp_build_half`, `vdp_expand_half` | `$40` |
+| 0 | USB, the SDK's timer, the watchdog's feeder | default and below |
+| 0 | The debug link (debug builds) | thread |
+| 1 | The latch, from core 0's doorbell: `vdp_latch` for every line begun. From Phase 11, the bus PIO interrupts at the same priority, so they never preempt one another | highest on core 1 (`$00`) |
+| 1 | The renderer: `vdp_catch_up`, `vdp_split_choose`, post to core 0, `vdp_build_half` and `vdp_expand_half` for the rest, wait for core 0, `vdp_publish` with interrupts held off — into a buffer no line start can be sending. A row not finished when its line starts is late (SPEC §18): the line sends the last finished row again, and the build finishes for its status | thread |
+
+Phase 1 put the sprites in core 0's thread and the debug link in its lowest
+interrupt. Phase 8 swapped them: a USB write blocks, and a sprite build that USB
+could preempt is a late line waiting to happen; in an interrupt above USB it
+cannot be.
 
 The clock is 352 MHz (PLL 1056 MHz ÷ 3, VREG 1.30 V), pico9918's VGA preset 2.
-Phase 1 measured the budget there: 22,371 cycles a line.
+A display line is 2 × 1,598 PIO ticks at a divider of 7: **22,372 cycles**.
 
 The bus interface follows SPEC §2 and §18. `tmsWrite` is kept as it is: MODE1
 already arrives in bit 31 of its FIFO word. `tmsRead` is rewritten. The CPU stages
@@ -290,6 +316,12 @@ starts core 1's latch only after the handshake.
 | `pro-debug` | PRO | ✓ | ✓ | ✓ |
 | `pro-release` | PRO | — | — | watchdog only |
 
+The PRO's MCU is an **RP2354A**: an RP2350A die with 2 MB of flash in the
+package, where the Pico 2 has 4 MB beside it. Nothing in the build depends on the
+difference. Every preset targets `rp2350-arm-s`; `pico9918pro.h` declares the 2 MB;
+the image is `copy_to_ram`, about 200 KB of flash, and nothing touches flash after
+boot.
+
 ### The debug link
 
 With no SWD, everything goes through the PRO's USB-C port, which is on the side
@@ -300,7 +332,7 @@ that faces up and also powers the board. It is specified in `docs/DEBUGLINK.md`
   whose reset interface lets picotool reboot a running board into BOOTSEL and
   flash it. The BOOT button is only needed the very first time.
 - **Transport:** framed binary packets over USB CDC, CRLF translation off; log
-  text travels as its own packet type.
+  text travels as its own packet type. Specified in `docs/DEBUGLINK.md`.
 - **Commands:**
 
   | Command | Returns or does |
@@ -309,10 +341,11 @@ that faces up and also powers the board. It is specified in `docs/DEBUGLINK.md`
   | `STATS` | build cycles per line (DWT cycle counter): max, 99.9th percentile, mean. Also late lines, journal overflows, bus FIFO overruns |
   | `SNAPSHOT` | a complete frame — the next one, or the one an injection marks — as 240 rows of indices exactly as sent to VGA, with the register file, both ports' state, and status and latch internals as they stood when its last row was built |
   | `VRAM` | the bus copy of VRAM, 64 KB |
-  | `INJECT` | a batch of port operations, each tagged with the (frame, display line) to apply it at, and optional snapshot markers; core 1 applies each operation at that line's latch, as if from the bus, and reports reads that differ from the expected value carried with them |
+  | `INJECT` | a stream of port operations, each tagged with the (frame, screen line) it fell in and the read and `/INT` it expects, and the frame to capture; core 1 takes each latch in its thread, in a trace replay's order, applies each line's operations after the row it starts is built, as if from the bus, and reports what differs |
   | `RESET` | SPEC §15, as the RST pin does |
   | `REBOOT` | into the application or into BOOTSEL |
   | `FAULT` | debug builds only: raise a deliberate fault to test recovery |
+  | `SCENE`, `LOAD`, `SCENE LOG`, `PROFILE` | Phase 8: a worst-case scene set up on the card; a bus stand-in and a handicap on the build; what the scene's program read each frame; one row's stages timed with interrupts off |
 
 - **Crashes and hangs:** a HardFault on either core, or a panic, writes a record —
   core, PC, LR, xPSR, the fault status registers, SP, 32 stack words — to a
@@ -431,7 +464,7 @@ a minimised trace, which becomes a unit test.
 
 The host proves behaviour. It cannot prove that:
 
-- the renderer fits its line on an M33 at 302.4 MHz
+- the renderer fits its line on an M33 at 352 MHz
 - the bus PIO sees every access at 6502 speed
 - the latch and staged status work with interrupts on the same core
 - the palette reaches the 12-bit DAC in the right bit order
@@ -936,14 +969,15 @@ listed, with its Phase 10 injection result standing for it.
 ----------------
 
 1. **The line budget does not hold in Full mode.** Phase 1 measured it: on one
-   core it did not, at either clock. With the sprites on core 0 at 352 MHz every
-   worst case fits, with 2% spare at `SPRLIMIT` 32 and 25% at the reset value of
-   16 — under a bus interrupt every 2 µs and a stand-in for the real handler.
-   What is left is the real PIO handler (Phase 11), USB on core 0 (risk 3), and
-   the PRO's thermals at 1.30 V (Phases 8, 10, 13). If the margin erodes,
-   `SPRLIMIT`'s reset value holds 25% and a late line is specified; beyond that
-   the renderer's magnified-sprite and detailed-collision paths are the ones with
-   most left to optimise.
+   core it did not, at either clock. Phase 8 measured the firmware itself, each
+   row in two halves, at 352 MHz: with no bus every worst case fits for ten
+   minutes, with 10% spare at `SPRLIMIT` 32 and 31–40% at 16. Under Phase 1's bus
+   stand-in, a write every 2 µs on core 1, `SPRLIMIT` 16 fits with 16–24%, but at
+   32 ten of the 36 worst cases make late lines. What is left is the real PIO
+   handler (Phase 11) and the PRO's thermals at 1.30 V (Phases 10, 13; the Pico 2
+   ran 21 minutes clean). If the margin erodes, a late line is specified; the
+   renderer has evaluation, the split's choice and the judged layer's contest
+   left to optimise (docs/results/phase-08.md, "For later phases").
 
 2. **The §3 latch cannot be exact while the bus is served on the render core.**
    The dual VRAM and journal design exists for this. Phase 3 unit-tests it; Phase
@@ -951,10 +985,11 @@ listed, with its Phase 10 injection result standing for it.
    6502 can produce, which falls back to page copies and is counted.
 
 3. **The debug link disturbs the raster.** TinyUSB interrupts share core 0 with
-   the VGA DMA interrupt and, since Phase 1, with the sprite builds, which run in
-   thread mode beneath them. USB runs at the lowest interrupt priority there; late
-   lines are counted; Phases 8, 10 and 13 load the link while measuring; and a
-   release build without USB must match. If it cannot be tamed, the link moves to snapshots taken
+   the VGA interrupts and core 0's half of each row. Since Phase 8 that half runs
+   in an interrupt above USB and the link in thread mode, and ten minutes of
+   continuous snapshots on the worst case cost no late line; late lines are
+   counted; Phases 10 and 13 load the link while measuring; and a release build
+   without USB must match. If it cannot be tamed, the link moves to snapshots taken
    only while the raster is idle — sacrificing the load test, not the oracle.
 
 4. **An image dies before USB comes up.** Then the BOOT button is the only way
@@ -1006,7 +1041,7 @@ listed, with its Phase 10 injection result standing for it.
 
 | Item | Answered by |
 |---|---|
-| 1. Time Full mode first | Resolved in draft 0.4 by Phase 1. Phase 8 re-measures with the real renderer, Phase 13 under bus load on the PRO |
+| 1. Time Full mode first | Resolved in draft 0.4 by Phase 1. Phase 8 re-measured it with the firmware, recorded in §18; Phase 13 measures under bus load on the PRO |
 | 2. Does the 4bpp table earn its 8 KB | Resolved in draft 0.4 by Phase 1: yes |
 | 3. Are the hue ramps usable | Phase 10: the palette test card, judged by the owner on a real monitor |
 | 4. How fresh the status byte can be | Phase 13 |
@@ -1048,8 +1083,8 @@ their own; no index or VRAM golden moved.
 - Power-on VRAM is zeroed (§15 leaves it undefined; the emulator's cold start does
   the same). RST does not zero it.
 - `STAT5` reads the firmware version; the first release's value is set in Phase 14.
-- `COL` is published during the line build rather than at its latch. Its lag is
-  measured in Phase 13.
+- `OVF` and `COL` are published when core 1 finishes the row's build, not at its
+  latch (Phase 8). Their lag is measured in Phase 13.
 
 ---
 
@@ -1061,7 +1096,7 @@ in `THIRD_PARTY.md`.
 
 | pico9918 | Here | Changes |
 |---|---|---|
-| `src/vga/` (`vga.c`, `vga.h`, `vga.pio`, `vga-modes.c`) | `firmware/vga/` | VGA 640 × 480 only (interlace and SCART paths removed); line-start events for all 262 display lines; late-line counting; explicit priorities |
+| `src/vga/` (`vga.c`, `vga.h`, `vga.pio`, `vga-modes.c`) | `firmware/vga/` | VGA 640 × 480 only (interlace, SCART and the other modes removed); a PIO interrupt at every screen line's start; the RGB buffer chosen per row at its line start, which is where late lines are shown; explicit priorities. `vga.pio` unchanged |
 | `src/pio-utils/` | `firmware/pio-utils/` | none |
 | `src/tms9918.pio` `tmsWrite` | `firmware/bus.pio` | none |
 | `src/tms9918.pio` `tmsRead` | `firmware/bus.pio` | rewritten for four ports (section 3) |

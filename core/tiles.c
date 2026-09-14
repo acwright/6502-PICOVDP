@@ -16,6 +16,11 @@
 // Phase 7: 2, 4 and 8bpp, the attribute byte — flips, priority, pattern bit 8
 // — §8's palette mapping, §18's 4bpp unpacking table, and a layer judged
 // against the levels already on the line.
+// Phase 8: 8-pixel cells a cell at a time in 32-bit words, as Phase 1's spike
+// drew them: a cell's eight pixels are two words of indices and two of
+// masks, merged against two words of levels. Phase 7's pixel loop, which the
+// words are checked against (tests/unit/test_render), still draws Text's
+// 6-pixel cells.
 
 #include "vdp_internal.h"
 
@@ -48,28 +53,6 @@ static const uint8_t layer_level_front[2] = {VDP_LEVEL_LAYER0_FRONT, VDP_LEVEL_L
 #define ATTR_PRIORITY 0x40
 #define ATTR_PATTERN_BIT8 0x80
 
-// §18's 4bpp unpacking table: a pattern byte's two pixels, drawn in sub-palette
-// g, as palette indices — the left pixel in the low byte. At 4bpp the sixteen
-// groups cover the palette, so g × 16 + value is the whole of §8's mapping.
-// 16 × 256 × 2 bytes; Phase 1 measured it saving 16% of an opaque 4bpp layer.
-#define UNPACK4(g, b) (uint16_t)(((g) << 4 | (b) >> 4) | ((g) << 4 | ((b) & 15)) << 8)
-#define UNPACK4_16(g, h)                                                                                      \
-    UNPACK4(g, h << 4 | 0), UNPACK4(g, h << 4 | 1), UNPACK4(g, h << 4 | 2), UNPACK4(g, h << 4 | 3),           \
-    UNPACK4(g, h << 4 | 4), UNPACK4(g, h << 4 | 5), UNPACK4(g, h << 4 | 6), UNPACK4(g, h << 4 | 7),           \
-    UNPACK4(g, h << 4 | 8), UNPACK4(g, h << 4 | 9), UNPACK4(g, h << 4 | 10), UNPACK4(g, h << 4 | 11),         \
-    UNPACK4(g, h << 4 | 12), UNPACK4(g, h << 4 | 13), UNPACK4(g, h << 4 | 14), UNPACK4(g, h << 4 | 15)
-#define UNPACK4_GROUP(g)                                                                                      \
-    {UNPACK4_16(g, 0), UNPACK4_16(g, 1), UNPACK4_16(g, 2), UNPACK4_16(g, 3), UNPACK4_16(g, 4),                \
-     UNPACK4_16(g, 5), UNPACK4_16(g, 6), UNPACK4_16(g, 7), UNPACK4_16(g, 8), UNPACK4_16(g, 9),                \
-     UNPACK4_16(g, 10), UNPACK4_16(g, 11), UNPACK4_16(g, 12), UNPACK4_16(g, 13), UNPACK4_16(g, 14),           \
-     UNPACK4_16(g, 15)}
-static const uint16_t unpack4[16][256] = {
-    UNPACK4_GROUP(0), UNPACK4_GROUP(1), UNPACK4_GROUP(2), UNPACK4_GROUP(3),
-    UNPACK4_GROUP(4), UNPACK4_GROUP(5), UNPACK4_GROUP(6), UNPACK4_GROUP(7),
-    UNPACK4_GROUP(8), UNPACK4_GROUP(9), UNPACK4_GROUP(10), UNPACK4_GROUP(11),
-    UNPACK4_GROUP(12), UNPACK4_GROUP(13), UNPACK4_GROUP(14), UNPACK4_GROUP(15),
-};
-
 // One pattern row of a cell at 2, 4 or 8bpp: its eight pixels as palette
 // indices, leftmost first and before any horizontal flip, and a bit for each
 // pixel whose value is not 0 (§8's transparency), bit n for pixel n.
@@ -89,7 +72,7 @@ static inline unsigned decode_row(const uint8_t *vram, uint16_t address, unsigne
     }
     case VDP_DEPTH_4BPP: {
         // Through the table: a value of 0 is an index whose low nibble is 0.
-        const uint16_t *pairs = unpack4[group & 0x0f];
+        const uint16_t *pairs = vdp_unpack4[group & 0x0f];
         for (unsigned i = 0; i < CELL_PIXELS; i += 2) {
             uint16_t pair = pairs[vram[(uint16_t)(address + (i >> 1))]];
             indices[i] = (uint8_t)pair;
@@ -110,8 +93,9 @@ static inline unsigned decode_row(const uint8_t *vram, uint16_t address, unsigne
     return solid;
 }
 
-void VDP_HOT(vdp_draw_layer)(const vdp_t *v, unsigned layer, uint16_t line, const vdp_geometry_t *g,
-                             vdp_legacy_mode_t legacy, uint8_t *pixels, uint8_t *levels) {
+// Phase 7's pixel loop: any cell width.
+static void VDP_HOT(draw_pixels)(const vdp_t *v, unsigned layer, uint16_t line, const vdp_geometry_t *g,
+                                  vdp_legacy_mode_t legacy, uint8_t *pixels, uint8_t *levels, unsigned x0, unsigned x1) {
     const uint8_t *reg = v->render_reg + layer_block[layer];
     const uint8_t *vram = v->render_vram;
     uint8_t control = reg[LREG_CTRL];
@@ -158,14 +142,15 @@ void VDP_HOT(vdp_draw_layer)(const vdp_t *v, unsigned layer, uint16_t line, cons
 
     // Cells, not columns: with a scroll that is not a multiple of the cell
     // width the first and last cells are partial, so the walk starts wherever
-    // column 0 lands in the map and takes as much of each cell as fits.
+    // column x0 lands in the map and takes as much of each cell as fits.
     unsigned cell_width = g->cell_width;
-    unsigned col = scroll_x / cell_width;
-    unsigned first = scroll_x - col * cell_width;
-    unsigned x = 0;
-    while (x < width) {
+    unsigned map_x = (scroll_x + x0) % width;
+    unsigned col = map_x / cell_width;
+    unsigned first = map_x - col * cell_width;
+    unsigned x = x0;
+    while (x < x1) {
         unsigned count = cell_width - first;
-        if (count > width - x) count = width - x;
+        if (count > x1 - x) count = x1 - x;
         uint8_t *out = pixels + x;
 
         unsigned pattern = vram[(uint16_t)(name_row + col)];
@@ -257,5 +242,212 @@ void VDP_HOT(vdp_draw_layer)(const vdp_t *v, unsigned layer, uint16_t line, cons
         x += count;
         first = 0;
         if (++col >= g->cols) col = 0;
+    }
+}
+
+// ---- Phase 8: 8-pixel cells in words ----
+
+enum { PLAIN, RECORD, JUDGE };  // levels: none kept; layer 0 recording its own; layer 1 judged too
+
+// One layer's line of 8-pixel cells. Everything a cell costs is decided before
+// the walk, and `depth`, `source` and `how` are constants in each copy the
+// dispatcher below makes of it.
+static inline __attribute__((always_inline)) void cells(const vdp_t *v, unsigned layer, uint16_t line,
+                                                        const vdp_geometry_t *g, vdp_legacy_mode_t legacy,
+                                                        uint8_t *pixels, uint8_t *levels, const unsigned x0,
+                                                        const unsigned x1, const unsigned depth,
+                                                        const unsigned source, const int how, const bool opaque) {
+    const uint8_t *reg = v->render_reg + layer_block[layer];
+    const uint8_t *vram = v->render_vram;
+    const uint8_t control = reg[LREG_CTRL];
+    const bool pinned = legacy != VDP_LEGACY_NONE;
+    const uint8_t palette_high = (uint8_t)((reg[LREG_PAL] & 0x0f) << 4);
+    const uint8_t colour = v->render_reg[VDP_REG_COLOR];
+    const uint8_t normal = layer_level[layer], front = layer_level_front[layer];
+
+    const uint16_t name_base = (uint16_t)(reg[LREG_NAME] << 10);
+    const uint16_t attr_base = (uint16_t)(reg[LREG_ATTR] << (pinned ? 6 : 10));
+    const uint16_t pattern_base = (uint16_t)(reg[LREG_PAT] << 11);
+
+    // §13, as the pixel loop takes it.
+    const unsigned width = g->width, cols = g->cols;
+    const unsigned scroll_x = ((control & VDP_LXCTRL_SCRX_BIT8 ? 0x100u : 0) | reg[LREG_SCRX]) % width;
+    unsigned map_y = line + reg[LREG_SCRY] % g->lines;
+    if (map_y >= g->lines) map_y -= g->lines;
+    const unsigned row = map_y & (CELL_HEIGHT - 1);
+    const uint16_t cell_base = (uint16_t)((map_y / CELL_HEIGHT) * cols);
+    const uint16_t name_row = (uint16_t)(name_base + cell_base);
+    const unsigned tile_bytes = CELL_HEIGHT << depth, row_bytes = 1u << depth;
+
+    // "None" (§8): COLOR at 1bpp; at depth a byte of no flip, priority or bit
+    // 8, whose sub-palette is LxPAL at 4bpp and 0 otherwise.
+    const uint8_t none = depth == VDP_DEPTH_1BPP ? colour : depth == VDP_DEPTH_4BPP ? palette_high >> 4 : 0;
+
+    // Whole cells from the one column x0 lands in, the first starting left of
+    // it by its offset into the cell (the half's slack, or its neighbour's
+    // columns, which are not the half's).
+    const unsigned map_x = (scroll_x + x0) % width;
+    unsigned col = map_x / CELL_PIXELS;
+    uint8_t *out = pixels + x0 - (map_x & (CELL_PIXELS - 1));
+    uint8_t *lv = levels ? levels + x0 - (map_x & (CELL_PIXELS - 1)) : NULL;
+    const uint8_t *const end = pixels + x1;
+
+    for (; out < end; out += CELL_PIXELS) {
+        unsigned pattern = vram[(uint16_t)(name_row + col)];
+        uint8_t attribute;
+        switch (source) {
+        case VDP_ATTR_PER_CELL:
+            attribute = vram[(uint16_t)(attr_base + cell_base + col)];
+            break;
+        case VDP_ATTR_PER_GROUP:
+            attribute = vram[(uint16_t)(attr_base + (pattern >> 3))];
+            break;
+        case VDP_ATTR_PER_ROW:
+            attribute = vram[(uint16_t)(attr_base + pattern * CELL_HEIGHT + row)];
+            break;
+        default:
+            attribute = none;
+            break;
+        }
+        if (++col >= cols) col = 0;
+
+        uint32_t w0, w1, m0, m1;
+        uint8_t level = normal;
+        if (depth == VDP_DEPTH_1BPP) {
+            // Foreground b7:4 where the pattern bit is set, background b3:0
+            // where it is not; a nibble of 0 transparent unless index 0 is opaque.
+            const uint8_t bits = vram[(uint16_t)(pattern_base + pattern * PATTERN_BYTES_1BPP + row)];
+            const uint32_t f0 = vdp_nibble_msb[bits >> 4], f1 = vdp_nibble_msb[bits & 15];
+            const unsigned foreground = attribute >> 4, background = attribute & 0x0f;
+            const uint32_t fg = (uint32_t)(palette_high | foreground) * VDP_ONES;
+            const uint32_t bg = (uint32_t)(palette_high | background) * VDP_ONES;
+            w0 = (fg & f0) | (bg & ~f0);
+            w1 = (fg & f1) | (bg & ~f1);
+            const uint32_t fm = (foreground || opaque) ? ~0u : 0, bm = (background || opaque) ? ~0u : 0;
+            m0 = (fm & f0) | (bm & ~f0);
+            m1 = (fm & f1) | (bm & ~f1);
+        } else {
+            if (depth != VDP_DEPTH_8BPP && (attribute & ATTR_PATTERN_BIT8)) pattern |= 0x100;
+            const unsigned pattern_row = (attribute & ATTR_FLIP_Y) ? CELL_HEIGHT - 1 - row : row;
+            // The guard past $FFFF lets a row be read whole where it wraps (§7).
+            const uint8_t *p = vram + (uint16_t)(pattern_base + pattern * tile_bytes + pattern_row * row_bytes);
+            const uint8_t group = (uint8_t)(palette_high | (attribute & ATTR_SUBPALETTE));
+            if (depth == VDP_DEPTH_2BPP) {
+                // (group × 4 + value) & $FF.
+                const uint32_t v0 = vdp_values2[p[0]], v1 = vdp_values2[p[1]];
+                const uint32_t base = (uint32_t)(uint8_t)(group << 2) * VDP_ONES;
+                w0 = base | v0;
+                w1 = base | v1;
+                m0 = vdp_nonzero_bytes(v0);
+                m1 = vdp_nonzero_bytes(v1);
+            } else if (depth == VDP_DEPTH_4BPP) {
+                // Through the table; a value of 0 is an index whose low nibble is 0.
+                const uint32_t bytes = vdp_load32(p);
+                const uint16_t *pairs = vdp_unpack4[group & 0x0f];
+                w0 = pairs[bytes & 0xff] | (uint32_t)pairs[bytes >> 8 & 0xff] << 16;
+                w1 = pairs[bytes >> 16 & 0xff] | (uint32_t)pairs[bytes >> 24] << 16;
+                m0 = vdp_nonzero_bytes(w0 & 0x0f0f0f0fu);
+                m1 = vdp_nonzero_bytes(w1 & 0x0f0f0f0fu);
+            } else {
+                w0 = vdp_load32(p);
+                w1 = vdp_load32(p + 4);
+                m0 = vdp_nonzero_bytes(w0);
+                m1 = vdp_nonzero_bytes(w1);
+            }
+            if (attribute & ATTR_FLIP_X) {
+                const uint32_t t = w0, u = m0;
+                w0 = vdp_swap32(w1);
+                w1 = vdp_swap32(t);
+                m0 = vdp_swap32(m1);
+                m1 = vdp_swap32(u);
+            }
+            if (attribute & ATTR_PRIORITY) level = front;
+        }
+        if (opaque) {
+            // Every pixel: nothing under the cell survives it, unless judged.
+            if (how != JUDGE) {
+                if (how == RECORD) {
+                    vdp_store32(lv, (uint32_t)level * VDP_ONES);
+                    vdp_store32(lv + 4, (uint32_t)level * VDP_ONES);
+                    lv += CELL_PIXELS;
+                }
+                vdp_store32(out, w0);
+                vdp_store32(out + 4, w1);
+                continue;
+            }
+            m0 = m1 = ~0u;
+        }
+
+        if (how != PLAIN) {
+            const uint32_t l0 = vdp_load32(lv), l1 = vdp_load32(lv + 4);
+            if (how == JUDGE) {
+                m0 &= vdp_beaten(l0, level);
+                m1 &= vdp_beaten(l1, level);
+            }
+            const uint32_t lw = (uint32_t)level * VDP_ONES;
+            vdp_store32(lv, (l0 & ~m0) | (lw & m0));
+            vdp_store32(lv + 4, (l1 & ~m1) | (lw & m1));
+            lv += CELL_PIXELS;
+        }
+        vdp_store32(out, (vdp_load32(out) & ~m0) | (w0 & m0));
+        vdp_store32(out + 4, (vdp_load32(out + 4) & ~m1) | (w1 & m1));
+    }
+}
+
+#define CELLS_FOR_SOURCE(depth, how)                                                                                  \
+    switch (source) {                                                                                                 \
+    case VDP_ATTR_PER_CELL: cells(v, layer, line, g, legacy, pixels, levels, x0, x1, depth, VDP_ATTR_PER_CELL, how, opaque); break;   \
+    case VDP_ATTR_PER_GROUP: cells(v, layer, line, g, legacy, pixels, levels, x0, x1, depth, VDP_ATTR_PER_GROUP, how, opaque); break; \
+    case VDP_ATTR_PER_ROW: cells(v, layer, line, g, legacy, pixels, levels, x0, x1, depth, VDP_ATTR_PER_ROW, how, opaque); break;     \
+    default: cells(v, layer, line, g, legacy, pixels, levels, x0, x1, depth, VDP_ATTR_NONE, how, opaque); break;                      \
+    }
+
+#define CELLS_FOR_DEPTH(name, how, opaque_)                                                                   \
+    static void VDP_HOT(name)(const vdp_t *v, unsigned layer, uint16_t line, const vdp_geometry_t *g,          \
+                              vdp_legacy_mode_t legacy, uint8_t *pixels, uint8_t *levels, unsigned x0,         \
+                              unsigned x1, unsigned depth, unsigned source) {                                 \
+        const bool opaque = opaque_;                                                                          \
+        switch (depth) {                                                                                      \
+        case VDP_DEPTH_1BPP: CELLS_FOR_SOURCE(VDP_DEPTH_1BPP, how) break;                                     \
+        case VDP_DEPTH_2BPP: CELLS_FOR_SOURCE(VDP_DEPTH_2BPP, how) break;                                     \
+        case VDP_DEPTH_4BPP: CELLS_FOR_SOURCE(VDP_DEPTH_4BPP, how) break;                                     \
+        default: CELLS_FOR_SOURCE(VDP_DEPTH_8BPP, how) break;                                                 \
+        }                                                                                                     \
+    }
+
+CELLS_FOR_DEPTH(cells_plain, PLAIN, false)
+CELLS_FOR_DEPTH(cells_record, RECORD, false)
+CELLS_FOR_DEPTH(cells_judge, JUDGE, false)
+// Index 0 opaque: every pixel of every cell written.
+CELLS_FOR_DEPTH(cells_plain_opaque, PLAIN, true)
+CELLS_FOR_DEPTH(cells_record_opaque, RECORD, true)
+CELLS_FOR_DEPTH(cells_judge_opaque, JUDGE, true)
+
+void VDP_HOT(vdp_draw_layer)(const vdp_t *v, unsigned layer, uint16_t line, const vdp_geometry_t *g,
+                             vdp_legacy_mode_t legacy, uint8_t *pixels, uint8_t *levels, int from, int to) {
+    const unsigned x0 = from < 0 ? 0 : (unsigned)from;
+    const unsigned x1 = to > g->width ? g->width : (unsigned)to;
+    if (x1 <= x0) return;
+    if (g->cell_width != CELL_PIXELS) {
+        draw_pixels(v, layer, line, g, legacy, pixels, levels, x0, x1);
+        return;
+    }
+    const uint8_t control = v->render_reg[layer_block[layer] + LREG_CTRL];
+    const bool pinned = legacy != VDP_LEGACY_NONE;
+    const unsigned depth = pinned ? VDP_DEPTH_1BPP : control & VDP_LXCTRL_DEPTH;
+    const unsigned source = pinned ? (legacy == VDP_LEGACY_TEXT ? VDP_ATTR_NONE : VDP_ATTR_PER_GROUP)
+                                   : (control & VDP_LXCTRL_ATTR_SOURCE) >> 2;
+    // §9: the legacy submode ignores index 0 opaque — TMS9918 colour 0 is transparent.
+    const bool opaque = !pinned && (control & VDP_LXCTRL_INDEX0_OPAQUE);
+    // §12: layer 0 is drawn first and wins every pixel it writes; layer 1 is
+    // judged against the levels there, where levels are kept.
+    if (opaque) {
+        if (!levels) cells_plain_opaque(v, layer, line, g, legacy, pixels, levels, x0, x1, depth, source);
+        else if (layer_level[layer] == VDP_LEVEL_LAYER0) cells_record_opaque(v, layer, line, g, legacy, pixels, levels, x0, x1, depth, source);
+        else cells_judge_opaque(v, layer, line, g, legacy, pixels, levels, x0, x1, depth, source);
+    } else {
+        if (!levels) cells_plain(v, layer, line, g, legacy, pixels, levels, x0, x1, depth, source);
+        else if (layer_level[layer] == VDP_LEVEL_LAYER0) cells_record(v, layer, line, g, legacy, pixels, levels, x0, x1, depth, source);
+        else cells_judge(v, layer, line, g, legacy, pixels, levels, x0, x1, depth, source);
     }
 }

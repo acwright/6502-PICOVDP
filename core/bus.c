@@ -9,17 +9,18 @@
 #include <string.h>
 
 // §7: a byte of VRAM. The bus copy takes it at once, so either port reads it
-// back at once; the journal carries it to the render copy at the next latch
-// (§3). Once the journal is full for this line, the page is marked instead and
-// the latch copies it whole. Every write to VRAM comes through here — both data
-// ports, reset's palette and a debugger's pokes — because the palette snoop
-// (§11) is a property of the memory, not of who wrote to it.
+// back at once; the journal carries it to the render copy at the catch-up of
+// the next latch (§3). While the journal is full the page is marked instead,
+// and that catch-up copies it whole. Every write to VRAM comes through here —
+// both data ports, reset's palette and a debugger's pokes — because the palette
+// snoop (§11) is a property of the memory, not of who wrote to it.
 void VDP_HOT(vdp_poke)(vdp_t *v, uint16_t address, uint8_t value) {
     v->vram[address] = value;
-    if (v->journal_count < VDP_JOURNAL_ENTRIES) {
-        v->journal_address[v->journal_count] = address;
-        v->journal_value[v->journal_count] = value;
-        v->journal_count++;
+    uint32_t tail = v->journal_tail;
+    if (tail - v->journal_head < VDP_JOURNAL_ENTRIES) {
+        v->journal_address[tail & (VDP_JOURNAL_ENTRIES - 1)] = address;
+        v->journal_value[tail & (VDP_JOURNAL_ENTRIES - 1)] = value;
+        v->journal_tail = tail + 1;
     } else {
         v->dirty_pages |= UINT64_C(1) << (address >> VDP_VRAM_PAGE_SHIFT);
     }

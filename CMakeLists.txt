@@ -51,6 +51,7 @@ if(PICOVDP_PLATFORM STREQUAL "host")
     add_subdirectory(core)
     add_subdirectory(tests/unit)
     add_subdirectory(host/replay)
+    add_subdirectory(host/scene)
     add_subdirectory(spike)
     # tests/oracle is written by tools/sync-oracle.mjs alone (rule 4), so its
     # check is registered here rather than beside it.

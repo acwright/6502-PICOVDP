@@ -185,11 +185,12 @@ static napi_value js_build_line_at(napi_env env, napi_callback_info info) {
     if (v == NULL || !uint_arg(env, argv[2], &split)) return NULL;
     uint8_t *indices = typed_arg(env, argv[1], napi_uint8_array, VDP_WIDTH);
     if (indices == NULL) return NULL;
-    vdp_sprline_t core0;
-    vdp_build_sprites(v, &core0, 0, (int)split);
-    vdp_build_layers(v, indices);
-    vdp_draw_sprites(v, indices, (int)split, VDP_WIDTH);
-    vdp_merge_sprites(v, indices, &core0);
+    static vdp_half_t core0;
+    vdp_build_half(v, &core0, 0, (int)split);
+    vdp_build_half(v, &v->half, (int)split, VDP_WIDTH);
+    vdp_publish(v, &core0, &v->half);
+    vdp_copy_half(v, &core0, indices);
+    vdp_copy_half(v, &v->half, indices);
     return undefined(env);
 }
 

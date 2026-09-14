@@ -51,7 +51,8 @@ TEST(power_on) {
     // Nothing pending: the render side is the bus side already.
     CHECK(memcmp(v->render_vram, v->vram, sizeof v->vram) == 0);
     CHECK(memcmp(v->render_reg, v->reg, sizeof v->reg) == 0);
-    CHECK_EQ(0, v->journal_count);
+    CHECK_EQ(0, v->journal_tail - v->journal_head);
+    CHECK_EQ(0, v->latch_tail - v->latch_head);
     // STAT5 is the version the card was made with, not a register.
     set_reg(v, 0x0f, 0x05);
     CHECK_EQ(0x04, vdp_read(v, 1));

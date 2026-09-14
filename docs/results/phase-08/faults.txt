@@ -1,0 +1,52 @@
+=== fault core0
+raised core0; waiting for the board
+pico2 B8958606A8F33A40, build 4fe8412-dirty, SAFE MODE
+  clock 352000000 Hz, uptime 1.4 s, reset: fault, STAT5 $00
+  fault record: hardfault on core 0, at 1878.403 s, build 4fe8412-dirty
+    pc 0x20000dce  fault_raise at /Users/acwright/Developer/C/6502-PICOVDP/firmware/fault.c:223
+    lr 0x20001b1f  dispatch at /Users/acwright/Developer/C/6502-PICOVDP/firmware/link.c:359
+    xpsr 0x89100000 sp 0x20081eb0 exc_return 0xffffffe9
+    cfsr 0x00010000 hfsr 0x40000000 mmfar 0xe000ed34 bfar 0xe000ed38 sfsr 0x00000000 sfar 0xe000ede8
+    r0-r3 0x00000000 0x00000000 0x6ff629a0 0xffffffff r12 0x00000000
+    heartbeats: core 0 369574, core 1 29378188
+--- reflash
+pico2 B8958606A8F33A40, build 4fe8412-dirty, running
+  clock 352000000 Hz, uptime 1.0 s, reset: power-on, STAT5 $00
+  no fault record
+=== fault core1
+raised core1; waiting for the board
+pico2 B8958606A8F33A40, build 4fe8412-dirty, SAFE MODE
+  clock 352000000 Hz, uptime 1.4 s, reset: fault, STAT5 $00
+  fault record: hardfault on core 1, at 1.119 s, build 4fe8412-dirty
+    pc 0x20000dce  fault_raise at /Users/acwright/Developer/C/6502-PICOVDP/firmware/fault.c:223
+    lr 0x2000a4fd  apply_request at /Users/acwright/Developer/C/6502-PICOVDP/firmware/renderer.c:727
+    xpsr 0x89000200 sp 0x200571c0 exc_return 0xfffffff9
+    cfsr 0x00010000 hfsr 0x40000000 mmfar 0xe000ed34 bfar 0xe000ed38 sfsr 0x00000000 sfar 0xe000ede8
+    r0-r3 0x00000001 0x00004385 0x00000001 0x2005c9f4 r12 0x2002d845
+    heartbeats: core 0 527, core 1 17285
+--- reflash
+pico2 B8958606A8F33A40, build 4fe8412-dirty, running
+  clock 352000000 Hz, uptime 1.0 s, reset: power-on, STAT5 $00
+  no fault record
+=== fault hang
+raised hang; waiting for the board
+pico2 B8958606A8F33A40, build 4fe8412-dirty, SAFE MODE
+  clock 352000000 Hz, uptime 1.1 s, reset: watchdog, STAT5 $00
+  fault record: watchdog, at 1.316 s, build 4fe8412-dirty
+    watchdog: core 1's renderer stalled
+    heartbeats: core 0 626, core 1 17027
+--- reflash
+pico2 B8958606A8F33A40, build 4fe8412-dirty, running
+  clock 352000000 Hz, uptime 1.0 s, reset: power-on, STAT5 $00
+  no fault record
+=== fault panic
+raised panic; waiting for the board
+pico2 B8958606A8F33A40, build 4fe8412-dirty, SAFE MODE
+  clock 352000000 Hz, uptime 1.4 s, reset: fault, STAT5 $00
+  fault record: panic on core 0, at 1.114 s, build 4fe8412-dirty
+    FAULT raised a panic on core 0
+    heartbeats: core 0 526, core 1 17246
+--- reflash
+pico2 B8958606A8F33A40, build 4fe8412-dirty, running
+  clock 352000000 Hz, uptime 1.0 s, reset: power-on, STAT5 $00
+  no fault record

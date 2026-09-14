@@ -1,0 +1,1694 @@
+[
+ {
+  "name": "graphics-1bpp-16",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1771,
+     "max": 1825
+    },
+    "layer0": {
+     "min": 1923,
+     "max": 2141
+    },
+    "layer1": {
+     "min": 3297,
+     "max": 3703
+    },
+    "row": {
+     "min": 14027,
+     "max": 14302
+    },
+    "left": {
+     "min": 8444,
+     "max": 8650
+    },
+    "right": {
+     "min": 7610,
+     "max": 7792
+    },
+    "expand": {
+     "min": 1882,
+     "max": 1956
+    },
+    "splitChoose": {
+     "min": 485,
+     "max": 510
+    }
+   }
+  },
+  "rows": [
+   14302,
+   14302,
+   14276
+  ]
+ },
+ {
+  "name": "graphics-1bpp-16-det",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1770,
+     "max": 1819
+    },
+    "layer0": {
+     "min": 1957,
+     "max": 2315
+    },
+    "layer1": {
+     "min": 3296,
+     "max": 3920
+    },
+    "row": {
+     "min": 17131,
+     "max": 17977
+    },
+    "left": {
+     "min": 10250,
+     "max": 10771
+    },
+    "right": {
+     "min": 9134,
+     "max": 9658
+    },
+    "expand": {
+     "min": 1879,
+     "max": 1945
+    },
+    "splitChoose": {
+     "min": 492,
+     "max": 515
+    }
+   }
+  },
+  "rows": [
+   17977,
+   17977,
+   17499
+  ]
+ },
+ {
+  "name": "graphics-1bpp-32",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1771,
+     "max": 1825
+    },
+    "layer0": {
+     "min": 1918,
+     "max": 2137
+    },
+    "layer1": {
+     "min": 3299,
+     "max": 3703
+    },
+    "row": {
+     "min": 16115,
+     "max": 16402
+    },
+    "left": {
+     "min": 9603,
+     "max": 9784
+    },
+    "right": {
+     "min": 9364,
+     "max": 9560
+    },
+    "expand": {
+     "min": 1888,
+     "max": 1964
+    },
+    "splitChoose": {
+     "min": 490,
+     "max": 512
+    }
+   }
+  },
+  "rows": [
+   16402,
+   16402,
+   16361
+  ]
+ },
+ {
+  "name": "graphics-1bpp-32-det",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1768,
+     "max": 1819
+    },
+    "layer0": {
+     "min": 1907,
+     "max": 2141
+    },
+    "layer1": {
+     "min": 3292,
+     "max": 3697
+    },
+    "row": {
+     "min": 19153,
+     "max": 19495
+    },
+    "left": {
+     "min": 11272,
+     "max": 11497
+    },
+    "right": {
+     "min": 11095,
+     "max": 11309
+    },
+    "expand": {
+     "min": 1886,
+     "max": 1958
+    },
+    "splitChoose": {
+     "min": 495,
+     "max": 516
+    }
+   }
+  },
+  "rows": [
+   19495,
+   19495,
+   19437
+  ]
+ },
+ {
+  "name": "graphics-2bpp-16",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1768,
+     "max": 1819
+    },
+    "layer0": {
+     "min": 2450,
+     "max": 2647
+    },
+    "layer1": {
+     "min": 3950,
+     "max": 4345
+    },
+    "row": {
+     "min": 17227,
+     "max": 17619
+    },
+    "left": {
+     "min": 10236,
+     "max": 10474
+    },
+    "right": {
+     "min": 9231,
+     "max": 9460
+    },
+    "expand": {
+     "min": 1855,
+     "max": 1936
+    },
+    "splitChoose": {
+     "min": 487,
+     "max": 509
+    }
+   }
+  },
+  "rows": [
+   17619,
+   17370,
+   17619
+  ]
+ },
+ {
+  "name": "graphics-2bpp-16-det",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1766,
+     "max": 1825
+    },
+    "layer0": {
+     "min": 2432,
+     "max": 2650
+    },
+    "layer1": {
+     "min": 3960,
+     "max": 4341
+    },
+    "row": {
+     "min": 20323,
+     "max": 20736
+    },
+    "left": {
+     "min": 12044,
+     "max": 12298
+    },
+    "right": {
+     "min": 10777,
+     "max": 11014
+    },
+    "expand": {
+     "min": 1850,
+     "max": 1937
+    },
+    "splitChoose": {
+     "min": 494,
+     "max": 521
+    }
+   }
+  },
+  "rows": [
+   20736,
+   20468,
+   20736
+  ]
+ },
+ {
+  "name": "graphics-2bpp-32",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1773,
+     "max": 1819
+    },
+    "layer0": {
+     "min": 2446,
+     "max": 2650
+    },
+    "layer1": {
+     "min": 3966,
+     "max": 4337
+    },
+    "row": {
+     "min": 19317,
+     "max": 19722
+    },
+    "left": {
+     "min": 11379,
+     "max": 11601
+    },
+    "right": {
+     "min": 11177,
+     "max": 11427
+    },
+    "expand": {
+     "min": 1874,
+     "max": 1948
+    },
+    "splitChoose": {
+     "min": 489,
+     "max": 511
+    }
+   }
+  },
+  "rows": [
+   19722,
+   19448,
+   19722
+  ]
+ },
+ {
+  "name": "graphics-2bpp-32-det",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1768,
+     "max": 1825
+    },
+    "layer0": {
+     "min": 2435,
+     "max": 2650
+    },
+    "layer1": {
+     "min": 3952,
+     "max": 4334
+    },
+    "row": {
+     "min": 22280,
+     "max": 22721
+    },
+    "left": {
+     "min": 13028,
+     "max": 13290
+    },
+    "right": {
+     "min": 12908,
+     "max": 13147
+    },
+    "expand": {
+     "min": 1870,
+     "max": 1946
+    },
+    "splitChoose": {
+     "min": 494,
+     "max": 520
+    }
+   }
+  },
+  "rows": [
+   22721,
+   22465,
+   22721
+  ]
+ },
+ {
+  "name": "graphics-4bpp-16",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1768,
+     "max": 1825
+    },
+    "layer0": {
+     "min": 2487,
+     "max": 2732
+    },
+    "layer1": {
+     "min": 3700,
+     "max": 4169
+    },
+    "row": {
+     "min": 17164,
+     "max": 17466
+    },
+    "left": {
+     "min": 10177,
+     "max": 10344
+    },
+    "right": {
+     "min": 9186,
+     "max": 9342
+    },
+    "expand": {
+     "min": 1860,
+     "max": 1937
+    },
+    "splitChoose": {
+     "min": 489,
+     "max": 513
+    }
+   }
+  },
+  "rows": [
+   17466,
+   17276,
+   17402
+  ]
+ },
+ {
+  "name": "graphics-4bpp-16-det",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1769,
+     "max": 1825
+    },
+    "layer0": {
+     "min": 2473,
+     "max": 2732
+    },
+    "layer1": {
+     "min": 3704,
+     "max": 4170
+    },
+    "row": {
+     "min": 20250,
+     "max": 20651
+    },
+    "left": {
+     "min": 12013,
+     "max": 12222
+    },
+    "right": {
+     "min": 10703,
+     "max": 10895
+    },
+    "expand": {
+     "min": 1846,
+     "max": 1940
+    },
+    "splitChoose": {
+     "min": 494,
+     "max": 516
+    }
+   }
+  },
+  "rows": [
+   20651,
+   20439,
+   20554
+  ]
+ },
+ {
+  "name": "graphics-4bpp-32",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1763,
+     "max": 1825
+    },
+    "layer0": {
+     "min": 2483,
+     "max": 2731
+    },
+    "layer1": {
+     "min": 3716,
+     "max": 4167
+    },
+    "row": {
+     "min": 19263,
+     "max": 19582
+    },
+    "left": {
+     "min": 11324,
+     "max": 11487
+    },
+    "right": {
+     "min": 11144,
+     "max": 11293
+    },
+    "expand": {
+     "min": 1860,
+     "max": 1956
+    },
+    "splitChoose": {
+     "min": 489,
+     "max": 513
+    }
+   }
+  },
+  "rows": [
+   19582,
+   19390,
+   19502
+  ]
+ },
+ {
+  "name": "graphics-4bpp-32-det",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1777,
+     "max": 1819
+    },
+    "layer0": {
+     "min": 2483,
+     "max": 2929
+    },
+    "layer1": {
+     "min": 3706,
+     "max": 4234
+    },
+    "row": {
+     "min": 22311,
+     "max": 23114
+    },
+    "left": {
+     "min": 13002,
+     "max": 13484
+    },
+    "right": {
+     "min": 12875,
+     "max": 13303
+    },
+    "expand": {
+     "min": 1856,
+     "max": 1951
+    },
+    "splitChoose": {
+     "min": 494,
+     "max": 519
+    }
+   }
+  },
+  "rows": [
+   23114,
+   22485,
+   23114
+  ]
+ },
+ {
+  "name": "graphics-8bpp-16",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1763,
+     "max": 1819
+    },
+    "layer0": {
+     "min": 1795,
+     "max": 2176
+    },
+    "layer1": {
+     "min": 3324,
+     "max": 3889
+    },
+    "row": {
+     "min": 15397,
+     "max": 16174
+    },
+    "left": {
+     "min": 9265,
+     "max": 9680
+    },
+    "right": {
+     "min": 8282,
+     "max": 8711
+    },
+    "expand": {
+     "min": 1848,
+     "max": 1943
+    },
+    "splitChoose": {
+     "min": 487,
+     "max": 515
+    }
+   }
+  },
+  "rows": [
+   16174,
+   15554,
+   16174
+  ]
+ },
+ {
+  "name": "graphics-8bpp-16-det",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1778,
+     "max": 1817
+    },
+    "layer0": {
+     "min": 1796,
+     "max": 2038
+    },
+    "layer1": {
+     "min": 3341,
+     "max": 3712
+    },
+    "row": {
+     "min": 18743,
+     "max": 19033
+    },
+    "left": {
+     "min": 11226,
+     "max": 11406
+    },
+    "right": {
+     "min": 9933,
+     "max": 10130
+    },
+    "expand": {
+     "min": 1857,
+     "max": 1933
+    },
+    "splitChoose": {
+     "min": 492,
+     "max": 515
+    }
+   }
+  },
+  "rows": [
+   19033,
+   18895,
+   19033
+  ]
+ },
+ {
+  "name": "graphics-8bpp-32",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1768,
+     "max": 1825
+    },
+    "layer0": {
+     "min": 1794,
+     "max": 2038
+    },
+    "layer1": {
+     "min": 3326,
+     "max": 3706
+    },
+    "row": {
+     "min": 17426,
+     "max": 17747
+    },
+    "left": {
+     "min": 10368,
+     "max": 10567
+    },
+    "right": {
+     "min": 10144,
+     "max": 10330
+    },
+    "expand": {
+     "min": 1869,
+     "max": 1955
+    },
+    "splitChoose": {
+     "min": 488,
+     "max": 510
+    }
+   }
+  },
+  "rows": [
+   17747,
+   17575,
+   17747
+  ]
+ },
+ {
+  "name": "graphics-8bpp-32-det",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1764,
+     "max": 1817
+    },
+    "layer0": {
+     "min": 1785,
+     "max": 2034
+    },
+    "layer1": {
+     "min": 3342,
+     "max": 3706
+    },
+    "row": {
+     "min": 20709,
+     "max": 21000
+    },
+    "left": {
+     "min": 12177,
+     "max": 12362
+    },
+    "right": {
+     "min": 11971,
+     "max": 12169
+    },
+    "expand": {
+     "min": 1860,
+     "max": 1959
+    },
+    "splitChoose": {
+     "min": 493,
+     "max": 514
+    }
+   }
+  },
+  "rows": [
+   21000,
+   20871,
+   21000
+  ]
+ },
+ {
+  "name": "full-1bpp-16",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1769,
+     "max": 1815
+    },
+    "layer0": {
+     "min": 2284,
+     "max": 2544
+    },
+    "layer1": {
+     "min": 4049,
+     "max": 4538
+    },
+    "row": {
+     "min": 16138,
+     "max": 16471
+    },
+    "left": {
+     "min": 9387,
+     "max": 9597
+    },
+    "right": {
+     "min": 8631,
+     "max": 8857
+    },
+    "expand": {
+     "min": 1889,
+     "max": 1973
+    },
+    "splitChoose": {
+     "min": 487,
+     "max": 508
+    }
+   }
+  },
+  "rows": [
+   16471,
+   16471,
+   16376
+  ]
+ },
+ {
+  "name": "full-1bpp-16-det",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1772,
+     "max": 1817
+    },
+    "layer0": {
+     "min": 2709,
+     "max": 2782
+    },
+    "layer1": {
+     "min": 4679,
+     "max": 4848
+    },
+    "row": {
+     "min": 20135,
+     "max": 20386
+    },
+    "left": {
+     "min": 11691,
+     "max": 11845
+    },
+    "right": {
+     "min": 10682,
+     "max": 10820
+    },
+    "expand": {
+     "min": 1882,
+     "max": 1958
+    },
+    "splitChoose": {
+     "min": 491,
+     "max": 514
+    }
+   }
+  },
+  "rows": [
+   20386,
+   20357,
+   20342
+  ]
+ },
+ {
+  "name": "full-1bpp-32",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1763,
+     "max": 1817
+    },
+    "layer0": {
+     "min": 2286,
+     "max": 2543
+    },
+    "layer1": {
+     "min": 4052,
+     "max": 4536
+    },
+    "row": {
+     "min": 18240,
+     "max": 18563
+    },
+    "left": {
+     "min": 10488,
+     "max": 10707
+    },
+    "right": {
+     "min": 10133,
+     "max": 10376
+    },
+    "expand": {
+     "min": 1878,
+     "max": 1963
+    },
+    "splitChoose": {
+     "min": 486,
+     "max": 508
+    }
+   }
+  },
+  "rows": [
+   18563,
+   18563,
+   18481
+  ]
+ },
+ {
+  "name": "full-1bpp-32-det",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1765,
+     "max": 1816
+    },
+    "layer0": {
+     "min": 2280,
+     "max": 2773
+    },
+    "layer1": {
+     "min": 4055,
+     "max": 4858
+    },
+    "row": {
+     "min": 21432,
+     "max": 22564
+    },
+    "left": {
+     "min": 12201,
+     "max": 12882
+    },
+    "right": {
+     "min": 11901,
+     "max": 12560
+    },
+    "expand": {
+     "min": 1896,
+     "max": 1963
+    },
+    "splitChoose": {
+     "min": 493,
+     "max": 514
+    }
+   }
+  },
+  "rows": [
+   22564,
+   21800,
+   22564
+  ]
+ },
+ {
+  "name": "full-2bpp-16",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1768,
+     "max": 1819
+    },
+    "layer0": {
+     "min": 2915,
+     "max": 3168
+    },
+    "layer1": {
+     "min": 4856,
+     "max": 5318
+    },
+    "row": {
+     "min": 19628,
+     "max": 20094
+    },
+    "left": {
+     "min": 11217,
+     "max": 11493
+    },
+    "right": {
+     "min": 10398,
+     "max": 10651
+    },
+    "expand": {
+     "min": 1843,
+     "max": 1960
+    },
+    "splitChoose": {
+     "min": 486,
+     "max": 509
+    }
+   }
+  },
+  "rows": [
+   20094,
+   19773,
+   20094
+  ]
+ },
+ {
+  "name": "full-2bpp-16-det",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1768,
+     "max": 1819
+    },
+    "layer0": {
+     "min": 2919,
+     "max": 3167
+    },
+    "layer1": {
+     "min": 4861,
+     "max": 5325
+    },
+    "row": {
+     "min": 22796,
+     "max": 23292
+    },
+    "left": {
+     "min": 13049,
+     "max": 13338
+    },
+    "right": {
+     "min": 11949,
+     "max": 12234
+    },
+    "expand": {
+     "min": 1857,
+     "max": 1959
+    },
+    "splitChoose": {
+     "min": 490,
+     "max": 519
+    }
+   }
+  },
+  "rows": [
+   23292,
+   22976,
+   23292
+  ]
+ },
+ {
+  "name": "full-2bpp-32",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1769,
+     "max": 1817
+    },
+    "layer0": {
+     "min": 2922,
+     "max": 3175
+    },
+    "layer1": {
+     "min": 4869,
+     "max": 5326
+    },
+    "row": {
+     "min": 21690,
+     "max": 22168
+    },
+    "left": {
+     "min": 12317,
+     "max": 12576
+    },
+    "right": {
+     "min": 12048,
+     "max": 12317
+    },
+    "expand": {
+     "min": 1865,
+     "max": 1964
+    },
+    "splitChoose": {
+     "min": 487,
+     "max": 505
+    }
+   }
+  },
+  "rows": [
+   22168,
+   21849,
+   22168
+  ]
+ },
+ {
+  "name": "full-2bpp-32-det",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1768,
+     "max": 1816
+    },
+    "layer0": {
+     "min": 2914,
+     "max": 3167
+    },
+    "layer1": {
+     "min": 4863,
+     "max": 5319
+    },
+    "row": {
+     "min": 24775,
+     "max": 25305
+    },
+    "left": {
+     "min": 14001,
+     "max": 14286
+    },
+    "right": {
+     "min": 13744,
+     "max": 14026
+    },
+    "expand": {
+     "min": 1851,
+     "max": 1972
+    },
+    "splitChoose": {
+     "min": 492,
+     "max": 518
+    }
+   }
+  },
+  "rows": [
+   25305,
+   24988,
+   25305
+  ]
+ },
+ {
+  "name": "full-4bpp-16",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1775,
+     "max": 1817
+    },
+    "layer0": {
+     "min": 2982,
+     "max": 3312
+    },
+    "layer1": {
+     "min": 4525,
+     "max": 5118
+    },
+    "row": {
+     "min": 19497,
+     "max": 19926
+    },
+    "left": {
+     "min": 11178,
+     "max": 11373
+    },
+    "right": {
+     "min": 10293,
+     "max": 10506
+    },
+    "expand": {
+     "min": 1836,
+     "max": 1948
+    },
+    "splitChoose": {
+     "min": 485,
+     "max": 506
+    }
+   }
+  },
+  "rows": [
+   19926,
+   19658,
+   19782
+  ]
+ },
+ {
+  "name": "full-4bpp-16-det",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1763,
+     "max": 1818
+    },
+    "layer0": {
+     "min": 2979,
+     "max": 3313
+    },
+    "layer1": {
+     "min": 4526,
+     "max": 5116
+    },
+    "row": {
+     "min": 22658,
+     "max": 23102
+    },
+    "left": {
+     "min": 12975,
+     "max": 13247
+    },
+    "right": {
+     "min": 11849,
+     "max": 12106
+    },
+    "expand": {
+     "min": 1842,
+     "max": 1941
+    },
+    "splitChoose": {
+     "min": 491,
+     "max": 519
+    }
+   }
+  },
+  "rows": [
+   23102,
+   22845,
+   22993
+  ]
+ },
+ {
+  "name": "full-4bpp-32",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1772,
+     "max": 1816
+    },
+    "layer0": {
+     "min": 2980,
+     "max": 3534
+    },
+    "layer1": {
+     "min": 5048,
+     "max": 5227
+    },
+    "row": {
+     "min": 21821,
+     "max": 22575
+    },
+    "left": {
+     "min": 12350,
+     "max": 12811
+    },
+    "right": {
+     "min": 12063,
+     "max": 12508
+    },
+    "expand": {
+     "min": 1857,
+     "max": 1956
+    },
+    "splitChoose": {
+     "min": 487,
+     "max": 505
+    }
+   }
+  },
+  "rows": [
+   22575,
+   22494,
+   22575
+  ]
+ },
+ {
+  "name": "full-4bpp-32-det",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1772,
+     "max": 1821
+    },
+    "layer0": {
+     "min": 2967,
+     "max": 3307
+    },
+    "layer1": {
+     "min": 4534,
+     "max": 5115
+    },
+    "row": {
+     "min": 24777,
+     "max": 25221
+    },
+    "left": {
+     "min": 14010,
+     "max": 14244
+    },
+    "right": {
+     "min": 13686,
+     "max": 13904
+    },
+    "expand": {
+     "min": 1857,
+     "max": 1959
+    },
+    "splitChoose": {
+     "min": 493,
+     "max": 523
+    }
+   }
+  },
+  "rows": [
+   25221,
+   24942,
+   25095
+  ]
+ },
+ {
+  "name": "full-8bpp-16",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1764,
+     "max": 1817
+    },
+    "layer0": {
+     "min": 2131,
+     "max": 2696
+    },
+    "layer1": {
+     "min": 4015,
+     "max": 4782
+    },
+    "row": {
+     "min": 17494,
+     "max": 18469
+    },
+    "left": {
+     "min": 10071,
+     "max": 10670
+    },
+    "right": {
+     "min": 9248,
+     "max": 9844
+    },
+    "expand": {
+     "min": 1851,
+     "max": 1946
+    },
+    "splitChoose": {
+     "min": 486,
+     "max": 512
+    }
+   }
+  },
+  "rows": [
+   18469,
+   18469,
+   17638
+  ]
+ },
+ {
+  "name": "full-8bpp-16-det",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1767,
+     "max": 1817
+    },
+    "layer0": {
+     "min": 2133,
+     "max": 2697
+    },
+    "layer1": {
+     "min": 4453,
+     "max": 4779
+    },
+    "row": {
+     "min": 21002,
+     "max": 21918
+    },
+    "left": {
+     "min": 12120,
+     "max": 12631
+    },
+    "right": {
+     "min": 11012,
+     "max": 11521
+    },
+    "expand": {
+     "min": 1865,
+     "max": 1947
+    },
+    "splitChoose": {
+     "min": 492,
+     "max": 513
+    }
+   }
+  },
+  "rows": [
+   21918,
+   21918,
+   21801
+  ]
+ },
+ {
+  "name": "full-8bpp-32",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1765,
+     "max": 1816
+    },
+    "layer0": {
+     "min": 2129,
+     "max": 2417
+    },
+    "layer1": {
+     "min": 4087,
+     "max": 4549
+    },
+    "row": {
+     "min": 19537,
+     "max": 19869
+    },
+    "left": {
+     "min": 11204,
+     "max": 11412
+    },
+    "right": {
+     "min": 10825,
+     "max": 11084
+    },
+    "expand": {
+     "min": 1877,
+     "max": 1962
+    },
+    "splitChoose": {
+     "min": 487,
+     "max": 513
+    }
+   }
+  },
+  "rows": [
+   19869,
+   19660,
+   19869
+  ]
+ },
+ {
+  "name": "full-8bpp-32-det",
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1764,
+     "max": 1813
+    },
+    "layer0": {
+     "min": 2136,
+     "max": 2416
+    },
+    "layer1": {
+     "min": 4093,
+     "max": 4538
+    },
+    "row": {
+     "min": 22879,
+     "max": 23271
+    },
+    "left": {
+     "min": 13008,
+     "max": 13249
+    },
+    "right": {
+     "min": 12665,
+     "max": 12925
+    },
+    "expand": {
+     "min": 1862,
+     "max": 1958
+    },
+    "splitChoose": {
+     "min": 493,
+     "max": 520
+    }
+   }
+  },
+  "rows": [
+   23271,
+   23059,
+   23271
+  ]
+ },
+ {
+  "name": "full-4bpp-16-lim16",
+  "profile": {
+   "row": 101,
+   "sprites": 16,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 959,
+     "max": 989
+    },
+    "layer0": {
+     "min": 2983,
+     "max": 3305
+    },
+    "layer1": {
+     "min": 4523,
+     "max": 5114
+    },
+    "row": {
+     "min": 14453,
+     "max": 14830
+    },
+    "left": {
+     "min": 8968,
+     "max": 9180
+    },
+    "right": {
+     "min": 7181,
+     "max": 7369
+    },
+    "expand": {
+     "min": 1837,
+     "max": 1941
+    },
+    "splitChoose": {
+     "min": 302,
+     "max": 316
+    }
+   }
+  },
+  "rows": [
+   14830,
+   14580,
+   14739
+  ]
+ },
+ {
+  "name": "full-4bpp-16-det-lim16",
+  "profile": {
+   "row": 101,
+   "sprites": 16,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 958,
+     "max": 991
+    },
+    "layer0": {
+     "min": 2981,
+     "max": 3504
+    },
+    "layer1": {
+     "min": 4515,
+     "max": 5346
+    },
+    "row": {
+     "min": 16234,
+     "max": 17308
+    },
+    "left": {
+     "min": 10200,
+     "max": 10829
+    },
+    "right": {
+     "min": 7935,
+     "max": 8496
+    },
+    "expand": {
+     "min": 1841,
+     "max": 1945
+    },
+    "splitChoose": {
+     "min": 303,
+     "max": 320
+    }
+   }
+  },
+  "rows": [
+   17308,
+   16351,
+   16507
+  ]
+ },
+ {
+  "name": "full-4bpp-32-lim16",
+  "profile": {
+   "row": 101,
+   "sprites": 16,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 955,
+     "max": 987
+    },
+    "layer0": {
+     "min": 2970,
+     "max": 3303
+    },
+    "layer1": {
+     "min": 4525,
+     "max": 5116
+    },
+    "row": {
+     "min": 16032,
+     "max": 16403
+    },
+    "left": {
+     "min": 9012,
+     "max": 9210
+    },
+    "right": {
+     "min": 8979,
+     "max": 9201
+    },
+    "expand": {
+     "min": 1863,
+     "max": 1942
+    },
+    "splitChoose": {
+     "min": 301,
+     "max": 315
+    }
+   }
+  },
+  "rows": [
+   16403,
+   16147,
+   16297
+  ]
+ },
+ {
+  "name": "full-4bpp-32-det-lim16",
+  "profile": {
+   "row": 101,
+   "sprites": 16,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 957,
+     "max": 991
+    },
+    "layer0": {
+     "min": 2977,
+     "max": 3313
+    },
+    "layer1": {
+     "min": 4526,
+     "max": 5116
+    },
+    "row": {
+     "min": 17890,
+     "max": 18297
+    },
+    "left": {
+     "min": 10033,
+     "max": 10260
+    },
+    "right": {
+     "min": 10080,
+     "max": 10305
+    },
+    "expand": {
+     "min": 1870,
+     "max": 1946
+    },
+    "splitChoose": {
+     "min": 306,
+     "max": 320
+    }
+   }
+  },
+  "rows": [
+   18297,
+   18011,
+   18158
+  ]
+ }
+]

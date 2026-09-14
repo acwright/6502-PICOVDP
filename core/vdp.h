@@ -19,6 +19,15 @@
 // Phase 6: sprites (§10) and their place among the layers (§12).
 // Phase 7: 2, 4 and 8bpp layers, the attribute byte and §12's seven levels (§8,
 // §12, §13): the whole of SPEC.md's picture.
+// Phase 8: the latch in two halves, for the firmware's two contexts. Its bus
+// side, vdp_latch, is taken at the line's start, in core 1's interrupt; its
+// render side, vdp_catch_up, by the renderer when it is ready for the line,
+// which after a late line is later (§18). A latch records the register file and
+// where the journal stood, so a line is still built from the card as it stood
+// at its own latch. Status is published by vdp_publish, which the firmware
+// holds interrupts off around. vdp_line_start is all three at once. The layers
+// and sprites are drawn a word at a time, and a row is built in two halves, one
+// a core, each into a line of its own (vdp_build_half).
 
 #pragma once
 
@@ -41,14 +50,31 @@
 #define VDP_VRAM_SIZE 0x10000
 #define VDP_PALETTE_ENTRIES 256
 
-// VRAM writes one line can journal before the latch falls back to copying the
-// 1 KB pages written since (PLAN.md section 3). No 6502 comes near it: at 2 MHz
-// back-to-back `sta` is 2 µs (§4), 32 writes in a 63.56 µs line.
+// VRAM writes the journal holds for the render side before a write falls back
+// to marking its 1 KB page for a whole copy (PLAN.md section 3). No 6502 comes
+// near it: at 2 MHz back-to-back `sta` is 2 µs (§4), 32 writes in a 63.56 µs
+// line. A power of two: the journal is a ring.
 #define VDP_JOURNAL_ENTRIES 1024
 #define VDP_VRAM_PAGE_SHIFT 10
 
+// Latches the render side can fall behind by (§18's late lines). A latch that
+// finds them all waiting is merged into the newest, whose line is then never
+// built. A power of two.
+#define VDP_LATCHES 8
+
 // §10: the most sprites one line draws, SPRLIMIT's ceiling.
 #define VDP_SPRITES_PER_LINE 32
+
+// A line is built in a half (below), with slack either side of its 320 bytes
+// for whole cells and whole words (Phase 8), and VRAM's render copy carries its
+// first bytes again past $FFFF, so a pattern row is read whole where it wraps.
+#define VDP_LINE_SLACK 8
+#define VDP_LINE_BYTES (VDP_LINE_SLACK + VDP_WIDTH + 2 * VDP_LINE_SLACK)
+#define VDP_VRAM_GUARD 8
+
+// Sprite claims, a bit a picture column, in words: one spare for a sprite
+// running past the last.
+#define VDP_CLAIM_WORDS ((VDP_WIDTH + 31) / 32 + 1)
 
 // One sprite the latch found on the line about to be built (§10), with what the
 // build needs of its slot already read from the render copy.
@@ -60,19 +86,24 @@ typedef struct vdp_sprite {
     uint8_t attributes;
 } vdp_sprite_t;
 
-// Sprites drawn over picture columns [x0, x1) of one line (PLAN.md section 3):
-// core 0 builds one for core 1 to merge, and core 1 keeps one of its own as
-// scratch for the columns it draws itself. Indexed by picture column, not by
-// frame column. Holds no status: the collisions found in it are published by
-// the merge.
-typedef struct vdp_sprline {
+// One core's part of a line (PLAN.md section 3): picture columns [x0, x1),
+// built into a line of its own, so the two cores never write a byte the other
+// reads. A half's frame columns are its picture columns and the border beside
+// them: the left border goes with the half that starts at column 0, the right
+// with the one that ends at the picture's edge; an empty half has none. Holds
+// no status: the collisions found in it are published by vdp_publish.
+typedef struct vdp_half {
     int16_t x0, x1;
     bool collided;               // two sprite pixels met in [x0, x1), and collision is enabled (§10)
     uint64_t collisions;         // with SPRCTRL b3, the sprites that did: bit s for slot s (§6)
-    uint8_t level[VDP_WIDTH];    // §12's level of the sprite that owns the pixel: 2 or 5, 0 for none
-    uint8_t index[VDP_WIDTH];    // its palette index, where level is not 0
-    uint8_t owner[VDP_WIDTH];    // 1 + the lowest slot covering the pixel, painted or not; 0 for none
-} vdp_sprline_t;
+    uint8_t line[VDP_LINE_BYTES];   // palette indices: frame column x at VDP_LINE_SLACK + x
+    uint8_t level[VDP_LINE_BYTES];  // §12's level of the pixel each column holds, the same way
+    // Detailed collision's scratch: for each word of sprite claims, the slots
+    // that first covered its pixels, and which.
+    uint8_t owners[VDP_CLAIM_WORDS];
+    uint8_t owner_slot[VDP_CLAIM_WORDS][VDP_SPRITES_PER_LINE];
+    uint32_t owner_bits[VDP_CLAIM_WORDS][VDP_SPRITES_PER_LINE];
+} vdp_half_t;
 
 // One port pair (§4). $9C02/$9C03 are a complete second copy of $9C00/$9C01.
 typedef struct vdp_port {
@@ -83,7 +114,17 @@ typedef struct vdp_port {
     bool second;       // the flip-flop: the next command-port write completes a pair
 } vdp_port_t;
 
-// The whole card. Callers allocate it — it is about 137 KB, so statically or on
+// What a latch leaves for the render side (§3): the card as it stood, less
+// VRAM, which the journal carries.
+typedef struct vdp_latch_record {
+    uint8_t reg[VDP_REGISTERS];
+    uint64_t dirty_pages;    // pages written past a full journal before the latch
+    uint32_t journal_end;    // the journal's tail at the latch: the writes before it
+    uint32_t tag;            // the platform's, handed back with the render side (vdp_latch)
+    uint16_t screen_line;
+} vdp_latch_record_t;
+
+// The whole card. Callers allocate it — it is about 141 KB, so statically or on
 // the heap — and hand it to vdp_init. Its fields belong to the core.
 typedef struct vdp {
     // ---- the bus side ----
@@ -92,12 +133,23 @@ typedef struct vdp {
     uint8_t vram[VDP_VRAM_SIZE];            // §7
     uint8_t version;                        // STAT5, BCD (§6)
 
-    // VRAM writes since the last latch, for the render side to replay.
+    // VRAM writes the render side has not taken, in a ring: entries run from
+    // journal_head, the render side's, to journal_tail, the bus side's, both
+    // counting up forever and indexed modulo VDP_JOURNAL_ENTRIES. Each side
+    // writes only its own, so a write can interrupt a catch-up.
     uint16_t journal_address[VDP_JOURNAL_ENTRIES];
     uint8_t journal_value[VDP_JOURNAL_ENTRIES];
-    uint16_t journal_count;
-    uint64_t dirty_pages;                   // pages written after the journal filled
-    uint32_t journal_overflows;             // latches that fell back to page copies
+    uint32_t journal_head;
+    uint32_t journal_tail;
+    uint64_t dirty_pages;                   // pages written after the journal filled, since the last latch
+    uint32_t journal_overflows;             // catch-ups that fell back to page copies
+
+    // Latches the render side has not taken, a ring the same way: latch_tail
+    // is vdp_latch's, latch_head vdp_catch_up's.
+    vdp_latch_record_t latch[VDP_LATCHES];
+    uint32_t latch_head;
+    uint32_t latch_tail;
+    uint32_t latches_merged;                // latches merged into a full ring's newest
 
     uint16_t screen_line;                   // the screen line last begun, §3
     uint16_t display_line;                  // its number from the picture's first line, as it began, §3
@@ -113,8 +165,10 @@ typedef struct vdp {
 
     // ---- the render side: the card as it stood at the last latch ----
     uint8_t render_reg[VDP_REGISTERS];
-    uint8_t render_vram[VDP_VRAM_SIZE];
+    uint8_t render_vram[VDP_VRAM_SIZE + VDP_VRAM_GUARD];
     uint16_t render_screen_line;            // the screen line the build makes: the one after the latch's, §3
+    uint32_t render_tag;                    // the tag of the latch the render side reached
+    uint8_t render_overflow;                // 1 + the slot the evaluation dropped, 0 for none: for vdp_publish
     // §11's cache: each entry's 12-bit 0x0BGR twice, x * 0x10001, so one load
     // expands a pixel to two (§18).
     uint32_t palette[VDP_PALETTE_ENTRIES];
@@ -124,9 +178,8 @@ typedef struct vdp {
     uint8_t sprite_count;
     vdp_sprite_t sprite[VDP_SPRITES_PER_LINE];
 
-    // ---- the build's scratch, core 1's alone ----
-    uint8_t level[VDP_WIDTH];               // §12's level of the layer pixel each picture column holds
-    vdp_sprline_t sprline;                  // the sprites vdp_draw_sprites draws
+    // ---- the build's scratch ----
+    vdp_half_t half;                        // core 1's half of the line, or all of it
 } vdp_t;
 
 #ifdef __cplusplus
@@ -137,14 +190,16 @@ void    vdp_init(vdp_t *v, uint8_t version);                // a card that has b
 void    vdp_reset(vdp_t *v, bool power_on);                 // §15; RST leaves the raster running
 uint8_t vdp_read(vdp_t *v, unsigned port);                  // port = A1:A0, §4
 void    vdp_write(vdp_t *v, unsigned port, uint8_t value);  // §4
-void    vdp_line_start(vdp_t *v, uint16_t screen_line);     // a screen line begins, §3
+void    vdp_line_start(vdp_t *v, uint16_t screen_line);     // a screen line begins, §3: latch, catch up, publish
+void    vdp_latch(vdp_t *v, uint16_t screen_line, uint32_t tag); // its bus side, now; tag comes back in render_tag
+bool    vdp_catch_up(vdp_t *v);                             // the render side to the oldest latch it has not taken; false if none
 void    vdp_set_hblank(vdp_t *v, bool hblank);              // STAT3 b1, from the platform, §6
-int     vdp_split_choose(const vdp_t *v);                   // the picture column the cores divide this line at
-void    vdp_build_layers(vdp_t *v, uint8_t *indices);       // 320 palette indices, both layers
-void    vdp_build_sprites(const vdp_t *v, vdp_sprline_t *s, int x0, int x1); // picture columns [x0, x1), no status
-void    vdp_draw_sprites(vdp_t *v, uint8_t *indices, int x0, int x1);        // straight into the line, after the layers
-void    vdp_merge_sprites(vdp_t *v, uint8_t *indices, const vdp_sprline_t *s); // and publish its collisions
-void    vdp_build_line(vdp_t *v, uint8_t *indices);         // all of the above on one core (host)
+int     vdp_split_choose(const vdp_t *v);                   // the picture column the cores divide this row at; 0: one core builds it
+void    vdp_build_half(const vdp_t *v, vdp_half_t *h, int x0, int x1); // picture columns [x0, x1): backdrop, layers, sprites; no status
+void    vdp_expand_half(const vdp_t *v, const vdp_half_t *h, uint16_t *rgb);   // its frame columns, 12-bit 0x0BGR, x2
+void    vdp_copy_half(const vdp_t *v, const vdp_half_t *h, uint8_t *indices);  // its frame columns into a row of 320
+void    vdp_publish(vdp_t *v, const vdp_half_t *a, const vdp_half_t *b); // the row's overflow, and each half's collisions if not NULL
+void    vdp_build_line(vdp_t *v, uint8_t *indices);         // both halves on one thread, published, into 320 indices (host)
 void    vdp_expand_line(const vdp_t *v, const uint8_t *indices, uint16_t *rgb); // 12-bit 0x0BGR, x2
 bool    vdp_int_asserted(const vdp_t *v);                   // §14
 

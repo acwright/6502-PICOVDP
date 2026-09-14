@@ -1,0 +1,46 @@
+[
+ {
+  "name": "full-4bpp-32-det",
+  "seconds": 600.088,
+  "stats": {
+   "uptimeUs": 1267707495,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 8632935,
+   "linesTaken": 9424289,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 20216,
+    "p999": 20095,
+    "mean": 9862
+   },
+   "build": {
+    "max": 17712,
+    "p999": 0,
+    "mean": 7823
+   },
+   "catchUpMax": 2523,
+   "halfMax": 15129,
+   "expandMax": 1232,
+   "waitMax": 2021,
+   "publishMax": 819,
+   "core0HalfMax": 16603,
+   "splitMean": 160,
+   "splitRows": 8632935,
+   "latchIsrMax": 357,
+   "lineIsrMax": 546,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 4057,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  }
+ }
+]

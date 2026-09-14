@@ -17,7 +17,7 @@ can tell.
 |---|---|
 | **Written by** | `6502-EMULATOR`: `scripts/record-traces.mjs`, through `Video.observer`, during the same run the goldens are captured from |
 | **Reference reader** | `6502-EMULATOR/src/tests/goldens/traces.js`, and its CPU-less replay `scripts/replay-trace.mjs` |
-| **Read here by** | `tools/lib/trace.mjs` (written from this document), `tools/sync-oracle.mjs`, `tools/fuzz.mjs`, `host/replay` (a reader of its own, in C); later `vdpctl inject` / `replay` |
+| **Read here by** | `tools/lib/trace.mjs` (written from this document), `tools/sync-oracle.mjs`, `tools/fuzz.mjs`, `host/replay` (a reader of its own, in C), `tools/lib/inject.mjs` (`vdpctl inject`); later `vdpctl replay` |
 | **Pinned here in** | `tests/oracle/<fixture>/<fixture>.vdpt.gz`, by `tools/sync-oracle.mjs` only |
 
 In this document, **§** means a section of SPEC.md.
@@ -233,7 +233,8 @@ None of these is stored. Each follows from the rules above, and
 | operation index | the count of `R` and `W` events before it. `settle` is measured in these |
 
 **Addressing by frame and line.** An injection executor (`vdpctl inject`,
-Phase 8) applies each operation at the latch of its (frame, screen line), as if
+Phase 8; docs/DEBUGLINK.md section 4) applies each operation after the latch of
+its (frame, screen line) and the row that latch starts, as if
 from the bus, and needs no clock. The trace's order still decides which
 operations share a line and which side of a line start they fall. Screen lines
 are the address, not display lines, which move when the geometry changes (§3).

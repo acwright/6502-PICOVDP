@@ -1,13 +1,14 @@
 // Sprites (§10), the legacy submode's sprites (§9), and where sprites stand
 // among the layers (§12).
 //
-// Evaluation runs at the latch, from vdp_line_start, on the render side just
-// brought up to date: a line that drops a sprite reports its overflow there, as
-// §14 wants, and leaves the list of sprites it draws for the build. Drawing is
-// the build's (PLAN.md section 3): vdp_build_sprites on core 0 into a sprite
-// line, reading only the render side and writing no status; vdp_draw_sprites on
-// core 1 straight into the line, after the layers; and vdp_merge_sprites on
-// core 1, which brings core 0's sprite line in and publishes its collisions.
+// Evaluation runs at the latch's catch-up, on the render side just brought up
+// to date, and leaves the list of sprites the line draws for the build and the
+// slot it dropped, if any, for vdp_publish. Drawing is the build's (PLAN.md
+// section 3): each core draws the sprites over its half of the row straight
+// into its own line, after its layers, reading only the render side and
+// writing no status. vdp_publish, on core 1, reports the row's overflow and both
+// halves' collisions (line.c). Through vdp_line_start and vdp_build_line that is
+// at the latch and in the build, as §14 wants.
 //
 // Both halves draw with one worker over a range of picture columns. Priority
 // among sprites and collision are decided pixel by pixel — a pixel belongs to
@@ -61,201 +62,363 @@ static inline unsigned sprite_shift(const uint8_t *reg) {
 // §6, §14: a line dropped `slot`. STAT0's index field keeps the first since
 // STAT0 was read; STAT7 follows the most recent line; the interrupt is the
 // frame's first.
-static void report_overflow(vdp_t *v, unsigned slot) {
+void vdp_report_overflow(vdp_t *v, unsigned slot) {
     if (!(v->stat0 & VDP_STAT0_OVF)) v->stat0 |= (uint8_t)(VDP_STAT0_OVF | (slot & VDP_STAT0_SPRITE));
     vdp_frame_event(v, VDP_IRQ_OVERFLOW);
     v->overflow_sprite = (uint8_t)slot;
 }
 
-void VDP_HOT(vdp_sprites_evaluate)(vdp_t *v, bool publish) {
+// The walk down the table, with the legacy reading or VMODE's a constant.
+static inline __attribute__((always_inline)) uint8_t evaluate(vdp_t *v, const unsigned line, const unsigned width,
+                                                              const unsigned slots, const unsigned limit,
+                                                              const unsigned size, const unsigned shift,
+                                                              const bool terminates, const bool pinned) {
+    const unsigned span = size << shift;
+    // SPRATTR x $80 + 64 slots never passes $8080: the table does not wrap.
+    const uint8_t *slot_bytes = v->render_vram + (v->render_reg[VDP_REG_SPRATTR] << 7);
+    vdp_sprite_t *out = v->sprite;
+    unsigned covering = 0;
+
+    for (unsigned slot = 0; slot < slots; slot++, slot_bytes += SLOT_BYTES) {
+        const unsigned y = slot_bytes[SLOT_Y];
+        if (terminates && y == TERMINATOR) break;
+
+        // Y is the top edge as a display line; a magnified sprite covers twice
+        // the lines from the same top. The row is unsigned, so a line above
+        // the top is a row too large.
+        unsigned row;
+        if (pinned) {
+            row = line - (y >= Y_NEGATIVE_LEGACY ? y - 256 : y) - Y_OFFSET_LEGACY;
+        } else {
+            row = y >= Y_NEGATIVE ? line + 256 - y : line - y;
+        }
+        if (row >> shift >= size) continue;
+
+        // More than SPRLIMIT: the excess is dropped, highest index first, which
+        // in table order is stopping at the first that does not fit (§10).
+        if (covering >= limit) return (uint8_t)(slot + 1);
+        covering++;
+
+        // X: nine bits (§10), or the legacy early clock (§9). A sprite wholly
+        // off the picture's left or right counted, and draws nothing.
+        const uint8_t attributes = slot_bytes[SLOT_ATTRIBUTES];
+        int left = slot_bytes[SLOT_X];
+        if (pinned) {
+            if (attributes & ATTR_X_BIT8) left -= EARLY_CLOCK_PIXELS;
+        } else {
+            left |= (attributes & ATTR_X_BIT8) << 1;
+            if (left >= X_NEGATIVE) left -= X_RANGE;
+        }
+        if (left >= (int)width || left + (int)span <= 0) continue;
+
+        // §10: a vertical flip is the whole sprite's, quadrants included, so it
+        // is taken in sprite space. The legacy submode ignores it (§9).
+        row >>= shift;
+        if (!pinned && (attributes & ATTR_FLIP_Y)) row = size - 1 - row;
+        out->left = (int16_t)left;
+        out->slot = (uint8_t)slot;
+        out->row = (uint8_t)row;
+        out->pattern = slot_bytes[SLOT_PATTERN];
+        out->attributes = attributes;
+        out++;
+        v->sprite_count++;
+    }
+    return 0;
+}
+
+uint8_t VDP_HOT(vdp_sprites_evaluate)(vdp_t *v) {
     v->sprite_count = 0;
-    if (v->render_screen_line >= VDP_HEIGHT) return;
+    if (v->render_screen_line >= VDP_HEIGHT) return 0;
 
     // The picture's lines only, with the display on (§3, §10), and none at all
     // in legacy Text (§9). VMODE's Text geometry has them.
     const uint8_t *reg = v->render_reg;
     vdp_legacy_mode_t legacy;
     const vdp_geometry_t *g = vdp_geometry(reg, &legacy);
-    uint16_t line = vdp_display_line_of(v->render_screen_line, g);
-    if (line >= g->lines || !(reg[VDP_REG_MODE1] & VDP_MODE1_DISP) || legacy == VDP_LEGACY_TEXT) return;
-    uint8_t control = reg[VDP_REG_SPRCTRL];
-    if (!(control & VDP_SPRCTRL_ENABLE)) return;
+    const unsigned line = vdp_display_line_of(v->render_screen_line, g);
+    if (line >= g->lines || !(reg[VDP_REG_MODE1] & VDP_MODE1_DISP) || legacy == VDP_LEGACY_TEXT) return 0;
+    const uint8_t control = reg[VDP_REG_SPRCTRL];
+    if (!(control & VDP_SPRCTRL_ENABLE)) return 0;
 
-    bool pinned = legacy != VDP_LEGACY_NONE;
-    bool terminates = pinned || (control & VDP_SPRCTRL_TERMINATOR);
+    const bool pinned = legacy != VDP_LEGACY_NONE;
+    const bool terminates = pinned || (control & VDP_SPRCTRL_TERMINATOR);
     // §5: SPRCOUNT bounds the table and SPRLIMIT the line, each against its
     // ceiling. SPRLIMIT 0 draws none and overflows on the first sprite covering
-    // the line, which the comparison below does as it stands.
-    unsigned slots = reg[VDP_REG_SPRCOUNT] < SPRITE_SLOTS ? reg[VDP_REG_SPRCOUNT] : SPRITE_SLOTS;
-    unsigned limit = reg[VDP_REG_SPRLIMIT] < VDP_SPRITES_PER_LINE ? reg[VDP_REG_SPRLIMIT] : VDP_SPRITES_PER_LINE;
-    unsigned size = sprite_size(reg);
-    unsigned shift = sprite_shift(reg);
-    int span = (int)(size << shift);
-
-    const uint8_t *vram = v->render_vram;
-    uint16_t table = (uint16_t)(reg[VDP_REG_SPRATTR] << 7);  // §5: x $80
-    unsigned covering = 0;
-
-    for (unsigned slot = 0; slot < slots; slot++) {
-        uint16_t at = (uint16_t)(table + slot * SLOT_BYTES);
-        uint8_t y = vram[(uint16_t)(at + SLOT_Y)];
-        if (terminates && y == TERMINATOR) break;
-
-        // Y is the top edge as a display line; a magnified sprite covers twice
-        // the lines from the same top.
-        int top = pinned ? (y >= Y_NEGATIVE_LEGACY ? y - 256 : y) + Y_OFFSET_LEGACY : (y >= Y_NEGATIVE ? y - 256 : y);
-        int row = (int)line - top;
-        if (row < 0 || (unsigned)row >> shift >= size) continue;
-
-        // More than SPRLIMIT: the excess is dropped, highest index first, which
-        // in table order is stopping at the first that does not fit (§10).
-        if (covering >= limit) {
-            if (publish) report_overflow(v, slot);
-            break;
-        }
-        covering++;
-
-        // X: nine bits (§10), or the legacy early clock (§9). A sprite wholly
-        // off the picture's left or right counted, and draws nothing.
-        uint8_t attributes = vram[(uint16_t)(at + SLOT_ATTRIBUTES)];
-        int x = vram[(uint16_t)(at + SLOT_X)];
-        int left;
-        if (pinned) {
-            left = (attributes & ATTR_X_BIT8) ? x - EARLY_CLOCK_PIXELS : x;
-        } else {
-            x |= (attributes & ATTR_X_BIT8) << 1;
-            left = x >= X_NEGATIVE ? x - X_RANGE : x;
-        }
-        if (left >= (int)g->width || left + span <= 0) continue;
-
-        // §10: a vertical flip is the whole sprite's, quadrants included, so it
-        // is taken in sprite space. The legacy submode ignores it (§9).
-        unsigned pattern_row = (unsigned)row >> shift;
-        if (!pinned && (attributes & ATTR_FLIP_Y)) pattern_row = size - 1 - pattern_row;
-
-        v->sprite[v->sprite_count++] = (vdp_sprite_t){
-            .left = (int16_t)left,
-            .slot = (uint8_t)slot,
-            .row = (uint8_t)pattern_row,
-            .pattern = vram[(uint16_t)(at + SLOT_PATTERN)],
-            .attributes = attributes,
-        };
-    }
+    // the line, which the comparison in the walk does as it stands.
+    const unsigned slots = reg[VDP_REG_SPRCOUNT] < SPRITE_SLOTS ? reg[VDP_REG_SPRCOUNT] : SPRITE_SLOTS;
+    const unsigned limit = reg[VDP_REG_SPRLIMIT] < VDP_SPRITES_PER_LINE ? reg[VDP_REG_SPRLIMIT] : VDP_SPRITES_PER_LINE;
+    if (pinned) return evaluate(v, line, g->width, slots, limit, sprite_size(reg), sprite_shift(reg), true, true);
+    return evaluate(v, line, g->width, slots, limit, sprite_size(reg), sprite_shift(reg), terminates, false);
 }
 
-// §10: a sprite's pattern values on its row, by pattern column before a
-// horizontal flip — 8, or 16 from two quadrants. The pattern index counts 8 x 8
-// patterns at every depth, and a 16 x 16's quadrants N to N + 3 are top left,
+// ---- drawing, a word at a time (Phase 8) ----
+//
+// Each side of a line keeps a bitmap of the pixels a sprite has covered — a
+// solid pixel, visible or not — and, where legacy colour 0 sprites can cover
+// without painting, a second of the pixels one has painted. A sprite collides
+// wherever its solid pixels meet the first; it draws only the pixels it newly
+// takes in the second, four to a word. That is §10's rule — a pixel belongs to
+// the lowest slot that paints it, and collides if two slots cover it — decided
+// in words, and any division of the columns still gives the same line.
+
+#define CLAIM_WORDS VDP_CLAIM_WORDS
+
+// A sprite's row as it lands on the line: up to 32 pixels' indices, from its
+// left edge, and a bit for each solid one, bit 0 leftmost.
+typedef struct sprite_row {
+    uint8_t index[32 + 4];
+    uint32_t solid;
+} sprite_row_t;
+
+// The pattern row a sprite draws on this line: 8 or 16 pixels, as indices in
+// words and a solid bit each, before any flip. §10: the pattern index counts 8 x
+// 8 patterns at every depth, and a 16 x 16's quadrants N to N + 3 are top left,
 // bottom left, top right, bottom right. Pixels are MSB or high nibble first.
-static inline void decode_row(const uint8_t *vram, const vdp_sprite_t *s, unsigned size, unsigned depth,
-                              uint16_t table, uint8_t *values) {
-    unsigned bits = 1u << depth;
-    unsigned row_bytes = 1u << depth;
-    unsigned pattern_bytes = 8u << depth;
-    unsigned per_byte = 8u >> depth;
-    unsigned mask = (1u << bits) - 1;
-    for (unsigned half = 0; half < size; half += 8) {
-        unsigned quadrant = size == 16 ? ((half >> 3) << 1) | (s->row >> 3) : 0;
-        uint16_t address = (uint16_t)(table + (s->pattern + quadrant) * pattern_bytes + (s->row & 7) * row_bytes);
-        for (unsigned column = 0; column < 8; column++) {
-            uint8_t byte = vram[(uint16_t)(address + (column >> (3 - depth)))];
-            unsigned shift = (per_byte - 1 - (column & (per_byte - 1))) * bits;
-            values[half + column] = (uint8_t)((byte >> shift) & mask);
-        }
+static inline __attribute__((always_inline)) void decode_quadrant(const uint8_t *row, unsigned depth, bool pinned,
+                                                                  uint8_t group, uint32_t *w0, uint32_t *w1,
+                                                                  unsigned *solid) {
+    switch (depth) {
+    case VDP_DEPTH_1BPP: {
+        // Legacy: b3:0 is the index itself (§9). Otherwise value 1 in the
+        // group: (group × 2 + 1) & $FF.
+        const uint32_t index = (uint32_t)(pinned ? group : (uint8_t)(group << 1 | 1)) * VDP_ONES;
+        *w0 = index;
+        *w1 = index;
+        *solid = vdp_reverse8[row[0]];
+        break;
+    }
+    case VDP_DEPTH_2BPP: {
+        const uint32_t v0 = vdp_values2[row[0]], v1 = vdp_values2[row[1]];
+        const uint32_t base = (uint32_t)(uint8_t)(group << 2) * VDP_ONES;
+        *w0 = base | v0;
+        *w1 = base | v1;
+        *solid = vdp_byte_bits(vdp_nonzero_bytes(v0)) | vdp_byte_bits(vdp_nonzero_bytes(v1)) << 4;
+        break;
+    }
+    case VDP_DEPTH_4BPP: {
+        // (group × 16 + value) & $FF: SPRPAL drops out, and the table is the mapping.
+        const uint16_t *pairs = vdp_unpack4[group & 0x0f];
+        const uint32_t bytes = vdp_load32(row);
+        *w0 = pairs[bytes & 0xff] | (uint32_t)pairs[bytes >> 8 & 0xff] << 16;
+        *w1 = pairs[bytes >> 16 & 0xff] | (uint32_t)pairs[bytes >> 24] << 16;
+        *solid = vdp_byte_bits(vdp_nonzero_bytes(*w0 & 0x0f0f0f0fu)) |
+                 vdp_byte_bits(vdp_nonzero_bytes(*w1 & 0x0f0f0f0fu)) << 4;
+        break;
+    }
+    default:
+        *w0 = vdp_load32(row);
+        *w1 = vdp_load32(row + 4);
+        *solid = vdp_byte_bits(vdp_nonzero_bytes(*w0)) | vdp_byte_bits(vdp_nonzero_bytes(*w1)) << 4;
+        break;
     }
 }
 
-// Picture columns [x0, x1) of the line's sprites, into `s`'s claims. With
-// `picture`, a pixel is drawn straight into it where its level beats the
-// layer's in `levels` (§12); without, into `s` for a merge. Reads only the
-// render side and the list; the collisions found are left in `s`.
-static void VDP_HOT(draw_columns)(const vdp_t *v, vdp_sprline_t *s, int x0, int x1, uint8_t *picture, const uint8_t *levels) {
-    const uint8_t *reg = v->render_reg;
-    vdp_legacy_mode_t legacy;
-    const vdp_geometry_t *g = vdp_geometry(reg, &legacy);
-    int width = g->width;
-    if (x0 < 0) x0 = 0;
-    if (x1 > width) x1 = width;
-    // A line with no sprite on it costs nothing, and merges nothing.
-    if (!v->sprite_count || x1 < x0) x1 = x0;
-    s->x0 = (int16_t)x0;
-    s->x1 = (int16_t)x1;
-    s->collided = false;
-    s->collisions = 0;
-    if (x0 == x1) return;
-    memset(s->level + x0, 0, (size_t)(x1 - x0));
-    memset(s->owner + x0, 0, (size_t)(x1 - x0));
+static inline __attribute__((always_inline)) void sprite_row(const uint8_t *vram, const vdp_sprite_t *s,
+                                                             unsigned size, unsigned shift, unsigned depth,
+                                                             bool pinned, uint16_t table, uint8_t palette_high,
+                                                             sprite_row_t *out) {
+    const unsigned row_bytes = 1u << depth, pattern_bytes = 8u << depth;
+    const uint8_t group = (uint8_t)(pinned ? (s->attributes & ATTR_COLOUR) : (palette_high | (s->attributes & ATTR_COLOUR)));
+    const unsigned half = size == 16 ? s->row >> 3 : 0;
+    const uint16_t row_offset = (uint16_t)((s->row & 7) * row_bytes);
+    uint32_t w[4] = {0};
+    unsigned solid, right;
+    decode_quadrant(vram + (uint16_t)(table + (s->pattern + half) * pattern_bytes + row_offset), depth, pinned,
+                    group, &w[0], &w[1], &solid);
+    if (size == 16) {
+        decode_quadrant(vram + (uint16_t)(table + (s->pattern + 2 + half) * pattern_bytes + row_offset), depth,
+                        pinned, group, &w[2], &w[3], &right);
+        solid |= right << 8;
+    }
+    // §10: a horizontal flip is the whole sprite's, quadrants included. The
+    // legacy submode ignores it (§9).
+    if (!pinned && (s->attributes & ATTR_FLIP_X)) {
+        if (size == 16) {
+            const uint32_t t0 = w[0], t1 = w[1];
+            w[0] = vdp_swap32(w[3]);
+            w[1] = vdp_swap32(w[2]);
+            w[2] = vdp_swap32(t1);
+            w[3] = vdp_swap32(t0);
+            solid = (unsigned)vdp_reverse8[solid & 0xff] << 8 | vdp_reverse8[solid >> 8];
+        } else {
+            const uint32_t t0 = w[0];
+            w[0] = vdp_swap32(w[1]);
+            w[1] = vdp_swap32(t0);
+            solid = vdp_reverse8[solid];
+        }
+    }
+    const unsigned words = size >> 2;
+    if (shift) {
+        // Magnified: every pixel twice, a word of four becoming two.
+        for (unsigned i = 0; i < words; i++) {
+            const uint32_t x = w[i];
+            vdp_store32(out->index + 8 * i, (x & 0xff) * 0x0101u | ((x >> 8 & 0xff) * 0x0101u) << 16);
+            vdp_store32(out->index + 8 * i + 4, (x >> 16 & 0xff) * 0x0101u | ((x >> 24) * 0x0101u) << 16);
+        }
+        out->solid = vdp_spread8[solid & 0xff] | (uint32_t)vdp_spread8[solid >> 8] << 16;
+    } else {
+        for (unsigned i = 0; i < words; i++) vdp_store32(out->index + 4 * i, w[i]);
+        out->solid = solid;
+    }
+}
 
-    // §9: the legacy submode pins sprites to 1bpp and ignores SPRPAL.
-    uint8_t control = reg[VDP_REG_SPRCTRL];
-    bool pinned = legacy != VDP_LEGACY_NONE;
-    unsigned depth = pinned ? VDP_DEPTH_1BPP : (control & VDP_SPRCTRL_DEPTH) >> 4;
-    bool collision = (control & VDP_SPRCTRL_COLLISION) != 0;
-    bool detailed = collision && (control & VDP_SPRCTRL_DETAILED);  // §10: b3 does nothing while b1 is clear
-    unsigned size = sprite_size(reg);
-    unsigned shift = sprite_shift(reg);
-    uint16_t table = (uint16_t)(reg[VDP_REG_SPRPAT] << 11);  // §5: x $800
-    uint8_t palette_high = pinned ? 0 : (uint8_t)((reg[VDP_REG_SPRPAL] & 0x0f) << 4);
-    uint8_t values[16];
+// Bits [b, b + n) of a claim bitmap, n <= 32, as one word.
+static inline uint32_t window(const uint32_t *map, unsigned at) {
+    const unsigned k = at >> 5, b = at & 31;
+    return b ? (map[k] >> b | map[k + 1] << (32 - b)) : map[k];
+}
+
+static inline void claim(uint32_t *map, unsigned at, uint32_t bits) {
+    const unsigned k = at >> 5, b = at & 31;
+    map[k] |= bits << b;
+    if (b) map[k + 1] |= bits >> (32 - b);
+}
+
+// Picture columns [x0, x1) of the line's sprites, drawn straight into a half's
+// `picture` where each pixel's level beats the layers' in `levels` (§12).
+// Reads only the render side and the list; the collisions found are left in
+// the half.
+static inline __attribute__((always_inline)) void columns(const vdp_t *v, vdp_half_t *s, int x0, int x1,
+                                                          uint8_t *picture, const uint8_t *levels,
+                                                          const unsigned depth, const bool pinned,
+                                                          const bool detailed) {
+    const uint8_t *reg = v->render_reg;
+    const uint8_t control = reg[VDP_REG_SPRCTRL];
+    const bool collision = (control & VDP_SPRCTRL_COLLISION) != 0;
+    const unsigned size = sprite_size(reg), shift = sprite_shift(reg);
+    const int span = (int)(size << shift);
+    const uint16_t table = (uint16_t)(reg[VDP_REG_SPRPAT] << 11);  // §5: x $800
+    const uint8_t palette_high = pinned ? 0 : (uint8_t)((reg[VDP_REG_SPRPAL] & 0x0f) << 4);
+
+    uint32_t covered[CLAIM_WORDS] = {0}, painted[CLAIM_WORDS] = {0}, hit[CLAIM_WORDS];
+    if (detailed) {
+        memset(hit, 0, sizeof hit);
+        memset(s->owners, 0, sizeof s->owners);
+    }
+    sprite_row_t row;
 
     for (unsigned i = 0; i < v->sprite_count; i++) {
         const vdp_sprite_t *sprite = &v->sprite[i];
-        int left = sprite->left;
-        int from = left > x0 ? left : x0;
-        int to = left + (int)(size << shift);
-        if (to > x1) to = x1;
-        if (from >= to) continue;  // counted, and drawn by the other core if anywhere
+        const int left = sprite->left;
+        const int from = left > x0 ? left : x0;
+        const int to = left + span < x1 ? left + span : x1;
+        if (from >= to) continue;  // counted, and drawn by the other side if anywhere
 
-        decode_row(v->render_vram, sprite, size, depth, table, values);
-        uint8_t attributes = sprite->attributes;
-        bool flip = !pinned && (attributes & ATTR_FLIP_X);
+        sprite_row(v->render_vram, sprite, size, shift, depth, pinned, table, palette_high, &row);
+        const unsigned count = (unsigned)(to - from);
+        uint32_t solid = row.solid >> (from - left);
+        if (count < 32) solid &= (1u << count) - 1;
+        if (!solid) continue;
 
-        // §10's mapping, §8's with SPRPAL for LxPAL: ((SPRPAL x 16 + subpal) x
-        // 2^bpp + value) & $FF. In the legacy submode b3:0 is the index itself,
-        // into row 0; colour 0 is invisible but still collides (§9).
-        uint8_t group = (uint8_t)(palette_high | (attributes & ATTR_COLOUR));
-        uint8_t group_base = (uint8_t)(group << (1u << depth));
-        bool invisible = pinned && (attributes & ATTR_COLOUR) == 0;
-        // §12: b6 lifts the sprite above layer 1; legacy sprites stay at level 2.
-        uint8_t level = (!pinned && (attributes & ATTR_PRIORITY)) ? VDP_LEVEL_SPRITE_FRONT : VDP_LEVEL_SPRITE;
-        uint8_t owner = (uint8_t)(sprite->slot + 1);
-        uint64_t bit = UINT64_C(1) << sprite->slot;
-
-        for (int x = from; x < to; x++) {
-            unsigned column = (unsigned)(x - left) >> shift;
-            uint8_t value = values[flip ? size - 1 - column : column];
-            if (!value) continue;  // 0 is transparent at every depth (§10)
-
-            // Collision is on coverage, before any priority (§10, §12): a sprite
-            // hidden behind another, or behind a layer, still collides. The
-            // lowest slot on the pixel is paired with each one after it, so
-            // every sprite on a pixel two share is named.
-            uint8_t covering = s->owner[x];
-            if (!covering) {
-                s->owner[x] = owner;
-            } else if (collision) {
-                s->collided = true;
-                if (detailed) s->collisions |= bit | (UINT64_C(1) << (covering - 1));
+        // Collision is on coverage, before any priority (§10, §12): a sprite
+        // hidden behind another, or behind a layer, still collides. The lowest
+        // slot on a pixel is paired with each one after it, so every sprite on
+        // a pixel two share is named.
+        const uint32_t before = window(covered, (unsigned)from);
+        claim(covered, (unsigned)from, solid);
+        const uint32_t met = solid & before;
+        if (met && collision) {
+            s->collided = true;
+            if (detailed) {
+                s->collisions |= UINT64_C(1) << sprite->slot;
+                claim(hit, (unsigned)from, met);
             }
+        }
+        if (detailed) {
+            // Which slot first covered which pixels, word by word.
+            const uint32_t first = solid & ~before;
+            const unsigned k = (unsigned)from >> 5, b = (unsigned)from & 31;
+            const uint32_t low = first << b, high = b ? first >> (32 - b) : 0;
+            if (low) {
+                const unsigned n = s->owners[k]++;
+                s->owner_slot[k][n] = sprite->slot;
+                s->owner_bits[k][n] = low;
+            }
+            if (high) {
+                const unsigned n = s->owners[k + 1]++;
+                s->owner_slot[k + 1][n] = sprite->slot;
+                s->owner_bits[k + 1][n] = high;
+            }
+        }
 
-            // The lowest slot to paint a pixel owns it (§10), even where a layer
-            // then outranks it: a sprite behind does not show through.
-            if (invisible || s->level[x]) continue;
-            s->level[x] = level;
-            uint8_t index = pinned ? group : (uint8_t)(group_base + value);
-            if (!picture) {
-                s->index[x] = index;
-            } else if (level > levels[x]) {
-                picture[x] = index;
+        // §9: legacy colour 0 is invisible but still collides.
+        if (pinned && (sprite->attributes & ATTR_COLOUR) == 0) continue;
+
+        // The lowest slot to paint a pixel owns it (§10), even where a layer
+        // then outranks it: a sprite behind does not show through.
+        uint32_t fresh;
+        if (pinned) {
+            fresh = solid & ~window(painted, (unsigned)from);
+            claim(painted, (unsigned)from, solid);
+        } else {
+            fresh = solid & ~before;
+        }
+        if (!fresh) continue;
+
+        // §12: b6 lifts the sprite above layer 1; legacy sprites stay at level 2.
+        const unsigned level = (!pinned && (sprite->attributes & ATTR_PRIORITY)) ? VDP_LEVEL_SPRITE_FRONT : VDP_LEVEL_SPRITE;
+        // Only the nibbles holding a pixel it newly takes, four pixels to a word.
+        const uint8_t *src = row.index + (from - left);
+        uint8_t *out = picture + from;
+        const uint8_t *lv = levels + from;
+        while (fresh) {
+            const unsigned c = (unsigned)__builtin_ctz(fresh) & ~3u;
+            const uint32_t mask = vdp_nibble_lsb[(fresh >> c) & 15] & vdp_beaten(vdp_load32(lv + c), level);
+            fresh &= ~(15u << c);
+            vdp_store32(out + c, (vdp_load32(out + c) & ~mask) | (vdp_load32(src + c) & mask));
+        }
+    }
+
+    // An owner collided exactly where a later sprite met a pixel it owns.
+    if (detailed && s->collided) {
+        for (unsigned k = 0; k < CLAIM_WORDS; k++) {
+            if (!hit[k]) continue;
+            for (unsigned n = 0; n < s->owners[k]; n++) {
+                if (s->owner_bits[k][n] & hit[k]) s->collisions |= UINT64_C(1) << s->owner_slot[k][n];
             }
         }
     }
+}
+
+static void VDP_HOT(columns_at_depth)(const vdp_t *v, vdp_half_t *s, int x0, int x1, uint8_t *picture,
+                                      const uint8_t *levels, unsigned depth, bool pinned, bool detailed) {
+    if (pinned) {
+        columns(v, s, x0, x1, picture, levels, VDP_DEPTH_1BPP, true, detailed);
+        return;
+    }
+    switch (depth) {
+    case VDP_DEPTH_1BPP: columns(v, s, x0, x1, picture, levels, VDP_DEPTH_1BPP, false, detailed); break;
+    case VDP_DEPTH_2BPP: columns(v, s, x0, x1, picture, levels, VDP_DEPTH_2BPP, false, detailed); break;
+    case VDP_DEPTH_4BPP: columns(v, s, x0, x1, picture, levels, VDP_DEPTH_4BPP, false, detailed); break;
+    default: columns(v, s, x0, x1, picture, levels, VDP_DEPTH_8BPP, false, detailed); break;
+    }
+}
+
+// Clips [x0, x1) to the picture and the list, and draws.
+void VDP_HOT(vdp_draw_sprites)(const vdp_t *v, vdp_half_t *h, int x0, int x1, uint8_t *picture, const uint8_t *levels) {
+    const uint8_t *reg = v->render_reg;
+    vdp_legacy_mode_t legacy;
+    const vdp_geometry_t *g = vdp_geometry(reg, &legacy);
+    const int width = g->width;
+    if (x0 < 0) x0 = 0;
+    if (x1 > width) x1 = width;
+    h->collided = false;
+    h->collisions = 0;
+    if (!v->sprite_count || x1 <= x0) return;
+
+    // §9: the legacy submode pins sprites to 1bpp and ignores SPRPAL.
+    const uint8_t control = reg[VDP_REG_SPRCTRL];
+    const bool pinned = legacy != VDP_LEGACY_NONE;
+    const unsigned depth = pinned ? VDP_DEPTH_1BPP : (control & VDP_SPRCTRL_DEPTH) >> 4;
+    // §10: b3 does nothing while b1 is clear.
+    const bool detailed = (control & VDP_SPRCTRL_COLLISION) && (control & VDP_SPRCTRL_DETAILED);
+    columns_at_depth(v, h, x0, x1, picture, levels, depth, pinned, detailed);
 }
 
 // §6, §10, §14: COL, the frame's collision interrupt, and with SPRCTRL b3 the
 // map. Every one of them only ever sets, so the order the halves of a line are
 // published in, or publishing one twice, changes nothing.
-static void publish(vdp_t *v, const vdp_sprline_t *s) {
+void vdp_publish_collisions(vdp_t *v, const vdp_half_t *s) {
     if (!s->collided) return;
     v->stat0 |= VDP_STAT0_COL;
     vdp_frame_event(v, VDP_IRQ_COLLISION);
@@ -264,48 +427,38 @@ static void publish(vdp_t *v, const vdp_sprline_t *s) {
     }
 }
 
-void VDP_HOT(vdp_build_sprites)(const vdp_t *v, vdp_sprline_t *s, int x0, int x1) {
-    draw_columns(v, s, x0, x1, NULL, NULL);
-}
-
-void VDP_HOT(vdp_draw_sprites)(vdp_t *v, uint8_t *indices, int x0, int x1) {
-    const vdp_geometry_t *g = vdp_geometry(v->render_reg, NULL);
-    draw_columns(v, &v->sprline, x0, x1, indices + g->origin_x, v->level);
-    publish(v, &v->sprline);
-}
-
-void VDP_HOT(vdp_merge_sprites)(vdp_t *v, uint8_t *indices, const vdp_sprline_t *s) {
-    uint8_t *picture = indices + vdp_geometry(v->render_reg, NULL)->origin_x;
-    for (int x = s->x0; x < s->x1; x++) {
-        if (s->level[x] > v->level[x]) picture[x] = s->index[x];
-    }
-    publish(v, s);
-}
-
-// PLAN.md section 3: the picture column core 0's sprites end at, on a 32-pixel
-// boundary, balancing them against core 1's layers and the rest of the
-// sprites. O(1), from the list's length: the sprites as if spread evenly
-// across the picture. Until Phase 8 measures the real line, the costs are
-// Phase 1's spike's, in cycles, rounded. 0 when there is nothing for core 0.
+// PLAN.md section 3: the picture column the cores divide a row at, on an
+// 8-pixel boundary: core 0 builds the columns left of it, core 1 the rest. The
+// row's cost-weighted mean column — both layers and the expansion, the same for
+// every column, and each sprite at its centre — in one pass and one division.
+// The costs are Phase 8's, in cycles on the RP2350 (docs/results/phase-08.md);
+// the firmware moves the column after each row toward the core that finished
+// first. 0, for one core, on a row with no picture.
 int VDP_HOT(vdp_split_choose)(const vdp_t *v) {
-    if (!v->sprite_count) return 0;
+    if (v->render_screen_line >= VDP_HEIGHT) return 0;
     const uint8_t *reg = v->render_reg;
-    int width = vdp_geometry(reg, NULL)->width;
-    uint8_t control = reg[VDP_REG_SPRCTRL];
-    bool detailed = (control & VDP_SPRCTRL_COLLISION) && (control & VDP_SPRCTRL_DETAILED);
-    int64_t per_sprite = (detailed ? 290 : 200) + 7 * (int64_t)(sprite_size(reg) << sprite_shift(reg));
-    int64_t sprites = v->sprite_count * per_sprite;
-    int64_t layers = 0;
-    if (reg[VDP_REG_L0CTRL] & VDP_LXCTRL_ENABLE) layers += 9 * width;
-    if (reg[VDP_REG_L1CTRL] & VDP_LXCTRL_ENABLE) layers += 16 * width;
-    const int64_t core0_fixed = 500, core1_fixed = 2000;
+    const vdp_geometry_t *g = vdp_geometry(reg, NULL);
+    if (vdp_display_line_of(v->render_screen_line, g) >= g->lines || !(reg[VDP_REG_MODE1] & VDP_MODE1_DISP)) return 0;
+    const unsigned width = g->width;
 
-    // split/width x sprites + core0_fixed = layers + core1_fixed + (1 - split/width) x sprites
-    int64_t numerator = layers + core1_fixed + sprites - core0_fixed;
-    int split = numerator <= 0 ? 0 : (int)(numerator * width / (2 * sprites));
-    split = (split + 16) & ~31;
-    int floor = (width / 2) & ~31;
-    if (split < floor) split = floor;
+    uint32_t per_column = 6;
+    if (reg[VDP_REG_L0CTRL] & VDP_LXCTRL_ENABLE) per_column += 11;
+    if (reg[VDP_REG_L1CTRL] & VDP_LXCTRL_ENABLE) per_column += 17;
+    uint32_t total = per_column * width;
+    uint32_t moment = total * (width / 2);
+    const uint8_t control = reg[VDP_REG_SPRCTRL];
+    const bool detailed = (control & VDP_SPRCTRL_COLLISION) && (control & VDP_SPRCTRL_DETAILED);
+    const int span = (int)(sprite_size(reg) << sprite_shift(reg));
+    const uint32_t per_sprite = (detailed ? 290 : 200) + 8 * (uint32_t)span;
+    for (unsigned i = 0; i < v->sprite_count; i++) {
+        int centre = v->sprite[i].left + span / 2;
+        if (centre < 0) centre = 0;
+        if (centre >= (int)width) centre = (int)width - 1;
+        moment += per_sprite * (uint32_t)centre;
+        total += per_sprite;
+    }
+    unsigned split = ((moment / total) + 4) & ~7u;
+    if (split < 8) split = 8;
     if (split > width) split = width;
-    return split;
+    return (int)split;
 }

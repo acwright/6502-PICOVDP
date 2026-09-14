@@ -53,7 +53,8 @@ vdp_debug_mode_t vdp_debug_mode(const vdp_t *v);
 
 // The statistics the debug link reports (PLAN.md section 3's STATS).
 typedef struct vdp_debug_stats {
-    uint32_t journal_overflows;  // latches that copied pages because a line's journal filled
+    uint32_t journal_overflows;  // catch-ups that copied pages because the journal filled
+    uint32_t latches_merged;     // latches merged into a full ring's newest: lines never built (§18)
 } vdp_debug_stats_t;
 vdp_debug_stats_t vdp_debug_stats(const vdp_t *v);
 

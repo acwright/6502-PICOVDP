@@ -4,7 +4,7 @@
 // Video.test.ts covers the sprites through the adapter, which builds each row
 // on one thread the instant its latch falls. What it cannot see is here: that
 // every division of a line between the cores gives the same row and the same
-// status, that core 0's half publishes nothing until it is merged, that an
+// status, that core 0's half publishes nothing until core 1 publishes it, that an
 // overflow is published at the latch and a collision only by the build, that a
 // write during the build does not reach it, and that the sprite tables wrap at
 // 64 KB.
@@ -127,11 +127,12 @@ static bool same_status(const vdp_t *a, const vdp_t *b) {
 
 // A line built with core 0 taking picture columns [0, split).
 static void build_at(vdp_t *v, int split, uint8_t *row) {
-    vdp_sprline_t core0;
-    vdp_build_sprites(v, &core0, 0, split);
-    vdp_build_layers(v, row);
-    vdp_draw_sprites(v, row, split, VDP_WIDTH);
-    vdp_merge_sprites(v, row, &core0);
+    static vdp_half_t core0;
+    vdp_build_half(v, &core0, 0, split);
+    vdp_build_half(v, &v->half, split, VDP_WIDTH);
+    vdp_publish(v, &core0, &v->half);
+    vdp_copy_half(v, &core0, row);
+    vdp_copy_half(v, &v->half, row);
 }
 
 // PLAN.md section 3: priority among sprites and collision are exact within
@@ -195,33 +196,36 @@ TEST(every_split_builds_the_same_line) {
 }
 
 // Core 0 writes no status (PLAN.md section 3): what its half found waits in the
-// sprite line until core 1 merges it.
-TEST(core_0s_collisions_wait_for_the_merge) {
+// half until core 1 publishes it.
+TEST(core_0s_collisions_wait_for_the_publish) {
     vdp_t *v = graphics();
-    uint8_t row[VDP_WIDTH];
     set_reg(v, SPRCTRL, SPR_ON | SPR_COLLIDE | SPR_DETAILED);
     set_reg(v, IRQEN, 0x08);
     slot(v, 0x0000, 0, 10, 20, 0, 0x07);
     slot(v, 0x0000, 1, 10, 24, 0, 0x07);    // overlaps slot 0 at x 24-27
 
     vdp_line_start(v, 10);
-    vdp_sprline_t core0;
-    vdp_build_sprites(v, &core0, 0, 32);
+    static vdp_half_t core0;
+    vdp_build_half(v, &core0, 0, 32);
     CHECK(core0.collided);
     CHECK_EQ(0x03, core0.collisions);
     CHECK_EQ(0, v->stat0);
     CHECK(!vdp_int_asserted(v));
 
-    vdp_build_layers(v, row);
-    vdp_draw_sprites(v, row, 32, VDP_WIDTH);
-    CHECK_EQ(0, v->stat0);                  // core 1's half had nothing to collide
-    CHECK(all(row, 32 + 20, 32 + 32, 0));   // nor has core 0's half been drawn yet
+    vdp_build_half(v, &v->half, 32, VDP_WIDTH);
+    CHECK(!v->half.collided);               // core 1's half had nothing to collide
+    uint8_t row[VDP_WIDTH];
+    memset(row, 0xee, sizeof row);
+    vdp_copy_half(v, &core0, row);
+    vdp_copy_half(v, &v->half, row);
+    CHECK(all(row, 32 + 20, 32 + 32, 15));  // core 0's half holds its sprites
+    CHECK(all(row, 0, 32, 0));              // and the border
+    CHECK_EQ(0, v->stat0);                  // built, not yet published
 
-    vdp_merge_sprites(v, row, &core0);
+    vdp_publish(v, &core0, &v->half);
     CHECK_EQ(0x20, v->stat0);
     CHECK_EQ(0x03, v->collision_map[0]);
     CHECK(vdp_int_asserted(v));
-    CHECK(all(row, 32 + 20, 32 + 32, 15));
     free(v);
 }
 
@@ -613,8 +617,8 @@ TEST(a_restored_card_evaluates_without_reporting) {
     free(w);
 }
 
-// PLAN.md section 3: the split is on a 32-pixel boundary within the picture,
-// and 0 — nothing for core 0 — on a line with no sprites.
+// PLAN.md section 3: the split is on an 8-pixel boundary within the picture,
+// on every picture row, sprites or none.
 TEST(the_split_is_a_word_boundary_in_the_picture) {
     vdp_t *v = graphics();
     for (unsigned n = 0; n < 32; n++) slot(v, 0x0000, n, 5, (uint8_t)(n * 8), 0, 0x07);
@@ -628,13 +632,10 @@ TEST(the_split_is_a_word_boundary_in_the_picture) {
             for (uint8_t mode1 = DISP; mode1 < DISP + 4; mode1++) {
                 set_reg(v, MODE1, mode1);
                 vdp_line_start(v, vmodes[m] <= 2 ? 29 : 5);  // display line 6
+                // A picture row is always divided, with sprites or without.
                 int split = vdp_split_choose(v);
-                if (!v->sprite_count) {
-                    CHECK_EQ(0, split);
-                    continue;
-                }
-                CHECK(split >= widths[m] / 2 - 31 && split <= widths[m]);
-                CHECK(split % 32 == 0 || split == widths[m]);
+                CHECK(split > 0 && split <= widths[m]);
+                CHECK(split % 8 == 0);
             }
         }
     }
@@ -643,7 +644,7 @@ TEST(the_split_is_a_word_boundary_in_the_picture) {
 
 int main(void) {
     RUN(every_split_builds_the_same_line);
-    RUN(core_0s_collisions_wait_for_the_merge);
+    RUN(core_0s_collisions_wait_for_the_publish);
     RUN(overflow_at_the_latch_collision_in_the_build);
     RUN(no_sprites_outside_the_picture);
     RUN(sprites_stand_between_the_layers);

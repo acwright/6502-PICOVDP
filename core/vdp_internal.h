@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <string.h>
+
 #include "vdp.h"
 
 // Hot functions: in RAM on the RP2350 (PLAN.md section 3). The image is
@@ -16,6 +18,61 @@
 
 #define VDP_VRAM_MASK (VDP_VRAM_SIZE - 1)
 #define VDP_REGISTER_MASK (VDP_REGISTERS - 1)
+
+// ---- words ----
+//
+// The renderer works in 32-bit words of byte-wide pixels (PLAN.md section 3,
+// Phase 8), which assumes a little-endian machine: byte 0 of a word is the
+// leftmost pixel. Both of this core's platforms are.
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__
+#error "the renderer's words are little-endian"
+#endif
+
+#define VDP_ONES 0x01010101u
+
+static inline uint32_t vdp_load32(const uint8_t *p) {
+    uint32_t w;
+    memcpy(&w, p, sizeof w);
+    return w;
+}
+
+static inline void vdp_store32(uint8_t *p, uint32_t w) {
+    memcpy(p, &w, sizeof w);
+}
+
+// A word's bytes in the other order: pixels mirrored.
+static inline uint32_t vdp_swap32(uint32_t w) {
+    return w << 24 | (w << 8 & 0xff0000u) | (w >> 8 & 0xff00u) | w >> 24;
+}
+
+// $FF in each byte that is not zero.
+static inline uint32_t vdp_nonzero_bytes(uint32_t w) {
+    return ((((w & 0x7f7f7f7fu) + 0x7f7f7f7fu) | w) >> 7 & VDP_ONES) * 0xff;
+}
+
+// Bytes of $00 or $FF, one bit each, byte 0 in bit 0.
+static inline unsigned vdp_byte_bits(uint32_t mask) {
+    return ((mask & VDP_ONES) * 0x01020408u) >> 24;
+}
+
+// $FF in each byte holding a §12 level below `level`: the pixels a source at
+// `level` beats. Levels are 0-6, so no byte carries into the next.
+static inline uint32_t vdp_beaten(uint32_t levels, unsigned level) {
+    return ((((levels + (0x80u - level) * VDP_ONES) >> 7) & VDP_ONES) ^ VDP_ONES) * 0xff;
+}
+
+// $FF in each byte where `a`'s level is above `b`'s.
+static inline uint32_t vdp_above(uint32_t a, uint32_t b) {
+    return ((((a | 0x80808080u) - b - VDP_ONES) >> 7) & VDP_ONES) * 0xff;
+}
+
+// tables.c
+extern const uint16_t vdp_unpack4[16][256];
+extern const uint32_t vdp_values2[256];
+extern const uint8_t vdp_reverse8[256];
+extern const uint16_t vdp_spread8[256];
+extern const uint32_t vdp_nibble_msb[16];
+extern const uint32_t vdp_nibble_lsb[16];
 
 // ---- §5: the register file ----
 
@@ -167,16 +224,20 @@ const vdp_geometry_t *vdp_geometry(const uint8_t *reg, vdp_legacy_mode_t *legacy
 #define VDP_ATTR_PER_ROW 2
 #define VDP_ATTR_NONE 3
 
-// Draw layer 0 or 1's display line `line`, 0 to g->lines - 1, into the
-// picture's g->width pixels, over what they hold. `legacy` is the legacy mode
+// Draw layer 0 or 1's display line `line`, 0 to g->lines - 1, into picture
+// columns [x0, x1) of the g->width pixels at `pixels`, over what they hold. `legacy` is the legacy mode
 // pinning the layer (§9): layer 0's in the legacy submode, else
 // VDP_LEGACY_NONE. A transparent pixel is left as it is. Where `levels` is not
 // NULL it holds the §12 level of each picture column, the backdrop's before
 // layer 0 is drawn: layer 1 writes only where its level beats the one there,
 // and each pixel written has its level recorded, for layer 1 and the sprites
 // to be judged against. Where it is NULL, every opaque pixel is written.
+//
+// Cells are drawn whole: a cell at either end of [x0, x1) may write up to 7
+// pixels beyond it, into the slack of a half's line or columns that are not
+// the half's (vdp.h).
 void vdp_draw_layer(const vdp_t *v, unsigned layer, uint16_t line, const vdp_geometry_t *g,
-                    vdp_legacy_mode_t legacy, uint8_t *pixels, uint8_t *levels);
+                    vdp_legacy_mode_t legacy, uint8_t *pixels, uint8_t *levels, int x0, int x1);
 
 // §8, §12: whether layer 0's cells can carry attribute b6, and so stand at
 // level 4 above layer 1's ordinary cells — an attribute byte at 2, 4 or 8bpp,
@@ -208,9 +269,20 @@ static inline bool vdp_layer0_has_priority(const uint8_t *reg, vdp_legacy_mode_t
 #define VDP_SPRCTRL_DEPTH 0x30
 
 // §10: evaluate the sprites for the line the render side is about to build,
-// into v->sprite. With `publish`, a line that drops one reports its overflow
-// (§6, §14) as the latch does; a restored snapshot evaluates without.
-void vdp_sprites_evaluate(vdp_t *v, bool publish);
+// into v->sprite. Writes no status: returns 1 + the slot of the first sprite
+// the line drops, or 0, for vdp_publish to report (§6, §14).
+uint8_t vdp_sprites_evaluate(vdp_t *v);
+
+// §6, §14: a line dropped `slot` (sprites.c).
+void vdp_report_overflow(vdp_t *v, unsigned slot);
+
+// §6, §10, §14: what a half's sprites found colliding (sprites.c).
+void vdp_publish_collisions(vdp_t *v, const vdp_half_t *h);
+
+// Sprites over picture columns [x0, x1) of a half's line, after its layers,
+// each pixel where its level beats the layers' (§12); the collisions found
+// are left in the half (sprites.c).
+void vdp_draw_sprites(const vdp_t *v, vdp_half_t *h, int x0, int x1, uint8_t *picture, const uint8_t *levels);
 
 // ---- §3, §6, §14: the raster, status and interrupts (status.c) ----
 
@@ -250,6 +322,11 @@ static inline bool vdp_frame_event(vdp_t *v, uint8_t source) {
 }
 
 // ---- §7: VRAM writes ----
+
+// The render copy's guard: its first bytes again past $FFFF (vdp.h).
+static inline void vdp_render_guard(vdp_t *v) {
+    memcpy(v->render_vram + VDP_VRAM_SIZE, v->render_vram, VDP_VRAM_GUARD);
+}
 
 // Store a byte in the bus copy and journal it for the render side.
 void vdp_poke(vdp_t *v, uint16_t address, uint8_t value);
