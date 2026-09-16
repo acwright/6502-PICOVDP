@@ -847,7 +847,8 @@ is the bench.*
 - `bench/nano` primitives and scripts; `vdpctl bus`, `sweep`, `irq-timing`,
   `grab`, `compare-capture`; `docs/BENCH.md`.
 - On the stock TMS9918 firmware, driven by the Nano:
-  - text mode, with the 2 KB character set taken from `BIOS.bin` at `$B800`
+  - text mode, with the 2 KB character set taken from `fonts/cp437-6x8.bin` (the
+    same bytes as `BIOS.bin` 1.6 at `$B800`; BIOS 2.x has no font there)
   - write a line of text
   - read status
   - enable the vblank interrupt

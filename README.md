@@ -36,9 +36,10 @@ Layout
 | `host/scene/` | `vdp-scene`: the firmware's worst-case scenes drawn on the host, the reference for the board's snapshots |
 | `firmware/` | RP2350 only: `main.c`; `renderer.c`, the card on two cores; `vga/`, pico9918's VGA driver cut to §3's raster; `fault.c`, fault records, the watchdog and safe mode; and in debug builds `link.c`, `inject.c`, `scenes.c`, `profile.c` |
 | `spike/` | Phase 1 timing spike: renderer, worst-case scenes, Pico 2 harness (disposable) |
+| `fonts/` | `cp437-6x8.bin`, the card's built-in font (§7), from 6502-BIOS v1.6. Checked by `tools/font.mjs` |
 | `tests/unit/` | C unit tests, run by CTest |
 | `tests/oracle/` | the emulator's goldens and traces, pinned. Written by `tools/sync-oracle.mjs` only |
-| `tools/` | Node ESM host tools: `vdpctl`, `sync-oracle`, `replay`, `fuzz` |
+| `tools/` | Node ESM host tools: `vdpctl`, `sync-oracle`, `replay`, `fuzz`, `font` |
 | `bench/nano/` | Arduino Nano bus harness (PlatformIO) |
 | `external/pico-sdk` | pico-sdk 2.1.1, submodule |
 
@@ -80,6 +81,16 @@ node tools/sync-oracle.mjs            # re-sync; the emulator must be on v3-vdp,
 ```
 
 A re-sync is a commit of its own (PLAN.md ground rule 4).
+
+### The font
+
+```sh
+node tools/font.mjs --check           # fonts/cp437-6x8.bin is font $00 (CTest font_pinned)
+node tools/font.mjs show '$41-$5A'    # glyphs as 6 × 8 text
+```
+
+With a 6502-BIOS checkout at `../../Assembly/6502-BIOS` (or `PICOVDP_BIOS`), the
+check also proves the file still derives from `v1.6:Chars.asm`.
 
 ### The core against the emulator
 

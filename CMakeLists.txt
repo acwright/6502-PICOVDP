@@ -59,6 +59,10 @@ if(PICOVDP_PLATFORM STREQUAL "host")
     if(PICOVDP_NODE)
         add_test(NAME oracle_pinned
             COMMAND ${PICOVDP_NODE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/sync-oracle.mjs --check)
+        # fonts/cp437-6x8.bin is the built-in font (SPEC.md §7); its SHA-256 is
+        # normative, and a 6502-BIOS checkout, if present, proves its derivation.
+        add_test(NAME font_pinned
+            COMMAND ${PICOVDP_NODE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/font.mjs --check)
     endif()
     # An addon built with ASan cannot be loaded by a Node that was not, so the
     # adapter is built by the plain host preset only.

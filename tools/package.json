@@ -2,7 +2,7 @@
   "name": "picovdp-tools",
   "version": "0.0.0",
   "private": true,
-  "description": "Host tools for 6502-PICOVDP: vdpctl, fuzz, sync-oracle (PLAN.md section 5)",
+  "description": "Host tools for 6502-PICOVDP: vdpctl, fuzz, sync-oracle, font (PLAN.md section 5)",
   "type": "module",
   "license": "MIT",
   "engines": {
@@ -11,6 +11,7 @@
   "scripts": {
     "sync-oracle": "node sync-oracle.mjs",
     "check-oracle": "node sync-oracle.mjs --check",
+    "check-font": "node font.mjs --check",
     "fuzz": "node fuzz.mjs"
   }
 }
