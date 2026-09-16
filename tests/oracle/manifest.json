@@ -2,9 +2,10 @@
   "writtenBy": "tools/sync-oracle.mjs — do not edit tests/oracle by hand",
   "emulator": {
     "repository": "https://github.com/acwright/6502-EMULATOR.git",
-    "branch": "v3-vdp",
-    "commit": "527b53c81d4a0dbb848b807e802c58a6fae90dba",
-    "committed": "2026-09-16T13:26:32-05:00"
+    "branch": "main",
+    "commit": "f14f88a6c87eeeb88545d85748f3f34ffa2f05cc",
+    "describe": "v3.0.0",
+    "committed": "2026-09-16T15:15:27-05:00"
   },
   "traceFormat": 1,
   "fixtures": [
