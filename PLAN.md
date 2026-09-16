@@ -69,7 +69,7 @@ Contents
   sprites, the palette, compositing, scrolling, status and interrupts, reset.
 - A portable C core holding all of that behaviour, built for the RP2350 and for
   macOS, with a host test suite.
-- Additions to `6502-EMULATOR` on its `v3-vdp` branch that export its oracle: a
+- Additions to `6502-EMULATOR` that export its oracle: a
   port observer, port traces of the golden fixtures, a CPU-less trace replay,
   and a Jest configuration that runs its video tests against this repo's core.
 - A bench that drives the PRO without an AC6502: an Arduino Nano bus harness, a
@@ -118,9 +118,9 @@ only what needs the PRO: the pins, the picture and the clock.
    holds that repo to the same rule. `SPEC.md` is canonical: CTest
    `spec_in_step` (`tools/check-spec.mjs`) fails when the emulator's copy
    differs from it or the HTML names another draft.
-3. **Emulator changes land on `v3-vdp`.** Never on `main`. Check
-   `git branch --show-current` before every emulator commit. The emulator's own
-   ground rules apply there, including: goldens are not edited to pass.
+3. **Emulator changes land on `main`.** `v3-vdp` was merged for 3.0.0 and
+   receives nothing more; the emulator's own `CLAUDE.md` governs its commits,
+   including: goldens are not edited to pass.
 4. **Goldens belong to the emulator.** This repo holds a pinned copy under
    `tests/oracle/`, written only by `tools/sync-oracle.mjs`, never by hand. A
    golden that needs to move is re-captured in `6502-EMULATOR`, in a commit of its
@@ -144,7 +144,7 @@ only what needs the PRO: the pins, the picture and the clock.
     that phase's work to `main` in this repo, titled `Phase N: <phase title>`.
     Its body lists what was done and anything that differs from this plan. Stage
     files by name, never `build/` or other generated output. Emulator work from
-    the same phase is committed in `6502-EMULATOR` on `v3-vdp`, under that repo's
+    the same phase is committed in `6502-EMULATOR` on `main`, under that repo's
     rules. Oracle re-syncs keep their own commits (rule 4). A phase that is not
     green gets no phase commit: report what failed instead. Never push; pushing
     stays the owner's call.
@@ -682,7 +682,7 @@ chosen. **If the Full mode worst case leaves less than 25% of the line at
 *Everything later is measured against what this phase produces. Nothing the
 emulator does changes.*
 
-In `6502-EMULATOR`, on `v3-vdp` only:
+In `6502-EMULATOR` (then on `v3-vdp`, since merged into `main`):
 
 - An optional port observer on `Video`, called from `read` and `write`
   (`Video.read`/`Video.write` in `Video.ts`), plus a tick count since reset. It costs nothing while
@@ -970,8 +970,8 @@ listed, with its Phase 10 injection result standing for it.
 
 - **`6502-BIOS`:** hardware `VideoScroll`, port B in interrupt handlers, new entry
   points (SPEC §17).
-- **`6502-EMULATOR`:** merge `v3-vdp` per its own PLAN.md, and the documentation
-  rewrite in `6502-DOCS`.
+- **`6502-EMULATOR`:** `v3-vdp` is merged and released as 3.0.0; the documentation
+  rewrite in `6502-DOCS` follows.
 
 ---
 
@@ -1021,7 +1021,7 @@ listed, with its Phase 10 injection result standing for it.
    untimed, so neither depends on it. Timing is judged against SPEC.md, never
    against the emulator's clock.
 
-8. **The oracle drifts.** The emulator keeps changing on `v3-vdp`. The manifest
+8. **The oracle drifts.** The emulator keeps changing on `main`. The manifest
    pins its commit, `sync-oracle.mjs` refuses a dirty or wrong-branch tree, and
    re-syncs are commits of their own (rule 4).
 
