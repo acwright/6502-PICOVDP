@@ -115,7 +115,9 @@ only what needs the PRO: the pins, the picture and the clock.
    in `6502-EMULATOR`, and the HTML rendering, `docs/SPEC.html` here, which is
    published from that file to the same artifact URL each time. A change to one is
    a change to all three, made in the same sitting — the emulator's `CLAUDE.md`
-   holds that repo to the same rule.
+   holds that repo to the same rule. `SPEC.md` is canonical: CTest
+   `spec_in_step` (`tools/check-spec.mjs`) fails when the emulator's copy
+   differs from it or the HTML names another draft.
 3. **Emulator changes land on `v3-vdp`.** Never on `main`. Check
    `git branch --show-current` before every emulator commit. The emulator's own
    ground rules apply there, including: goldens are not edited to pass.

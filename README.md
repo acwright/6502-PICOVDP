@@ -8,7 +8,9 @@ package).
 - [SPEC.md](SPEC.md) — what the VDP does (draft 0.5). `6502-EMULATOR`'s
   `Video.ts` on its `v3-vdp` branch is the reference implementation.
   [docs/SPEC.html](docs/SPEC.html) is the same document, rendered, and is kept in
-  step with it.
+  step with it. SPEC.md is canonical; the emulator's `docs/VDP-SPEC.md` is a
+  byte-identical copy, checked by `node tools/check-spec.mjs` (CTest
+  `spec_in_step`, registered when the emulator checkout is found).
 - [PLAN.md](PLAN.md) — how the firmware is built, proven and delivered.
 - [docs/TRACE.md](docs/TRACE.md) — the format of the port traces the goldens
   are replayed from.
@@ -39,7 +41,7 @@ Layout
 | `fonts/` | `cp437-6x8.bin`, the card's built-in font (§7), from 6502-BIOS v1.6. Checked by `tools/font.mjs` |
 | `tests/unit/` | C unit tests, run by CTest |
 | `tests/oracle/` | the emulator's goldens and traces, pinned. Written by `tools/sync-oracle.mjs` only |
-| `tools/` | Node ESM host tools: `vdpctl`, `sync-oracle`, `replay`, `fuzz`, `font` |
+| `tools/` | Node ESM host tools: `vdpctl`, `sync-oracle`, `replay`, `fuzz`, `font`, `check-spec` |
 | `bench/nano/` | Arduino Nano bus harness (PlatformIO) |
 | `external/pico-sdk` | pico-sdk 2.1.1, submodule |
 

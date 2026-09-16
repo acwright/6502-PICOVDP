@@ -63,6 +63,19 @@ if(PICOVDP_PLATFORM STREQUAL "host")
         # normative, and a 6502-BIOS checkout, if present, proves its derivation.
         add_test(NAME font_pinned
             COMMAND ${PICOVDP_NODE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/font.mjs --check)
+        # SPEC.md is canonical; the emulator's docs/VDP-SPEC.md must match it and
+        # docs/SPEC.html name the same draft (rule 2). Only with an emulator checkout.
+        if(DEFINED ENV{PICOVDP_EMULATOR})
+            set(PICOVDP_EMULATOR_DIR $ENV{PICOVDP_EMULATOR})
+        else()
+            set(PICOVDP_EMULATOR_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../NodeJS/6502-EMULATOR)
+        endif()
+        if(EXISTS ${PICOVDP_EMULATOR_DIR}/docs/VDP-SPEC.md)
+            add_test(NAME spec_in_step
+                COMMAND ${PICOVDP_NODE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/check-spec.mjs)
+            set_tests_properties(spec_in_step PROPERTIES
+                ENVIRONMENT "PICOVDP_EMULATOR=${PICOVDP_EMULATOR_DIR}")
+        endif()
     endif()
     # An addon built with ASan cannot be loaded by a Node that was not, so the
     # adapter is built by the plain host preset only.
