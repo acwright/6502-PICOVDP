@@ -5,7 +5,7 @@ Firmware for a custom Video Display Processor for the AC6502, running on
 PICO9918 PRO v2.0 hardware (RP2354A: an RP2350A with 2 MB of flash in the
 package).
 
-- [SPEC.md](SPEC.md) — what the VDP does (draft 0.4). `6502-EMULATOR`'s
+- [SPEC.md](SPEC.md) — what the VDP does (draft 0.5). `6502-EMULATOR`'s
   `Video.ts` on its `v3-vdp` branch is the reference implementation.
   [docs/SPEC.html](docs/SPEC.html) is the same document, rendered, and is kept in
   step with it.

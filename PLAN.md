@@ -4,7 +4,7 @@
 How the video card specified in [SPEC.md](SPEC.md) gets built, proven and
 delivered as firmware for the PICO9918 PRO v2.0.
 
-**Target:** SPEC.md draft 0.4, in full, on a PICO9918 PRO v2.0 (RP2354A), fitted
+**Target:** SPEC.md draft 0.5, in full, on a PICO9918 PRO v2.0 (RP2354A), fitted
 to an AC6502.
 
 **Definition of done:** the unmodified BIOS boots to `OK` on an AC6502 with the
@@ -64,7 +64,7 @@ Contents
 
 ### In scope
 
-- Firmware for the PICO9918 PRO v2.0 implementing SPEC.md draft 0.4: four ports,
+- Firmware for the PICO9918 PRO v2.0 implementing SPEC.md draft 0.5: four ports,
   128 registers, 64 KB VRAM, the tile engine at all four depths, both layers,
   sprites, the palette, compositing, scrolling, status and interrupts, reset.
 - A portable C core holding all of that behaviour, built for the RP2350 and for
@@ -1079,6 +1079,24 @@ their own; no index or VRAM golden moved.
 2. **`SPRLIMIT` resets to 16**, not 32, which keeps 25% of the worst line spare.
 3. **A late line is specified:** it shows the most recently completed line
    again, and its status, and everything else, are unaffected.
+
+### The built-in font — settled in draft 0.5
+
+Planned in `VDP-PLAN.md` (local) with the emulator, BIOS and include plans, not
+found by a phase. SPEC.md, the emulator's `docs/VDP-SPEC.md` and the published
+HTML were changed together (rule 2). The core, `Video.ts` and the firmware
+implement it after the spec; no existing golden moves, so a `vdp-font` fixture
+proves it.
+
+1. **Reset loads font `$00`**, CP437 6 × 8, to `$0800`–`$0FFF` after the palette,
+   at power-on and at every `RST`. The bytes are `fonts/cp437-6x8.bin`, pinned by
+   SHA-256 (§7, §15).
+2. **Register `$30` `FONT`** loads it into layer 0's or layer 1's pattern table,
+   the base sampled at the write. The load completes at the line start where
+   vertical blank fires, before F sets: a 2 KB copy does not fit an access, and
+   there is no status register left to report it (§5, §7, §14).
+3. **`STAT6` b7** advertises both, so `STAT6` reads `$BF`; the emulator's `STAT5`
+   reads `$05` (§6, §16, §18).
 
 ### Decisions this firmware records, which SPEC.md may want to state
 

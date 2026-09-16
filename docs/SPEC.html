@@ -374,6 +374,10 @@ svg text { font-family: var(--mono); }
 .palkey span { display: inline-flex; align-items: center; gap: 6px; }
 .palkey i { width: 11px; height: 11px; display: inline-block; background: linear-gradient(135deg, transparent 44%, var(--ink-3) 44%, var(--ink-3) 56%, transparent 56%); border: 1px solid var(--rule-2); }
 
+/* ---- glyph chart ----------------------------------------------------- */
+canvas.glyphs { display: block; }
+code.hash { white-space: normal; word-break: break-all; }
+
 /* ---- misc ------------------------------------------------------------- */
 .breaks td:first-child { font-family: var(--mono); font-size: 13px; white-space: nowrap; width: 30%; }
 .ok { color: var(--green); font-weight: 600; }
@@ -400,13 +404,13 @@ footer {
     <h1>6502&#8209;PICOVDP<span class="dim">.</span></h1>
     <p class="lede">A custom VDP for the AC6502 family, implemented in firmware on PICO9918 PRO v2.0 hardware. No TMS9918 left inside &mdash; but the unmodified BIOS still boots.</p>
     <ul class="meta">
-      <li>Status <b>draft 0.4</b></li>
+      <li>Status <b>draft 0.5</b></li>
       <li>Reference <b>6502-EMULATOR v3-vdp</b></li>
       <li>Target <b>PICO9918 PRO v2.0 / RP2354A</b></li>
       <li>Firmware&#8209;only <b>no hardware mod</b></li>
       <li class="hl">Ident byte <b>$AC</b> &middot; STAT4</li>
     </ul>
-    <p class="lede" style="font-size:15px;margin-top:14px"><strong>Status:</strong> draft 0.4. Implemented in the emulator — <code>6502-EMULATOR</code> 3.0.0 on its <code>v3-vdp</code> branch, <code>src/core/IO/Video.ts</code> — and in firmware, all but the bus interface, running on a Raspberry Pi Pico 2 (<code>6502-PICOVDP</code>, its plan's Phase 8). What changed in each draft is listed under <a href="#history">Revision History</a>.</p>
+    <p class="lede" style="font-size:15px;margin-top:14px"><strong>Status:</strong> draft 0.5. Draft 0.4 is implemented in the emulator — <code>6502-EMULATOR</code> 3.0.0 on its <code>v3-vdp</code> branch, <code>src/core/IO/Video.ts</code> — and in firmware, all but the bus interface, running on a Raspberry Pi Pico 2 (<code>6502-PICOVDP</code>, its plan's Phase 8). Draft 0.5 adds the built-in font (§7), which both are implementing. What changed in each draft is listed under <a href="#history">Revision History</a>.</p>
 
     <div class="facts">
       <div class="fact"><span class="n">256</span><span class="k">Colors</span><span class="was">of 4096 &middot; was 15</span></div>
@@ -479,7 +483,7 @@ footer {
           </table>
         </div>
         <h3>Design principles</h3>
-        <ol><li><strong>The classic port pair still works.</strong> <code>$9C00</code>/<code>$9C01</code> behave as they always have. The existing Kernal drives this VDP unmodified (see §17). There is no unlock sequence and no lock: everything new is simply present.</li><li><strong>No mode is reachable only by magic.</strong> Registers <code>$08</code>–<code>$7F</code> are always live.</li><li><strong>The 6502 is the bottleneck, not the Pico.</strong> At 1 MHz a <code>sta VC_DATA</code> run moves ~250 KB/s at the very most (§4). Every design decision that trades VRAM or CPU writes for VDP-side work is worth taking; every decision that demands more CPU writes is not. This is why VRAM is 64 KB and not 512 KB, and why hardware scrolling matters more than extra tile capacity.</li><li><strong>Nothing is at a fixed address.</strong> Every table is placed by a base register.</li></ol>
+        <ol><li><strong>The classic port pair still works.</strong> <code>$9C00</code>/<code>$9C01</code> behave as they always have. The existing Kernal drives this VDP unmodified (see §17). There is no unlock sequence and no lock: everything new is simply present.</li><li><strong>No mode is reachable only by magic.</strong> Registers <code>$08</code>–<code>$7F</code> are always live.</li><li><strong>The 6502 is the bottleneck, not the Pico.</strong> At 1 MHz a <code>sta VC_DATA</code> run moves ~250 KB/s at the very most (§4). Every design decision that trades VRAM or CPU writes for VDP-side work is worth taking; every decision that demands more CPU writes is not. This is why VRAM is 64 KB and not 512 KB, and why hardware scrolling matters more than extra tile capacity.</li><li><strong>Nothing is at a fixed address.</strong> Every table is placed by a base register. Reset writes two things at fixed addresses, the default palette (§11) and the built-in font (§7), and software may move or overwrite either.</li></ol>
         <h3>Non-goals</h3>
         <ul><li>TMS9918 Graphics II and Multicolor modes. Dropped — see §19 for why Graphics II in particular did not survive. The <em>capability</em> Graphics II offered, one color pair per pattern row, is a first-class feature of the tile engine (§8).</li><li>F18A compatibility. The F18A register set is not implemented and not emulated.</li><li>A GPU/coprocessor.</li><li>A blitter or VRAM fill/copy engine. See §19.</li></ul>
       </section>
@@ -702,6 +706,7 @@ footer {
         <p>The direction latch records which kind of address was set last and nothing reads it: either data-port operation works whichever way a port was pointed.</p>
         <h3>Access timing</h3>
         <p>There is no minimum interval between VRAM accesses. VRAM is RP2350 SRAM, not a DRAM array being time-shared with the raster, so the ~8 µs gap a real TMS9918 demands does not exist. The 65C02's fastest back-to-back port access is <code>sta abs</code> at 4 cycles — 4 µs at 1 MHz, 2 µs at 2 MHz — which leaves the RP2350 roughly 700 cycles at 352 MHz to service each access. A stand-in for the PIO-plus-interrupt path measured about 100 (§18).</p>
+        <p>One operation does not fit that budget. A <code>FONT</code> command (§5) copies 2 KB into VRAM, far more work than an access may take, so the card does not copy as the write arrives. The write records the load, and the copy completes at the next vertical blank (§7, §14).</p>
         <p>Sustained throughput through an unrolled <code>sta VC_DATA</code> run — the ceiling:</p>
         <div class="tw">
           <table>
@@ -786,9 +791,13 @@ footer {
         <p><code>SPRCTRL</code> resets to <code>$27</code> — enabled, collision on, <code>$D0</code> terminator active, detailed collision off, 4bpp.</p>
         <p><code>SPRLIMIT</code> resets to 16: the most sprites the firmware draws on the worst-case line with a quarter of the line to spare (§18). Any value up to 32 works — the worst case at 32 still builds in time, with less in hand, and a line that ever does not is shown as §18's <a href="#late-lines"><em>Late lines</em></a> says. It is also a way to reproduce a low per-line limit for period-correct flicker, should anyone want it.</p>
         <div class="regblock">
-          <div class="rbhead"><span class="rbrange">$28–$7F</span><span class="rbname">Reserved</span></div>
-          <div class="reg rsv"><span class="a">$28–$7F</span><span class="nm">&mdash;</span><span class="rv">&mdash;</span><span class="d">Write 0. Reserved for a second sprite bank, raster effect tables, additional layers, or a blitter (§19). A reserved register — here, <code>$17</code>, <code>$1F</code> or <code>$26</code>–<code>$27</code> — stores what is written and has no effect.</span></div>
+          <div class="rbhead"><span class="rbrange">$28–$7F</span><span class="rbname">Font, and reserved</span></div>
+          <div class="reg rsv"><span class="a">$28–$2F</span><span class="nm">&mdash;</span><span class="rv">&mdash;</span><span class="d">Reserved for a blitter (§19)</span></div>
+          <div class="reg"><span class="a">$30</span><span class="nm">FONT</span><span class="rv">$00</span><span class="d">Load a built-in font (§7). <strong>b7</strong> destination: 0 = layer 0's pattern table, at <code>L0PAT</code> × <code>$800</code>; 1 = layer 1's, at <code>L1PAT</code> × <code>$800</code>. <strong>b6:0</strong> font ID: <code>$00</code> = CP437, 6 × 8; <code>$01</code>–<code>$7F</code> reserved. Every write is a command</span></div>
+          <div class="reg rsv"><span class="a">$31–$7F</span><span class="nm">&mdash;</span><span class="rv">&mdash;</span><span class="d">Reserved</span></div>
         </div>
+        <p>Write 0 to a reserved register. <code>$31</code>–<code>$7F</code> are reserved for a second sprite bank, raster effect tables or additional layers (§19). A reserved register — <code>$17</code>, <code>$1F</code>, <code>$26</code>–<code>$27</code>, <code>$28</code>–<code>$2F</code> or <code>$31</code>–<code>$7F</code> — stores what is written and has no effect.</p>
+        <p><code>FONT</code> stores what is written as well, and a write naming a reserved font ID does nothing more. Reset sets it to <code>$00</code> without loading anything through it; reset installs font <code>$00</code> itself (§15).</p>
       </section>
 
       <!-- ============ s6 ============ -->
@@ -806,7 +815,7 @@ footer {
               <tr><td>3</td><td><code>STAT3</code></td><td>b0 vertical blanking: the display line is at or past the current mode's active line count, borders included; b1 horizontal blanking, during either VGA line of the display line (see below); b7:2 reserved</td></tr>
               <tr><td>4</td><td><code>STAT4</code></td><td><strong><code>$AC</code></strong> — identification byte</td></tr>
               <tr><td>5</td><td><code>STAT5</code></td><td>Firmware version, BCD: high nibble major, low nibble minor</td></tr>
-              <tr><td>6</td><td><code>STAT6</code></td><td>Capabilities: b0 two layers, b1 8bpp layer, b2 sprite flip, b3 hardware scroll, b4 scanline IRQ, b5 64 KB VRAM, b7:6 reserved (b6 for a blitter, §19)</td></tr>
+              <tr><td>6</td><td><code>STAT6</code></td><td>Capabilities: b0 two layers, b1 8bpp layer, b2 sprite flip, b3 hardware scroll, b4 scanline IRQ, b5 64 KB VRAM, b6 reserved (for a blitter, §19), b7 built-in font: register <code>$30</code> and font <code>$00</code>, loaded at reset (§7). This card reads <code>$BF</code></td></tr>
               <tr><td>7</td><td><code>STAT7</code></td><td>Full index (0–63) of the first sprite dropped on the most recent overflowing line since <code>STAT0</code> was last read; 0 if none</td></tr>
               <tr><td>8–15</td><td><code>STAT8</code>–<code>STAT15</code></td><td>Collision bitmap — bit <em>s</em> mod 8 of <code>STAT(8 + s/8)</code>, <em>s</em>/8 rounded down, is set if sprite <em>s</em> has collided since <code>STAT0</code> was last read. Only maintained while <code>SPRCTRL</code> b3 is set.</td></tr>
             </tbody>
@@ -917,6 +926,7 @@ footer {
 <pre><code>  $0000 - $03BF   Layer 0 name table            960 B    L0NAME = $00
   $0800 - $0FFF   Layer 0 pattern table           2 KB   L0PAT = $01
   $FC00 - $FDFF   Palette                       512 B</code></pre>
+        <p>Reset has already put the built-in font at <code>$0800</code> (below), so once software selects Text and sets <code>L0PAT</code> = <code>$01</code> the pattern table is in place.</p>
         <p>Alignment rules:</p>
         <div class="tw">
           <table>
@@ -933,6 +943,29 @@ footer {
         </div>
         <p>The name table is 960 bytes in <strong>both</strong> Text and Graphics — 40 × 24 and 32 × 30 are the same count — so a swap between them needs no reallocation, and Graphics I's 768 bytes fit in the same 1 KB block. Full mode is the exception at 1200 bytes, which spans two 1 KB blocks; budget 2 KB for each of its tables. The attribute table, when per-cell, always has exactly the same geometry as the name table it belongs to. A per-pattern-row table is 2 KB, so it does not fit the 1 KB slot the layout above gives an attribute table.</p>
         <p>Every table address wraps at 64 KB: a table whose base plus offset passes <code>$FFFF</code> continues at <code>$0000</code>.</p>
+        <h3 id="font">The built-in font</h3>
+        <p>The card holds a font of its own. Reset puts it in VRAM, and <code>FONT</code> (register <code>$30</code>, §5) puts it into either layer's pattern table on command.</p>
+        <div class="tw">
+          <table class="t-kv">
+            <tbody>
+              <tr><td>Font <code>$00</code></td><td>CP437, 6 × 8</td></tr>
+              <tr><td>Size</td><td>2,048 bytes: 256 glyphs of 8 rows, glyph <em>n</em> at offset <em>n</em> × 8</td></tr>
+              <tr><td>Row byte</td><td>b7 is the leftmost pixel. Bits 7:2 are the 6-pixel Text cell, and bits 1:0 are always 0</td></tr>
+              <tr><td>SHA-256</td><td><code class="hash">b2adc19efd10870196bad05d84eae51500599935c80f13d608a4f62278260577</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The bytes are the character set BIOS 1.x keeps in AC6502 ROM at <code>$B800</code> and uploads to <code>$0800</code> (6502-BIOS v1.6, <code>Chars.asm</code>). <code>6502-PICOVDP</code> holds them as <code>fonts/cp437-6x8.bin</code>. <strong>The hash is normative.</strong> The font is 1bpp, so it works in every geometry: in the 8 × 8 ones a glyph sits in the left six pixels of its cell.</p>
+        <figure>
+          <div class="palwrap">
+            <canvas class="glyphs" id="glyphs" width="414" height="498" role="img" aria-label="All 256 glyphs of font $00, CP437 at 6 by 8 pixels, in a 16 by 16 grid by character code."></canvas>
+          </div>
+          <figcaption>Font <code>$00</code>, every glyph drawn from its 2,048 bytes: row = high nibble of the character code, column = low nibble. <b>No glyph uses bits 1:0</b>, so each fits the Text cell's six pixels exactly.</figcaption>
+        </figure>
+        <p><strong>At reset.</strong> Reset writes font <code>$00</code> to <code>$0800</code>–<code>$0FFF</code>, after the default palette (§11), at power-on and at every <code>RST</code> (§15). Both are in place before the card serves its first access after reset. The address is fixed. It is not <code>L0PAT</code> × <code>$800</code>, which reset leaves at <code>$0000</code>, but where the Text layout above and the Kernal put the pattern table. Reset values do not change: software still selects Text and sets <code>L0PAT</code> = <code>$01</code>, and finds the font already there.</p>
+        <p><strong>On command.</strong> A write to <code>FONT</code> through either port's command protocol (§4) loads a font:</p>
+        <ol><li><strong>Every write is a command,</strong> even a write of the value the register already holds. The value is stored, as any register's is.</li><li><strong>The destination is taken at the write.</strong> b7 names layer 0's pattern table, at <code>L0PAT</code> × <code>$800</code>, or layer 1's, at <code>L1PAT</code> × <code>$800</code>, and the base is sampled as the write arrives, as an address command samples <code>VBANK</code> (§4). A later write to <code>L0PAT</code> or <code>L1PAT</code> does not move a pending load. The highest base, <code>$F800</code>, ends at <code>$FFFF</code>, so a load never wraps.</li><li><strong>A reserved font ID</strong> is stored and does nothing else. It does not cancel a pending load.</li><li><strong>One load is pending per destination.</strong> A second write for the same destination before the first completes replaces it. Loads for both layers can be pending together.</li><li><strong>A pending load completes at the line start where vertical blank fires</strong> (§14): as part of that line start, before <code>STAT0</code> F sets, before <code>/INT</code> is asserted for it, and before the registers and VRAM are taken for the line it begins building (§3). Once software has seen F, or a vertical blank interrupt, that followed the write, the load is complete, which is within a frame. The copy lands in blanking, and no picture line is built from a half-copied table.</li><li><strong>Until it completes,</strong> the destination keeps what it held. Reads return the old contents, and a write there is overwritten when the load lands. Read <code>STAT0</code> to clear F, write <code>FONT</code>, and wait for F before touching that range.</li><li><strong>In every other respect the copy is a VRAM write.</strong> Where it overlaps the palette window, the palette cache takes it (§11). It moves no port's pointer or prefetch byte, as no register write does (§4).</li><li><strong>A reset cancels every pending load</strong> (§15).</li></ol>
+        <p><code>STAT6</code> b7 says the card has all of this (§6, §16).</p>
       </section>
 
       <!-- ============ s8 ============ -->
@@ -954,7 +987,7 @@ footer {
         </div>
         <p>The pattern index is the name table byte, plus attribute b7 as a ninth bit at 2 and 4bpp when there is an attribute byte (§8's color byte, below) — which is why those two depths reach 512 tiles and 1bpp and 8bpp reach 256. A tile's pattern starts at <code>LxPAT × $800 + index × bytes per tile</code>. Upload times are at §4's ceiling.</p>
         <p>Patterns are stored row by row from the top, pixels left to right, the most significant bit or nibble leftmost — 1, 2, 4 or 8 bytes per row.</p>
-        <p>In text mode the cell is 6 pixels wide, at every depth: the leftmost 6 pixels of each row are drawn and the rest ignored. At 1bpp that is the top 6 bits of one byte, which is the TMS9918 text format exactly, and the format of the character set in AC6502 ROM at <code>$B800</code>. A horizontally flipped Text cell mirrors the six pixels drawn, not all eight.</p>
+        <p>In text mode the cell is 6 pixels wide, at every depth: the leftmost 6 pixels of each row are drawn and the rest ignored. At 1bpp that is the top 6 bits of one byte, which is the TMS9918 text format exactly, the format of the character set in AC6502 ROM at <code>$B800</code>, and the format of the built-in font (<a href="#font">§7</a>). A horizontally flipped Text cell mirrors the six pixels drawn, not all eight.</p>
         <p>The low depths are not a consolation prize. VRAM is not the binding constraint on this machine — <strong>upload time is</strong> — and a 1bpp tile set costs a quarter of what a 4bpp one costs to get into the VDP. A full 1bpp set, 256 tiles, is 2 KB and 8 ms at 1 MHz; the same 256 tiles at 4bpp are 8 KB and 33 ms, two frames' worth. 8bpp is the odd one out: it costs the most VRAM but is the <em>cheapest to render</em>, because there is no unpacking to do.</p>
         <h3>Attribute source — <code>LxCTRL</code> b3:b2</h3>
         <p>Where the color byte for a cell comes from:</p>
@@ -1191,7 +1224,7 @@ footer {
     return out</code></pre>
         <p>The <code>/ 9</code> in the upper half is deliberate: <code>/ 8</code> would end every ramp at pure white and waste fourteen entries on the same color.</p>
         <p><code>round</code> there is Python's, which breaks a tie toward the even number. C's <code>round()</code> breaks it away from zero and gives <code>$335</code>, <code>$456</code> and <code>$68B</code> for three entries of row F where the table has <code>$334</code>, <code>$446</code> and <code>$68A</code>. Transcribe the table rather than regenerating it.</p>
-        <div class="note"><p>Reset clobbers <code>$FC00</code>–<code>$FDFF</code>. Nothing in the reset-time memory map lives there.</p></div>
+        <div class="note"><p>Reset clobbers <code>$FC00</code>–<code>$FDFF</code>, and <code>$0800</code>–<code>$0FFF</code> with the built-in font (§7, §15). Nothing in the reset-time memory map lives at <code>$FC00</code>, and <code>$0800</code> is where the Text layout keeps its font anyway.</p></div>
       </section>
 
       <!-- ============ s12 ============ -->
@@ -1266,6 +1299,7 @@ footer {
         <p><strong>A source latches only while it is enabled.</strong> A source that fires while its <code>IRQEN</code> bit is clear leaves no trace in <code>STAT1</code>, so a handler reading it sees its own interrupts and nothing else. <code>STAT1</code> reads the latches masked by <code>IRQEN</code> as it is now, and <code>/INT</code> is asserted exactly while that is non-zero: clearing a source's <code>IRQEN</code> bit releases <code>/INT</code> without acknowledging it, and setting the bit again before anything is read asserts <code>/INT</code> again — as a TMS9918's <code>F AND IE</code> does. The flags in <code>STAT0</code> are not interrupts and do not follow this rule — b7, b6 and b5 set whether or not anything is enabled, which is what makes polling work (§6).</p>
         <p>"At most once a frame" holds however quickly a handler acknowledges: an overflow acknowledged the moment it arrives is not raised again by the next overflowing line of the same frame. Overflow and collision belong to the frame whose line is being built, so in Graphics and Full the ones on display line 0 arrive as the frame before begins display line 261.</p>
         <p><strong>Vertical blank across a change of picture height.</strong> Precisely, vertical blank fires at the first line start of a frame whose screen line is at or past the end of the picture in the mode in effect as that line begins — screen line 216 in Text and Compact, 240 in Graphics and Full. Without a mode change that is display line 192 or 240. With one it is still exactly once: a change from 240 lines to 192 made after screen line 216 raises it as the next line begins, and a change from 192 to 240 made after it has fired does not raise it again. Every geometry's picture has ended by screen line 240, so no frame goes without one.</p>
+        <p>A pending <code>FONT</code> load is carried out at that same line start, before F sets or <code>STAT1</code> b0 latches, so software that waits for either finds it complete (<a href="#font">§7</a>).</p>
         <p>Acknowledge by reading <code>STAT1</code>, which clears every latch, or <code>STAT0</code>, which clears the vertical blank, overflow and collision latches with its flags (§6).</p>
         <h3>The vertical blanking window</h3>
         <p>Vertical blank fires when the <strong>picture</strong> ends, not when the frame does, so the window between the flag and the next visible line is everything that is not active display — bottom border, blanking and top border together:</p>
@@ -1291,8 +1325,8 @@ footer {
         <span class="sec-num">Section 15</span>
         <h2>Reset State</h2>
         <p>After <code>RST</code>:</p>
-        <ul><li>All registers take the reset values in §5. <code>VMODE</code> = <code>$0</code>, so the legacy submode is in effect and <code>M1</code>/<code>M2</code>/<code>M3</code> select the mode — which, with <code>MODE0</code> = <code>MODE1</code> = <code>$00</code>, is Graphics I. Display <strong>off</strong>, interrupts disabled, layer 1 disabled, sprites enabled with <code>SPRCOUNT = 32</code>, <code>SPRLIMIT = 16</code> and the <code>$D0</code> terminator active. <code>L0CTRL</code> holds <code>$3C</code>, but the legacy submode overrides its depth, attribute source and opacity: layer 0 is Graphics I, colored per pattern group from a 32-byte table at <code>L0ATTR × $40</code> = <code>$0000</code>.</li><li>VRAM contents are <strong>undefined</strong> except <code>$FC00</code>–<code>$FDFF</code>, which holds the default palette. Software must not rely on the rest being zero.</li><li>The palette cache is loaded from the default palette.</li><li>Both port pairs: pointer 0, direction read, prefetch byte 0, flip-flop cleared, <code>STATSEL</code> 0.</li><li>The raster does not stop. The screen line being scanned carries on, the frame's vertical blank is not raised a second time, and the display line is numbered for the reset mode — a 192-line one — from the next line start (§3). Where the raster stands at power-on is undefined.</li><li><code>/INT</code> released; every <code>STAT0</code> flag, <code>STAT7</code>, the collision map and every <code>STAT1</code> latch clear.</li></ul>
-        <p>The existing Kernal's <code>InitVideo</code> — eight register writes of <code>$00 $D0 $00 $00 $01 $00 $00 $1F</code> followed by a 2 KB character set upload — takes this to a working 40 × 24 black-on-white text screen with no changes.</p>
+        <ul><li>All registers take the reset values in §5. <code>VMODE</code> = <code>$0</code>, so the legacy submode is in effect and <code>M1</code>/<code>M2</code>/<code>M3</code> select the mode — which, with <code>MODE0</code> = <code>MODE1</code> = <code>$00</code>, is Graphics I. Display <strong>off</strong>, interrupts disabled, layer 1 disabled, sprites enabled with <code>SPRCOUNT = 32</code>, <code>SPRLIMIT = 16</code> and the <code>$D0</code> terminator active. <code>L0CTRL</code> holds <code>$3C</code>, but the legacy submode overrides its depth, attribute source and opacity: layer 0 is Graphics I, colored per pattern group from a 32-byte table at <code>L0ATTR × $40</code> = <code>$0000</code>.</li><li>VRAM contents are <strong>undefined</strong> except <code>$FC00</code>–<code>$FDFF</code>, which holds the default palette, and <code>$0800</code>–<code>$0FFF</code>, which holds the built-in font (<a href="#font">§7</a>), written after the palette. Software must not rely on the rest being zero.</li><li>The palette cache is loaded from the default palette.</li><li>Any pending <code>FONT</code> load is cancelled (§7).</li><li>Both port pairs: pointer 0, direction read, prefetch byte 0, flip-flop cleared, <code>STATSEL</code> 0.</li><li>The raster does not stop. The screen line being scanned carries on, the frame's vertical blank is not raised a second time, and the display line is numbered for the reset mode — a 192-line one — from the next line start (§3). Where the raster stands at power-on is undefined.</li><li><code>/INT</code> released; every <code>STAT0</code> flag, <code>STAT7</code>, the collision map and every <code>STAT1</code> latch clear.</li></ul>
+        <p>The existing Kernal's <code>InitVideo</code> — eight register writes of <code>$00 $D0 $00 $00 $01 $00 $00 $1F</code> followed by a 2 KB character set upload — takes this to a working 40 × 24 black-on-white text screen with no changes. The upload still works, and writes the same bytes reset already put at <code>$0800</code>; on this card it is redundant.</p>
       </section>
 
       <!-- ============ s16 ============ -->
@@ -1320,6 +1354,21 @@ DetectVdp:
   rts</code></pre>
         <div class="note"><p>On a real TMS9918 only three register bits are decoded, so <code>$8F</code> writes register 7 — the payload <code>$04</code> becomes transparent-on-dark-blue. The probe leaves the screen colors changed there: run it before <code>VideoSetColor</code>, or save and restore register 7 around it. Both status reads also clear the TMS9918's <code>F</code>, fifth-sprite and collision flags.</p><p>A TMS9918 status byte can itself read <code>$AC</code> — <code>F</code> and <code>C</code> set, sprite field 12 — which is why the listing reads status once first: with the flags cleared, a false match needs a frame to end and two sprites to collide within the probe's few dozen cycles. Software that must never be fooled can confirm with <code>STAT6</code>. On this card that first read clears <code>STAT0</code>'s flags too, if <code>STATSEL_A</code> is 0 (§6).</p></div>
         <p><code>STAT5</code> gives the firmware version and <code>STAT6</code> the capability bits, for software that wants to degrade gracefully across future firmware.</p>
+        <p>A Kernal that relies on the built-in font (<a href="#font">§7</a>) instead of uploading its own checks <code>STAT6</code> b7 once the probe has found the card:</p>
+<pre><code><span class="cm">; After DetectVdp returns carry set: carry set if the card has the built-in font</span>
+DetectFont:
+  lda #$06                      <span class="cm">; select STAT6</span>
+  sta VC_REG
+  lda #$8F                      <span class="cm">; register $0F | $80</span>
+  sta VC_REG
+  lda VC_STATUS
+  asl                           <span class="cm">; b7 into carry</span>
+  lda #$00                      <span class="cm">; put STAT0 back; lda and sta leave carry alone</span>
+  sta VC_REG
+  lda #$8F
+  sta VC_REG
+  rts</code></pre>
+        <p><code>STAT4</code> = <code>$AC</code> and <code>STAT6</code> b7 set are the whole test. <code>STAT5</code> is informational: don't require a value of it.</p>
       </section>
 
       <!-- ============ s17 ============ -->
@@ -1334,7 +1383,7 @@ DetectVdp:
             <tbody>
               <tr><td><code>ProbeVideo</code></td><td>Writes <code>$A5</code> to <code>$0000</code> and reads it back through the prefetch (§4)</td></tr>
               <tr><td><code>InitVideo</code></td><td><code>$D0</code> to register 1 selects text mode; registers 2 and 4 place the name and pattern tables where this VDP expects them</td></tr>
-              <tr><td><code>InitCharacters</code></td><td>Text patterns are still 1bpp, 8 bytes per character, 2 KB at <code>$0800</code></td></tr>
+              <tr><td><code>InitCharacters</code></td><td>Text patterns are still 1bpp, 8 bytes per character, 2 KB at <code>$0800</code>. It writes the bytes reset already put there (§7)</td></tr>
               <tr><td><code>VideoClear</code></td><td>960-byte name table at <code>$0000</code></td></tr>
               <tr><td><code>VideoSetCursor</code>, <code>VideoGetCursor</code></td><td>Address arithmetic is unchanged: row × 40 + column</td></tr>
               <tr><td><code>VideoPutChar</code>, <code>VideoChroutRaw</code></td><td>Command protocol unchanged</td></tr>
@@ -1360,8 +1409,9 @@ DetectVdp:
   sta VC_REG
   <span class="cm">; then clear the row that just appeared at the bottom</span></code></pre>
         <p>About 500 cycles including the row clear and the address of the row to clear — roughly 60× faster. The cost is that the Kernal must track a scroll origin (<code>VID_SCROLL_Y</code> above is a new variable, not an existing one) and fold it into the row × 40 + column address calculation, which is one addition and a modulo-960 wrap.</p>
+        <p><strong>The font.</strong> A Kernal written for this card drops its character set and <code>InitCharacters</code>, and relies on the font reset puts at <code>$0800</code> (<a href="#font">§7</a>), after checking <code>STAT6</code> b7 (§16). That frees 2 KB of ROM and a 2 KB upload at every boot: 8 ms at §4's ceiling, and two to three times that as a loop. Anything that overwrites the pattern table, such as a program going back to text from a graphics mode, restores it by writing <code>FONT</code> and waiting for vertical blank rather than by carrying a copy.</p>
         <p><strong>Port B for interrupt handlers.</strong> The Kernal brackets no VDP work with <code>sei</code>/<code>cli</code> today, and its own interrupt handler never touches the VDP; the hazard is a user handler installed through <code>IRQ_PTR</code> landing between the two writes of a command. On this card that handler uses port B (<code>$9C02</code>/<code>$9C03</code>), acknowledges through <code>STAT1</code>, and restores <code>VBANK</code> and <code>VINC</code> if it writes them (§4, §6). Worth adopting as a convention across the Kernal and in documentation — on this card only: on a TMS9918, <code>$9C02</code>/<code>$9C03</code> reach the same port as <code>$9C00</code>/<code>$9C01</code>.</p>
-        <p><strong>New Kernal entry points to consider.</strong> Nothing here is required, but the following would make the new capabilities reachable from BASIC and from ordinary assembly without a programmer having to drive registers by hand: set mode, set a palette entry, set layer scroll, load a tile set, place a sprite, enable a layer.</p>
+        <p><strong>New Kernal entry points to consider.</strong> Nothing here is required, but the following would make the new capabilities reachable from BASIC and from ordinary assembly without a programmer having to drive registers by hand: set mode, set a palette entry, set layer scroll, load a tile set, place a sprite, enable a layer. For text, <code>FONT</code> already loads the tile set.</p>
         <h3>Breaks</h3>
         <div class="tw">
           <table>
@@ -1388,6 +1438,7 @@ DetectVdp:
         <h2>Implementation Notes</h2>
         <h3>Firmware shape</h3>
         <p>The PICO9918 structure carries over, with both cores building the picture. Core 0 drives VGA timing: at the start of each screen line (every second VGA line) its sync program raises an interrupt, and core 0 signals core 1, whose interrupt is §3's latch. Core 1's renderer then evaluates the sprites and divides the next display line between the cores at a column chosen to balance them. Each core builds its half of the line — both layers and the sprites, by §12's priorities, into a 320-byte palette-index line of its own — and expands its columns through a 256-entry <code>uint32</code> lookup (one source pixel → two output pixels) into the RGB buffer the line is sent from. All of it happens within the current display line, which is what §3's latch point gives the renderer. Bus accesses arrive as PIO interrupts on core 1.</p>
+        <p>A <code>FONT</code> load (§7) is carried out in core 1's latch at the line start where vertical blank fires, where no bus access can interleave with it. Its 2 KB copy for each destination runs on a line start whose line builds nothing visible.</p>
         <p>No pixel of a line depends on any other column's, so the halves are exact wherever the line is divided: priority among sprites and collision are resolved within each half's own pixels. Every status change — overflow, collision, their interrupts — is published by core 1, once both halves are built.</p>
         <p>What changes:</p>
         <ul><li><code>vrEmuTms9918</code> is not used. The renderer is new.</li><li>Core 0, which in the PICO9918 does nothing but VGA, builds half of every line.</li><li><code>tmsRead.pio</code> and its handler are rewritten: MODE1 is sampled alongside MODE, and a second port's prefetch and status byte have to be staged beside the first's, which the 32-bit word the read program works from has no room for (§2).</li><li><code>tmsWrite</code> needs no PIO change — MODE1 already arrives in bit 31 of the FIFO word. Only the handler changes.</li><li>Two sets of pointer/prefetch/flip-flop state instead of one.</li><li>VRAM grows from 16 KB to 64 KB. Comfortable in 520 KB.</li></ul>
@@ -1520,9 +1571,9 @@ DetectVdp:
         <ol><li>Register model and VRAM in the emulator (<code>Video.ts</code>) — cheap to iterate. <em>Done: <code>6502-EMULATOR</code> 3.0.0, <code>v3-vdp</code> branch, which implements the whole of this specification.</em></li><li>Scanline renderer spike on the RP2350, timed, no bus interface. <em>Done: measured above, with the sprites on core 0.</em></li><li>Bus interface: four ports, two pointer sets, PIO change.</li><li>Text mode via the legacy submode, and boot the unmodified BIOS.</li><li><code>VMODE</code>, the remaining geometries, and the attribute sources — legacy Graphics I falls out here, and <code>graphics-1.asm</code> becomes the regression test.</li><li>Bit depths 2, 4 and 8; layer 1; scrolling.</li><li>Sprites.</li><li>Interrupts.</li><li>Kernal changes: hardware scroll, port B in the IRQ handler, new entry points.</li></ol>
         <p>Step 4 is the milestone worth reaching first: an unmodified BIOS booting to an <code>OK</code> prompt on a VDP with none of the TMS9918 left inside it.</p>
         <h3>The emulator as reference</h3>
-        <p><code>6502-EMULATOR</code>'s <code>src/core/IO/Video.ts</code> implements every section of this document, cites them by number, and is held to it by unit tests and by golden frames of real programs. Where firmware and emulator disagree, one of them is wrong, and it is settled in this document first. Two cartridges written for this card, in the emulator's <code>samples/</code>, make test programs: <code>vdp-modes</code> cycles the four geometries at 1, 2, 4 and 8bpp, and <code>vdp-layers</code> scrolls two 4bpp layers in Full mode past sprites at §12's levels 1 to 6.</p>
+        <p><code>6502-EMULATOR</code>'s <code>src/core/IO/Video.ts</code> implements every section of this document, cites them by number, and is held to it by unit tests and by golden frames of real programs. Where firmware and emulator disagree, one of them is wrong, and it is settled in this document first. Two cartridges written for this card, in the emulator's <code>samples/</code>, make test programs: <code>vdp-modes</code> cycles the four geometries at 1, 2, 4 and 8bpp, and <code>vdp-layers</code> scrolls two 4bpp layers in Full mode past sprites at §12's levels 1 to 6. The emulator completes a <code>FONT</code> load at the same line start the firmware does (§7), so the two agree on when a load has landed.</p>
         <p>It approximates the hardware in a few places, none of which a program should be able to rely on:</p>
-        <ul><li><strong>Frame timing.</strong> 262 equal display lines at exactly 60 Hz, with no odd VGA line: its vertical blanking windows are 70 and 22 lines, about 0.6% and 2% short of §14's times. The golden frame numbers of the two cartridges assume this, and will not line up on hardware.</li><li><strong><code>STAT3</code> b1</strong> is modelled as the last fifth of each of a display line's two VGA lines, measured from the start of the display line.</li><li><strong><code>STAT5</code></strong> reports the revision of this document, <code>$04</code>, having no firmware of its own.</li><li><strong>A cold start</strong> — a power cycle — zeroes VRAM before the palette is installed, and starts the raster at display line 0 of the reset mode, screen line 24. §15 leaves both undefined.</li><li>It presents a frame to its host when the frame's last row has been built.</li><li>It builds every line in time, so it never shows a late line (§18).</li></ul>
+        <ul><li><strong>Frame timing.</strong> 262 equal display lines at exactly 60 Hz, with no odd VGA line: its vertical blanking windows are 70 and 22 lines, about 0.6% and 2% short of §14's times. The golden frame numbers of the two cartridges assume this, and will not line up on hardware.</li><li><strong><code>STAT3</code> b1</strong> is modelled as the last fifth of each of a display line's two VGA lines, measured from the start of the display line.</li><li><strong><code>STAT5</code></strong> reports the revision of this document, <code>$05</code>, having no firmware of its own.</li><li><strong>A cold start</strong> — a power cycle — zeroes VRAM before the palette is installed, and starts the raster at display line 0 of the reset mode, screen line 24. §15 leaves both undefined.</li><li>It presents a frame to its host when the frame's last row has been built.</li><li>It builds every line in time, so it never shows a late line (§18).</li></ul>
       </section>
 
       <!-- ============ s19 ============ -->
@@ -1530,7 +1581,7 @@ DetectVdp:
         <span class="sec-num">Section 19</span>
         <h2>Deliberate Omissions and Future Space</h2>
         <h4>No blitter</h4>
-        <p>A fill/copy engine would be the single largest practical win for a 1 MHz CPU — clearing a 960-byte table would go from 3.8 ms to nothing — and it is nearly free to implement, being a <code>memset</code> on the Pico. It is left out to keep this revision a pure VDP. Registers <code>$28</code>–<code>$2F</code> are the natural home if it is added later; <code>STAT6</code> b6 is reserved to advertise it.</p>
+        <p>A fill/copy engine would be the single largest practical win for a 1 MHz CPU — clearing a 960-byte table would go from 3.8 ms to nothing — and it is nearly free to implement, being a <code>memset</code> on the Pico. It is left out to keep this revision a pure VDP. Registers <code>$28</code>–<code>$2F</code> are the natural home if it is added later; <code>STAT6</code> b6 is reserved to advertise it. The built-in font's register and capability bit, <code>$30</code> and <code>STAT6</code> b7, stay clear of both.</p>
         <h4>No per-sprite size</h4>
         <p>The attribute byte is full. A fifth attribute byte, or a second sprite bank with a wider entry, would solve it.</p>
         <h4>No Multicolor mode</h4>
@@ -1542,7 +1593,7 @@ DetectVdp:
         <h4>No sprite-to-layer collision</h4>
         <p>The NES's sprite-0 hit exists to time raster splits; real scanline interrupts make it unnecessary here.</p>
         <h4>No wider text mode</h4>
-        <p>6 × 8 cells at 40 columns leave the frame 80 pixels wide of border. Full mode at 1bpp with per-cell attributes is the wider text screen this design has: 40 × 30 of 8 × 8, no border. What is not here is a 6-pixel cell across the whole 320 pixels — 53 columns — which would be a fifth geometry; <code>VMODE</code> <code>$5</code>–<code>$F</code> are free for it.</p>
+        <p>6 × 8 cells at 40 columns leave the frame 80 pixels wide of border. Full mode at 1bpp with per-cell attributes is the wider text screen this design has: 40 × 30 of 8 × 8, no border. What is not here is a 6-pixel cell across the whole 320 pixels — 53 columns — which would be a fifth geometry; <code>VMODE</code> <code>$5</code>–<code>$F</code> are free for it. In Full mode font <code>$00</code>'s glyphs sit in the left six pixels of each 8 × 8 cell; <code>FONT</code> IDs <code>$01</code>–<code>$7F</code> leave room for a true 8 × 8 set for that 40 × 30 console.</p>
         <h4>No maps larger than the screen</h4>
         <p>Name tables the size of the screen — 768, 960 or 1200 bytes — keep every mode at 1 or 2 KB of alignment, at the cost of making scrolling a write-the-incoming-edge exercise. A larger map would be a <code>LxCTRL</code> bit selecting a 64 × 64 name table at 4 KB.</p>
         <h4>No raster/display list</h4>
@@ -1569,6 +1620,9 @@ DetectVdp:
         <p>Measured on the RP2350 (§18), one core cannot build Full mode's worst-case line in time at either clock preset. The remedies draft 0.3 listed were a 352 MHz clock, a lower default <code>SPRLIMIT</code>, and Full mode as a single-layer mode. They do not get there either, alone or together, without giving up features, and a single-layer Full mode would have broken software already written for two layers. Building the sprites on the second core does: every measured worst case fits at 352 MHz. <code>SPRLIMIT</code> still resets to 16, so the reset state keeps a quarter of the worst line spare as the spike measured it — 16–24% as the firmware measured it under the same bus stand-in, and 31–40% without (<a href="#measured-firmware">§18</a>) — and a late line is specified for anything heavier than was measured.</p>
         <h4>The 4bpp unpacking table stays</h4>
         <p>It saves 16% of an opaque 4bpp layer's build and 4% of a merged one's against the best arithmetic unpacking. That is less than draft 0.3 assumed, but it costs 1.5% of the SRAM.</p>
+        <h4>The font lives in the card</h4>
+        <p>Every Kernal for the AC6502 carries the same 2 KB character set and uploads it at boot. The card can hold it instead, for nothing (<a href="#font">§7</a>).</p>
+        <ul><li><strong>Why at reset, and at every reset.</strong> Loaded at reset, like the palette, the font is simply there: a Kernal never uploads one, or commands one and waits, and a warm reset is no different from a cold one.</li><li><strong>Why <code>$0800</code>.</strong> It is where the Text layout (§7) and every existing Kernal put the pattern table. <code>L0PAT</code> resets to <code>$00</code>, which is the name table, so the address can't follow the register. A per-cell attribute table at <code>L0ATTR</code> = <code>$01</code>, <code>$0400</code>–<code>$07BF</code>, sits clear of it.</li><li><strong>Why vertical blank.</strong> A 2 KB copy is far more than the ~700 cycles an access may take (§4), so it can't happen as the write arrives. Done at the line start where vertical blank fires, it is part of work the card already does at a line start: no bus access interleaves with it, it lands in blanking with no tear, and it lands on the same line in the emulator and the firmware, so the two can be compared exactly. The rule for software is the one it already knows: wait for F.</li><li><strong>Why no status bit.</strong> All sixteen status registers are taken and <code>STATSEL</code> is four bits, so a load has nowhere to report completion. Defining completion by time needs no bit: the F flag and the vertical blank interrupt already say when that time has passed.</li></ul>
       </section>
 
       <!-- ============ open ============ -->
@@ -1585,6 +1639,11 @@ DetectVdp:
       <section id="history">
         <span class="sec-num">Appendix</span>
         <h2>Revision History</h2>
+        <h3>Draft 0.5</h3>
+        <p>The card's own font. Normative changes:</p>
+        <ul><li><strong>Reset loads a built-in font</strong> (§7, §15): CP437, 6 × 8, 2,048 bytes whose SHA-256 is normative, written to <code>$0800</code>–<code>$0FFF</code> after the default palette, at power-on and at every <code>RST</code>. VRAM there is defined after reset.</li><li><strong>Register <code>$30</code> <code>FONT</code></strong> (§5, §7) loads it into layer 0's or layer 1's pattern table, and the load completes at the next vertical blank (§14). §5's reserved block is split around it.</li><li><strong><code>STAT6</code> b7</strong> reports both (§6), so <code>STAT6</code> reads <code>$BF</code>. §16 shows the check.</li></ul>
+        <p>The emulator reports <code>STAT5</code> = <code>$05</code> for this draft (§18).</p>
+        <p>No existing golden moves. Every golden fixture boots through BIOS 1.6, whose <code>InitCharacters</code> uploads the same 2,048 bytes to <code>$0800</code> before the first checkpoint, and no fixture reads that range first. All fifteen checkpoints replayed exactly into <code>Video.ts</code> with <code>$0800</code>–<code>$0FFF</code> seeded after a cold reset, once with the font and once with garbage. So the reset font needs a fixture of its own to prove it.</p>
         <h3>Draft 0.4</h3>
         <p>Measured on the RP2350, with a renderer built to this design. Normative changes:</p>
         <ul><li><strong><code>SPRLIMIT</code> resets to 16</strong>, not 32 (§5, §15). Every other reset value is unchanged. A legacy program sees up to 16 sprites on a line by default (§9, §17).</li><li><strong>A late line is specified</strong> (§18). It shows the most recently completed line again; its overflow and collision, and everything else, are unaffected.</li></ul>
@@ -1602,7 +1661,7 @@ DetectVdp:
       </section>
 
       <footer>
-        <span>6502-PICOVDP &middot; draft 0.4 &middot; implemented in the emulator, and in firmware but for the bus</span>
+        <span>6502-PICOVDP &middot; draft 0.5 &middot; draft 0.4 implemented in the emulator, and in firmware but for the bus</span>
         <span>AC6502 family &middot; PICO9918 PRO v2.0</span>
       </footer>
 
@@ -1655,5 +1714,54 @@ var HEX = "0123456789ABCDEF";
     out += '<span class="rn">' + ROWNAMES[r] + "</span></div>";
   }
   host.innerHTML = out;
+})();
+
+/* Font $00, exactly the 2,048 bytes of fonts/cp437-6x8.bin (§7), base64. */
+var FONT00 = "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";
+
+(function () {
+  var cv = document.getElementById("glyphs");
+  if (!cv || !cv.getContext) return;
+  var bin = atob(FONT00);
+  var PX = 3, CW = 6 * PX + 6, CH = 8 * PX + 6, LEFT = 30, TOP = 18;
+  var W = LEFT + 16 * CW, H = TOP + 16 * CH;
+
+  function draw() {
+    var css = getComputedStyle(document.documentElement);
+    var ink = css.getPropertyValue("--ink").trim();
+    var dim = css.getPropertyValue("--ink-3").trim();
+    var cell = css.getPropertyValue("--panel-2").trim();
+    var dpr = window.devicePixelRatio || 1;
+    cv.width = W * dpr; cv.height = H * dpr;
+    cv.style.width = W + "px"; cv.style.height = H + "px";
+    var g = cv.getContext("2d");
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, W, H);
+    g.font = "10.5px 'IBM Plex Mono', ui-monospace, monospace";
+    g.fillStyle = dim;
+    g.textAlign = "center";
+    for (var c = 0; c < 16; c++) g.fillText(HEX[c], LEFT + c * CW + CW / 2 - 3, 11);
+    g.textAlign = "right";
+    g.textBaseline = "middle";
+    for (var r = 0; r < 16; r++) g.fillText(HEX[r] + "x", LEFT - 8, TOP + r * CH + 4 * PX);
+    for (var n = 0; n < 256; n++) {
+      var x0 = LEFT + (n & 15) * CW, y0 = TOP + (n >> 4) * CH;
+      g.fillStyle = cell;
+      g.fillRect(x0, y0, 6 * PX, 8 * PX);
+      g.fillStyle = ink;
+      for (var row = 0; row < 8; row++) {
+        var bits = bin.charCodeAt(n * 8 + row);
+        for (var b = 0; b < 6; b++) if (bits & (0x80 >> b)) g.fillRect(x0 + b * PX, y0 + row * PX, PX, PX);
+      }
+    }
+  }
+  draw();
+  if (window.matchMedia) {
+    var mq = window.matchMedia("(prefers-color-scheme: dark)");
+    if (mq.addEventListener) mq.addEventListener("change", draw);
+  }
+  if (window.MutationObserver) {
+    new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  }
 })();
 </script>
