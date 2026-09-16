@@ -6,11 +6,14 @@
 //   node tools/sync-oracle.mjs --check   check tests/oracle against its manifest (CTest)
 //
 // tests/oracle/ is written by this script and nothing else (ground rule 4). A
-// sync takes every golden fixture's checkpoints — index frame, VRAM, JSON and
-// PNG — and its trace, from an emulator that is on v3-vdp with a clean tree, so
-// the commit the manifest names is exactly what was copied. It refuses a trace
-// that does not check against docs/TRACE.md, or whose checkpoints are not the
-// fixture's, or lack a class and settle point. A re-sync is a commit of its own.
+// sync takes every PICOVDP golden fixture's checkpoints — index frame, VRAM,
+// JSON and PNG — and its trace, from an emulator whose HEAD is on origin/main
+// with a clean tree, so the commit the manifest names, with its
+// `git describe --tags`, is exactly what was copied. Only the `FIXTURES` entries
+// on the PICOVDP card are taken: a TMS9918A golden is not this card's oracle. It
+// refuses a trace that does not check against docs/TRACE.md, or whose
+// checkpoints are not the fixture's, or lack a class and settle point. A re-sync
+// is a commit of its own.
 //
 // --check needs no emulator: it recomputes every file's SHA-256 and compares
 // the directory with the manifest, both ways.
@@ -18,7 +21,7 @@
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
-import { EMULATOR, EMULATOR_BRANCH, REPO, emulatorGit, loadFixtures } from './lib/emulator.mjs'
+import { EMULATOR, REPO, emulatorGit, emulatorPin, isPicovdpFixture, loadFixtures } from './lib/emulator.mjs'
 import { TRACE_VERSION, checkpointsOf, readTrace } from './lib/trace.mjs'
 
 const ORACLE = join(REPO, 'tests', 'oracle')
@@ -36,21 +39,22 @@ function main() {
 }
 
 function sync() {
-  if (!existsSync(join(EMULATOR, '.git'))) fail(`no emulator checkout at ${EMULATOR} (set PICOVDP_EMULATOR)`)
-  const branch = emulatorGit('branch', '--show-current')
-  if (branch !== EMULATOR_BRANCH) fail(`the emulator is on ${branch || 'a detached HEAD'}, not ${EMULATOR_BRANCH}`)
-  const dirty = emulatorGit('status', '--porcelain')
-  if (dirty) fail(`the emulator's tree is not clean:\n${dirty}`)
-
-  const commit = emulatorGit('rev-parse', 'HEAD')
-  const committed = emulatorGit('show', '-s', '--format=%cI', 'HEAD')
+  let pin
+  try {
+    pin = emulatorPin()
+  } catch (error) {
+    fail(error.message)
+  }
+  const { branch, commit, describe, committed } = pin
   const { FIXTURES, checkpointsOf: stepsOf } = loadFixtures()
+  const others = FIXTURES.filter((fixture) => !isPicovdpFixture(fixture))
+  for (const fixture of others) console.log(`Skipping ${fixture.name}: it boots the ${fixture.vdp}, not the PICOVDP.`)
   const goldens = join(EMULATOR, 'src', 'tests', 'goldens')
 
   // Everything is read and checked before anything is written.
   const files = new Map() // path in tests/oracle -> bytes
   const fixtures = []
-  for (const fixture of FIXTURES) {
+  for (const fixture of FIXTURES.filter(isPicovdpFixture)) {
     const traceName = `${fixture.name}/${fixture.name}.vdpt.gz`
     const tracePath = join(goldens, traceName)
     if (!existsSync(tracePath)) fail(`${fixture.name} has no trace — run \`npm run record:traces\` in the emulator`)
@@ -102,6 +106,7 @@ function sync() {
       repository: emulatorGit('remote', 'get-url', 'origin'),
       branch,
       commit,
+      describe,
       committed
     },
     traceFormat: TRACE_VERSION,
@@ -122,7 +127,7 @@ function sync() {
     ? Object.keys(manifest.files).filter((name) => before.files?.[name] !== manifest.files[name])
     : Object.keys(manifest.files)
   const gone = before ? Object.keys(before.files ?? {}).filter((name) => !(name in manifest.files)) : []
-  console.log(`Synced ${files.size} files from 6502-EMULATOR ${commit.slice(0, 12)} (${branch}) into ${relative(REPO, ORACLE)}/.`)
+  console.log(`Synced ${files.size} files from 6502-EMULATOR ${commit.slice(0, 12)} (${describe}, ${branch}) into ${relative(REPO, ORACLE)}/.`)
   for (const fixture of fixtures) {
     const classes = fixture.checkpoints.map((c) => `${c.name} ${c.class}`).join(', ')
     console.log(`  ${fixture.name}: ${fixture.events} events; ${classes}`)
@@ -191,7 +196,7 @@ function readme(manifest) {
 
 A pinned copy of 6502-EMULATOR's golden checkpoints and the traces of the
 programs that produced them, from \`${manifest.emulator.branch}\` at
-\`${manifest.emulator.commit}\` (${manifest.emulator.committed}).
+\`${manifest.emulator.commit}\`${describeOf(manifest)} (${manifest.emulator.committed}).
 
 - \`<fixture>/<checkpoint>.idx.bin\` — the frame as 76,800 palette indices, row-major. **The oracle**: compared exactly.
 - \`<fixture>/<checkpoint>.vram.bin\` — all 64 KB of VRAM at the checkpoint.
@@ -206,6 +211,11 @@ programs that produced them, from \`${manifest.emulator.branch}\` at
 |---|---|--:|--:|--:|--:|---|
 ${rows.join('\n')}
 `
+}
+
+/** The README's `, `v3.0.0`` after the commit, when the manifest records a describe. */
+function describeOf(manifest) {
+  return manifest.emulator.describe ? `, \`${manifest.emulator.describe}\`` : ''
 }
 
 function listFiles(root, prefix = '') {

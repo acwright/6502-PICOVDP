@@ -79,7 +79,7 @@ The tools find `6502-EMULATOR` at `../../NodeJS/6502-EMULATOR`, or wherever
 
 ```sh
 node tools/sync-oracle.mjs --check    # tests/oracle matches its manifest (CTest oracle_pinned)
-node tools/sync-oracle.mjs            # re-sync; the emulator must be on v3-vdp, clean
+node tools/sync-oracle.mjs            # re-sync; the emulator's HEAD must be on origin/main, clean
 ```
 
 A re-sync is a commit of its own (PLAN.md ground rule 4).

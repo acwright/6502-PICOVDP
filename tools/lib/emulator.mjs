@@ -11,11 +11,42 @@ import { fileURLToPath } from 'node:url'
 
 export const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 export const EMULATOR = resolve(process.env.PICOVDP_EMULATOR ?? join(REPO, '..', '..', 'NodeJS', '6502-EMULATOR'))
-/** PLAN.md ground rule 3: the emulator's VDP work lives on this branch only. */
-export const EMULATOR_BRANCH = 'v3-vdp'
+/** The branch the oracle is pinned from: emulator VDP work lands on main since 3.0.0's merge. */
+export const EMULATOR_BRANCH = 'main'
+/** The card `fixtures.js` names with `vdp`; a fixture that names none boots on it. */
+export const PICOVDP_CARD = 'picovdp'
 
 export function emulatorGit(...args) {
   return execFileSync('git', args, { cwd: EMULATOR, encoding: 'utf8' }).trim()
+}
+
+/**
+ * The emulator commit the oracle may be pinned from: any commit on origin/main
+ * (VDP-PLAN.md decision 6), in a clean tree, so the commit is exactly what was
+ * read. Throws if the checkout is not one; returns what the manifest records.
+ */
+export function emulatorPin() {
+  if (!existsSync(join(EMULATOR, '.git'))) throw new Error(`no emulator checkout at ${EMULATOR} (set PICOVDP_EMULATOR)`)
+  const upstream = `origin/${EMULATOR_BRANCH}`
+  const commit = emulatorGit('rev-parse', 'HEAD')
+  try {
+    emulatorGit('merge-base', '--is-ancestor', commit, upstream)
+  } catch {
+    throw new Error(`the emulator's HEAD ${commit.slice(0, 12)} is not on ${upstream}`)
+  }
+  const dirty = emulatorGit('status', '--porcelain')
+  if (dirty) throw new Error(`the emulator's tree is not clean:\n${dirty}`)
+  return {
+    branch: EMULATOR_BRANCH,
+    commit,
+    describe: emulatorGit('describe', '--tags', '--always', commit),
+    committed: emulatorGit('show', '-s', '--format=%cI', commit)
+  }
+}
+
+/** Whether a `fixtures.js` entry boots on the PICOVDP, the card this oracle is of. */
+export function isPicovdpFixture(fixture) {
+  return (fixture.vdp ?? PICOVDP_CARD) === PICOVDP_CARD
 }
 
 const require = createRequire(join(EMULATOR, 'package.json'))

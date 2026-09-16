@@ -621,7 +621,7 @@ Node ESM scripts with no build step, as in the emulator's `scripts/`.
 | `vdpctl compare` | a snapshot against a golden; writes PNGs of both and of the difference |
 | `fuzz.mjs` | `Video.ts` against the core |
 | `replay.mjs` | `tests/oracle`'s traces into the core (or `Video.ts`), each checkpoint against its golden: the host executor's Node path |
-| `sync-oracle.mjs` | refresh `tests/oracle/` from the emulator: refuses unless it is on `v3-vdp` with a clean tree, and records the emulator commit and SHA-256s in the manifest |
+| `sync-oracle.mjs` | refresh `tests/oracle/` from the emulator: refuses unless its HEAD is on `origin/main` with a clean tree, takes only the PICOVDP's fixtures, and records the emulator commit, its `git describe --tags` and SHA-256s in the manifest |
 
 ---
 

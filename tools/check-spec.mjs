@@ -34,7 +34,7 @@ const draft = status[1]
 if (!existsSync(COPY)) {
   fail(`no ${COPY} (set PICOVDP_EMULATOR)`)
 } else if (!spec.equals(readFileSync(COPY))) {
-  fail(`${COPY} differs from SPEC.md: copy SPEC.md over it and commit that on v3-vdp`)
+  fail(`${COPY} differs from SPEC.md: copy SPEC.md over it and commit that on main`)
 }
 
 // Each place the HTML names the draft, as the page is written today.
