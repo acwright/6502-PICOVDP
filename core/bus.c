@@ -26,6 +26,26 @@ void VDP_HOT(vdp_poke)(vdp_t *v, uint16_t address, uint8_t value) {
     }
 }
 
+// A block of constant data, written to the bus copy at once. The render side
+// takes it whole when its replay of the journal reaches the place it was
+// written, so it lands in order among the single writes around it, and a late
+// catch-up takes exactly what a prompt one does. A ring that is full marks the
+// pages instead, as a full journal does.
+void VDP_HOT(vdp_bulk_write)(vdp_t *v, uint16_t address, const uint8_t *bytes, unsigned length) {
+    if (length == 0) return;
+    memcpy(v->vram + address, bytes, length);
+    uint32_t tail = v->bulk_tail;
+    if (tail - v->bulk_head < VDP_BULK_ENTRIES) {
+        v->bulk[tail & (VDP_BULK_ENTRIES - 1)] =
+            (vdp_bulk_t){.bytes = bytes, .at = v->journal_tail, .address = address, .length = (uint16_t)length};
+        v->bulk_tail = tail + 1;
+        return;
+    }
+    unsigned first = address >> VDP_VRAM_PAGE_SHIFT;
+    unsigned last = (address + length - 1u) >> VDP_VRAM_PAGE_SHIFT;
+    for (unsigned page = first; page <= last; page++) v->bulk_pages |= UINT64_C(1) << page;
+}
+
 // §5. Seven bits of register number, so $08-$7F are always live. A reserved
 // register stores what is written and does nothing more.
 void VDP_HOT(vdp_register_write)(vdp_t *v, unsigned index, uint8_t value) {
@@ -41,6 +61,9 @@ void VDP_HOT(vdp_register_write)(vdp_t *v, unsigned index, uint8_t value) {
         v->reg[VDP_REG_MODE1] = (uint8_t)((v->reg[VDP_REG_MODE1] & ~VDP_MODE1_IE) |
                                           ((value & VDP_IRQ_VBLANK) ? VDP_MODE1_IE : 0));
     }
+    // §7: every write to FONT is a command, even of the value it holds. A
+    // debugger's write is one too, as it is in Video.ts.
+    if (home == VDP_REG_FONT) vdp_font_command(v, value);
     // PALBASE needs nothing here: the latch sees it has moved and re-reads the
     // window (§11).
 }

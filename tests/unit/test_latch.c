@@ -300,8 +300,8 @@ TEST(status_waits_for_the_publish) {
 // registers, VRAM, the palette cache, the line's number and the sprites
 // evaluated for it. Data-port reads must agree too. Status reads are left out:
 // when a status reaches STAT0 is exactly what differs (vdp_publish). So are
-// bursts past the journal: a page copy is the one thing a late catch-up takes
-// from the bus copy as it is now.
+// bursts past the journal or the bulk ring: a page copy is the one thing a late
+// catch-up takes from the bus copy as it is now.
 TEST(late_catch_ups_take_what_prompt_ones_do) {
     vdp_t *late = new_card();
     vdp_t *prompt = new_card();
@@ -313,7 +313,7 @@ TEST(late_catch_ups_take_what_prompt_ones_do) {
     } op_t;
     static op_t log[8192];
     size_t logged = 0;
-    static const uint8_t registers[] = {0x01, 0x07, 0x08, 0x09, 0x0c, 0x0d, 0x10, 0x15, 0x16, 0x20, 0x21, 0x22, 0x23, 0x24};
+    static const uint8_t registers[] = {0x01, 0x07, 0x08, 0x09, 0x0c, 0x0d, 0x10, 0x12, 0x15, 0x16, 0x1a, 0x20, 0x21, 0x22, 0x23, 0x24, 0x30};
     unsigned latches = 0, caught = 0, behind = 0, sprites = 0, dropped = 0, reads = 0;
     uint16_t screen = 0;
     bool in_step = true;
@@ -329,8 +329,10 @@ TEST(late_catch_ups_take_what_prompt_ones_do) {
         if (roll < 100) {
             uint8_t reg = registers[random_next() % sizeof registers];
             // PALBASE among the top 8 KB; MODE1 with the display on, in any legacy mode.
+            // FONT a load for either layer, landing at vertical blank as bulk writes (§7).
             uint8_t value = reg == 0x0c   ? (uint8_t)(0x38 + random_next() % 8)
                             : reg == 0x01 ? (uint8_t)(0x40 | (random_next() & 0x1b))
+                            : reg == 0x30 ? (uint8_t)(random_next() & 0x80)
                                           : (uint8_t)random_next();
             ops[0] = (op_t){WRITE, (uint8_t)(2 * pair + 1), value, 0, 0};
             ops[1] = (op_t){WRITE, (uint8_t)(2 * pair + 1), (uint8_t)(0x80 | reg), 0, 0};
@@ -347,8 +349,9 @@ TEST(late_catch_ups_take_what_prompt_ones_do) {
         } else if (roll < 650) {
             ops[0] = (op_t){POKE, 0, (uint8_t)random_next(), (uint16_t)(random_next() & 1 ? 0xf000 + random_next() % 0x1000 : random_next() % 0x400), 0};
         } else if (roll < 651) {
-            // RST pokes the palette's 512 bytes: only while the journal has room for them.
-            if (lagging || late->journal_tail - late->journal_head > 256) continue;
+            // RST writes the palette and the font in bulk, which a late catch-up takes in
+            // order: only while the bulk ring has room for them and two FONT loads.
+            if (late->bulk_tail - late->bulk_head > VDP_BULK_ENTRIES - 4) continue;
             ops[0] = (op_t){RST, 0, 0, 0, 0};
         } else if (roll < 700) {
             screen = (uint16_t)((screen + 1) % VDP_SCREEN_LINES);
@@ -411,8 +414,9 @@ TEST(late_catch_ups_take_what_prompt_ones_do) {
             log[logged++] = *o;
         }
     }
-    printf("  %u latches, %u caught up: %u with more waiting, %u with sprites, %u dropping one; %u merged; %u reads\n",
-           latches, caught, behind, sprites, dropped, late->latches_merged, reads);
+    printf("  %u latches, %u caught up: %u with more waiting, %u with sprites, %u dropping one; %u merged; %u reads; %u bulk writes\n",
+           latches, caught, behind, sprites, dropped, late->latches_merged, reads, late->bulk_tail);
+    CHECK(late->bulk_tail > 100);
     CHECK_EQ(0, late->journal_overflows);
     CHECK(caught > 15000);
     CHECK(behind > caught / 5);

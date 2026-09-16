@@ -25,12 +25,13 @@ const uint16_t vdp_default_palette[VDP_PALETTE_ENTRIES] = {
     0x112, 0x223, 0x334, 0x446, 0x468, 0x579, 0x68a, 0x79c, 0x8ac, 0x9ad, 0xabd, 0xbcd, 0xbce, 0xcde, 0xdee, 0xeef, // F blue-grey
 };
 
-// §11: entry n + 0 is %0000RRRR, entry n + 1 is %GGGGBBBB.
-void vdp_palette_install(uint8_t *vram, uint16_t base) {
+// §11: entry n + 0 is %0000RRRR, entry n + 1 is %GGGGBBBB, into the window's
+// 512 bytes.
+void vdp_palette_install(uint8_t *window) {
     for (unsigned entry = 0; entry < VDP_PALETTE_ENTRIES; entry++) {
         uint16_t rgb = vdp_default_palette[entry];
-        vram[(uint16_t)(base + 2 * entry)] = (uint8_t)((rgb >> 8) & 0x0f);
-        vram[(uint16_t)(base + 2 * entry + 1)] = (uint8_t)rgb;
+        window[2 * entry] = (uint8_t)((rgb >> 8) & 0x0f);
+        window[2 * entry + 1] = (uint8_t)rgb;
     }
 }
 

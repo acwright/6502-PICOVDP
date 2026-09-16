@@ -48,6 +48,11 @@ TEST(power_on) {
     CHECK_EQ(0, vdp_debug_vram(v, 0x0000));
     CHECK_EQ(0, vdp_debug_vram(v, 0xffff));
     CHECK_EQ(0xfff, vdp_debug_palette(v, 15));
+    // §15: and the font at $0800-$0FFF, glyph 1 the smiley (test_font has all of it).
+    CHECK_EQ(0x70, vdp_debug_vram(v, 0x0808));
+    CHECK_EQ(0x88, vdp_debug_vram(v, 0x0809));
+    CHECK_EQ(0x00, vdp_debug_vram(v, 0x07ff));
+    CHECK_EQ(0x00, vdp_debug_vram(v, 0x1000));
     // Nothing pending: the render side is the bus side already.
     CHECK(memcmp(v->render_vram, v->vram, sizeof v->vram) == 0);
     CHECK(memcmp(v->render_reg, v->reg, sizeof v->reg) == 0);
@@ -69,6 +74,8 @@ TEST(rst_keeps_vram_but_the_palette) {
     CHECK_EQ(0xcd, vdp_debug_vram(v, 0x0101));
     CHECK_EQ(0x000, vdp_debug_palette(v, 0));  // at $FC00 again, over the scribble
     CHECK_EQ(0x2c4, vdp_debug_palette(v, 2));
+    CHECK_EQ(0x70, vdp_debug_vram(v, 0x0808));  // the font at $0800 again
+    CHECK_EQ(0x70, v->render_vram[0x0808]);     // untouched by the scribble, so already there
 
     // The raster runs on: the line being built still sees the card before RST,
     // and the next latch brings the reset through.

@@ -374,8 +374,8 @@ that faces up and also powers the board. It is specified in `docs/DEBUGLINK.md`
 
 ### What the emulator holds
 
-`6502-EMULATOR/src/tests/goldens/` holds four fixtures and fifteen checkpoints.
-All are booted from `BIOS.bin` at 1 MHz.
+`6502-EMULATOR/src/tests/goldens/` holds five fixtures and eighteen checkpoints.
+All but `vdp-font` are booted from `BIOS.bin` at 1 MHz.
 
 | Fixture | Program | Checkpoints |
 |---|---|---|
@@ -383,13 +383,14 @@ All are booted from `BIOS.bin` at 1 MHz.
 | `wizardslab` | `WizardsLab.crt`, Graphics I, sprites, vblank IRQ | frame 60, 180, 300, 600 |
 | `vdp-modes` | `VdpModes.crt`: the four geometries at 1, 2, 4, 8bpp | `text`, `compact`, `graphics`, `full` |
 | `vdp-layers` | `VdpLayers.crt`: two scrolling 4bpp layers in Full mode, sprites at levels 1–6 | `parallax`, `scroll-bit8-l1`, `occluded`, `scroll-bit8-l0` |
+| `vdp-font` | `VdpFont.crt`, which never calls `KernalInit`: the built-in font at reset, loaded by `FONT` and relocated (draft 0.5, §7) | `reset`, `loaded`, `relocated` |
 
 Each checkpoint has `*.idx.bin`, the frame as 76,800 palette indices, row-major;
 `*.vram.bin`, the full 64 KB; `*.json`, with registers, mode, `STAT0`, a VRAM
 hash and the text grid; and `*.png`. **The index frame is the oracle**: it is
 compared exactly and is immune to palette changes.
 
-`src/tests/IO/Video.test.ts` holds **342 tests** that drive a bare `Video` through
+`src/tests/IO/Video.test.ts` holds **364 tests** (342 until draft 0.5's font) that drive a bare `Video` through
 its ports with no CPU. They cover every section of the spec, raster-split timing
 included.
 
@@ -425,11 +426,11 @@ and a status poll changes no picture.
 | Executor | Drives | Timing | Checks |
 |---|---|---|---|
 | **Reference replay** — `6502-EMULATOR/scripts/replay-trace.mjs` | `Video.ts`, no CPU | exact: ticks to each operation | reproduces the goldens; defines expected reads |
-| **Host** — `host/node` adapter and `host/replay` CLI | `core/` on macOS | exact | goldens, all 342 Jest tests, fuzz against `Video.ts` |
+| **Host** — `host/node` adapter and `host/replay` CLI | `core/` on macOS | exact | goldens, all 364 Jest tests, fuzz against `Video.ts` |
 | **Injection** — `vdpctl inject` | firmware on a Pico 2 or PRO, via USB | exact: applied at each operation's (frame, line), with a snapshot marker on each golden frame | goldens on silicon, static and dynamic alike |
 | **Bus** — `vdpctl replay` | firmware on the PRO, via the Nano and real pins | untimed | static checkpoints exactly; VRAM reads; timing-independent status |
 
-**Running Video.test.ts against C.** Rather than port 342 tests by hand, the
+**Running Video.test.ts against C.** Rather than port 364 tests by hand, the
 emulator gains `jest.picovdp.cjs`. It maps `src/core/IO/Video` to the N-API
 adapter in `host/node` and runs the test file unchanged. The adapter presents
 the surface the tests use, and reproduces `Video.ts`'s per-cycle accumulator
@@ -453,8 +454,8 @@ a minimised trace, which becomes a unit test.
 
 **Known, deliberate differences** the comparisons must allow:
 
-- `STAT5` — the emulator reports the spec revision (`$04`), the firmware its own
-  version. The host adapter is configured to report `$04`; the bench excludes it.
+- `STAT5` — the emulator reports the spec revision (`$05`), the firmware its own
+  version. The host adapter is configured to report `$05`; the bench excludes it.
 - Frame numbers — the emulator's 262 equal lines at exactly 60 Hz do not match
   the PRO's 59.94 Hz raster (SPEC §18). Injection addresses frames and lines by
   count, not time, so it is unaffected. The bus replay is untimed.
@@ -901,7 +902,8 @@ is the bench.*
   mismatch, at each of the three profiles
 - back-to-back reads 4 µs apart return correct prefetch bytes
 - strobe and hold margins are no worse than Phase 9's baseline
-- a `/RESET` pulse yields §15's state, confirmed by `SNAPSHOT`
+- a `/RESET` pulse yields §15's state, confirmed by `SNAPSHOT`, with `$0800`–`$0FFF`
+  the built-in font (`VRAM`)
 - no FIFO overruns
 
 ### Phase 12 — Traces through the bus → **every static golden via the Nano**

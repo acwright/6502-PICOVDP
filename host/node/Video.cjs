@@ -70,15 +70,26 @@ const CHANNEL_EXPAND = 0xff / 0x0f
 
 /**
  * `STAT5` (§6). The firmware reports its own version; the adapter reports the
- * spec revision, `$04`, as `Video.ts` does (PLAN.md section 4's known differences).
+ * spec revision, `$05`, as `Video.ts` does (PLAN.md section 4's known differences).
  */
-const STAT5_SPEC_REVISION = 0x04
+const STAT5_SPEC_REVISION = 0x05
 
 /** §5: `PALBASE`, and the register numbers `getMode`'s neighbours read. */
 const REG_COLOR = 0x07
 const REG_PALBASE = 0x0c
 const REG_L0NAME = 0x10
+const REG_L0SCRX = 0x13
+const REG_L0SCRY = 0x14
+const REG_L0CTRL = 0x15
 const REG_L0PAL = 0x16
+
+/** `L0CTRL` b6: bit 8 of `L0SCRX` (§13). */
+const LXCTRL_SCRX_BIT8 = 0x40
+
+/** §7: font `$00`, the only one; a load's base is a pattern table, `LxPAT` × `$800`. */
+const FONT_CP437_6X8 = 0x00
+const FONT_MAX_BASE = 0xf800
+const LAYER_COUNT = 2
 
 /** `vdp_debug_mode_t`'s codes, as `Video.ts` names them (§9). */
 const LEGACY_NAMES = [null, 'text', 'graphics-i', 'graphics-ii', 'multicolor']
@@ -298,14 +309,26 @@ class Video {
     return core.mode(this.card).display
   }
 
-  /** Layer 0's name table as CP437 text, one string per cell row (§9). */
+  /**
+   * Layer 0's name table as CP437 text, one string per cell row (§9), as
+   * displayed: `L0SCRX` and `L0SCRY` applied (§13), as `Video.ts` does. The first
+   * line is map row `(L0SCRY mod H) / 8`, each line starting at map column
+   * `(L0SCRX mod W) / cell width`, both wrapping round the map.
+   */
   textGrid() {
-    const { cols, rows } = core.mode(this.card)
+    const { cols, rows, cellWidth, width, lines: height } = core.mode(this.card)
     const base = (this.getRegister(REG_L0NAME) << 10) & VRAM_MASK
+    const bit8 = (this.getRegister(REG_L0CTRL) & LXCTRL_SCRX_BIT8) << 2
+    const firstCol = Math.floor(((bit8 | this.getRegister(REG_L0SCRX)) % width) / cellWidth)
+    const firstRow = (this.getRegister(REG_L0SCRY) % height) >> 3
     const lines = []
     for (let row = 0; row < rows; row++) {
+      const mapRow = (firstRow + row) % rows
       let line = ''
-      for (let col = 0; col < cols; col++) line += CP437[core.getVram(this.card, (base + row * cols + col) & VRAM_MASK)]
+      for (let col = 0; col < cols; col++) {
+        const mapCol = (firstCol + col) % cols
+        line += CP437[core.getVram(this.card, (base + mapRow * cols + mapCol) & VRAM_MASK)]
+      }
       lines.push(line)
     }
     return lines
@@ -345,7 +368,10 @@ class Video {
       cycleAccumulator: this.cycleAccumulator,
       screenLine: saved.screenLine,
       displayLine: saved.displayLine,
-      frameReady: this.frameReady
+      frameReady: this.frameReady,
+      fontLoads: [0, 1].map((layer) =>
+        saved.fontPending & (1 << layer) ? { id: saved[`fontId${layer}`], base: saved[`fontBase${layer}`] } : null
+      )
     }
   }
 
@@ -378,7 +404,8 @@ class Video {
         stage: port.stage & 1,
         payload: port.payload & 0xff
       })),
-      screenLine: typeof state.screenLine === 'number' ? state.screenLine : 0
+      screenLine: typeof state.screenLine === 'number' ? state.screenLine : 0,
+      ...fontLoads(state)
     }
     const vram = bytes('vram', VRAM_SIZE)
     core.restore(this.card, snapshot, vram)
@@ -393,6 +420,32 @@ class Video {
     this.frameReady = Boolean(state.frameReady)
     this.fillBackground()
   }
+}
+
+/**
+ * A snapshot's pending `FONT` loads (§7), as `Video.ts` reads them: two entries,
+ * each `null` or `{ id, base }`, or absent in a snapshot from before draft 0.5,
+ * which is nothing pending. In the addon's shape.
+ */
+function fontLoads(state) {
+  const loads = { fontPending: 0, fontId0: 0, fontId1: 0, fontBase0: 0, fontBase1: 0 }
+  const value = state.fontLoads
+  if (value === undefined) return loads
+  const invalid = () => new Error(`picovdp: fontLoads: expected two entries, each null or { id, base }`)
+  if (!Array.isArray(value) || value.length !== LAYER_COUNT) throw invalid()
+  value.forEach((entry, layer) => {
+    if (entry === null) return
+    if (typeof entry !== 'object' || Array.isArray(entry)) throw invalid()
+    const { id, base } = entry
+    if (id !== FONT_CP437_6X8) throw invalid()
+    if (typeof base !== 'number' || !Number.isInteger(base) || base < 0 || base > FONT_MAX_BASE || base % 0x800) {
+      throw invalid()
+    }
+    loads.fontPending |= 1 << layer
+    loads[`fontId${layer}`] = id
+    loads[`fontBase${layer}`] = base
+  })
+  return loads
 }
 
 module.exports = {

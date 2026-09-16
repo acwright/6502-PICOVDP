@@ -164,7 +164,7 @@ TEST(constant_status_registers) {
     set_reg(v, 0x0f, 0xf4);  // STATSEL_A: b7:4 ignored
     set_reg(v, 0x0e, 0x06);  // STATSEL_B
     CHECK_EQ(0xac, vdp_read(v, 1));
-    CHECK_EQ(0x3f, vdp_read(v, 3));
+    CHECK_EQ(0xbf, vdp_read(v, 3));  // b7: the built-in font (§7)
     set_reg(v, 0x0f, 0x05);
     CHECK_EQ(0x04, vdp_read(v, 1));
     free(v);

@@ -71,6 +71,10 @@ typedef struct vdp_snapshot {
     uint8_t frame_events;
     uint8_t overflow_sprite;
     uint8_t collision_map[8];
+    // §7: the FONT loads waiting for vertical blank, as vdp_t holds them.
+    uint8_t font_pending;   // bit n: a load for layer n
+    uint8_t font_id[2];
+    uint16_t font_base[2];
 } vdp_snapshot_t;
 void vdp_debug_save(const vdp_t *v, vdp_snapshot_t *s, uint8_t *vram);
 void vdp_debug_restore(vdp_t *v, const vdp_snapshot_t *s, const uint8_t *vram);

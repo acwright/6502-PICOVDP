@@ -93,6 +93,7 @@ extern const uint32_t vdp_nibble_lsb[16];
 #define VDP_REG_L0CTRL 0x15
 #define VDP_REG_L0PAL 0x16
 #define VDP_REG_L1NAME 0x18
+#define VDP_REG_L1PAT 0x1a
 #define VDP_REG_L1CTRL 0x1d
 #define VDP_REG_SPRATTR 0x20
 #define VDP_REG_SPRPAT 0x21
@@ -100,6 +101,7 @@ extern const uint32_t vdp_nibble_lsb[16];
 #define VDP_REG_SPRCTRL 0x23
 #define VDP_REG_SPRLIMIT 0x24
 #define VDP_REG_SPRPAL 0x25
+#define VDP_REG_FONT 0x30
 
 // MODE0 and MODE1 bits (§5, §9).
 #define VDP_MODE0_M3 0x02
@@ -144,7 +146,7 @@ static inline unsigned vdp_register_home(unsigned index) {
 // ---- §6 ----
 
 #define VDP_STAT_IDENTIFICATION 0xac   // STAT4
-#define VDP_STAT_CAPABILITIES 0x3f     // STAT6: two layers, 8bpp, flip, scroll, scanline IRQ, 64 KB
+#define VDP_STAT_CAPABILITIES 0xbf     // STAT6: two layers, 8bpp, flip, scroll, scanline IRQ, 64 KB; b7 the built-in font
 
 // ---- §11: the palette ----
 
@@ -160,8 +162,9 @@ static inline uint16_t vdp_palette_base(const uint8_t *reg) {
 // §11's table, transcribed: 256 entries of 12-bit $RGB (palette.c).
 extern const uint16_t vdp_default_palette[VDP_PALETTE_ENTRIES];
 
-// Write the default palette into a VRAM image at base.
-void vdp_palette_install(uint8_t *vram, uint16_t base);
+// Write the default palette into a window's 512 bytes. The window lies inside
+// one VRAM page, so it never wraps (vdp_palette_base).
+void vdp_palette_install(uint8_t *window);
 
 // One entry of the render side's cache, from the render copy of VRAM.
 void vdp_palette_cache_entry(vdp_t *v, unsigned entry);
@@ -330,6 +333,30 @@ static inline void vdp_render_guard(vdp_t *v) {
 
 // Store a byte in the bus copy and journal it for the render side.
 void vdp_poke(vdp_t *v, uint16_t address, uint8_t value);
+
+// Store `length` bytes in the bus copy at once, without a journal entry each:
+// reset's palette and font, and FONT's loads, too large for the journal. The
+// render side copies them when its replay reaches their place among the single
+// writes, and the palette cache takes what lands in its window (§11). `bytes`
+// must outlive the catch-up. The range does not wrap.
+void vdp_bulk_write(vdp_t *v, uint16_t address, const uint8_t *bytes, unsigned length);
+
+// ---- §7: the built-in font (font.c) ----
+
+#define VDP_FONT_LAYER1 0x80        // FONT b7: layer 1's pattern table, not layer 0's
+#define VDP_FONT_ID_MASK 0x7f       // FONT b6:0
+#define VDP_FONT_CP437 0x00         // CP437, 6 x 8: the one font
+#define VDP_FONT_BYTES 2048
+#define VDP_FONT_RESET_BASE 0x0800  // where reset puts it (§15)
+
+// fonts/cp437-6x8.bin, generated into the build tree (core/CMakeLists.txt).
+extern const uint8_t vdp_font_cp437[VDP_FONT_BYTES];
+
+// A write to FONT: a load for vertical blank, or nothing for a reserved ID.
+void vdp_font_command(vdp_t *v, uint8_t value);
+
+// Carry out the pending loads, layer 0's first, as vertical blank fires.
+void vdp_font_complete(vdp_t *v);
 
 // A register write, from the command port or a debugger.
 void vdp_register_write(vdp_t *v, unsigned index, uint8_t value);

@@ -332,7 +332,8 @@ static napi_value js_stats(napi_env env, napi_callback_info info) {
 }
 
 // save(card, vram: Uint8Array(65536)): { registers: Uint8Array(128), ports: [2], screenLine, displayLine,
-// stat0, irqLatch, frameEvents, overflowSprite, collisionMap: Uint8Array(8) }, VRAM into vram.
+// stat0, irqLatch, frameEvents, overflowSprite, collisionMap: Uint8Array(8), fontPending, fontId0, fontId1,
+// fontBase0, fontBase1 }, VRAM into vram.
 static napi_value js_save(napi_env env, napi_callback_info info) {
     napi_value argv[2];
     vdp_t *v = card_args(env, info, 2, argv);
@@ -365,7 +366,10 @@ static napi_value js_save(napi_env env, napi_callback_info info) {
     if (!set_uint(env, result, "screenLine", s.screen_line) || !set_uint(env, result, "displayLine", s.display_line) ||
         !set_uint(env, result, "stat0", s.stat0) || !set_uint(env, result, "irqLatch", s.irq_latch) ||
         !set_uint(env, result, "frameEvents", s.frame_events) ||
-        !set_uint(env, result, "overflowSprite", s.overflow_sprite)) {
+        !set_uint(env, result, "overflowSprite", s.overflow_sprite) ||
+        !set_uint(env, result, "fontPending", s.font_pending) || !set_uint(env, result, "fontId0", s.font_id[0]) ||
+        !set_uint(env, result, "fontId1", s.font_id[1]) || !set_uint(env, result, "fontBase0", s.font_base[0]) ||
+        !set_uint(env, result, "fontBase1", s.font_base[1])) {
         CHECK_STATUS(env, napi_generic_failure);
     }
     napi_value map_buffer, map;
@@ -378,7 +382,7 @@ static napi_value js_save(napi_env env, napi_callback_info info) {
 }
 
 // restore(card, { registers, ports, screenLine, displayLine, stat0, irqLatch, frameEvents, overflowSprite,
-// collisionMap }, vram): save's inverse.
+// collisionMap, fontPending, fontId0, fontId1, fontBase0, fontBase1 }, vram): save's inverse.
 static napi_value js_restore(napi_env env, napi_callback_info info) {
     napi_value argv[3];
     vdp_t *v = card_args(env, info, 3, argv);
@@ -428,6 +432,18 @@ static napi_value js_restore(napi_env env, napi_callback_info info) {
     s.irq_latch = (uint8_t)irq_latch;
     s.frame_events = (uint8_t)frame_events;
     s.overflow_sprite = (uint8_t)overflow_sprite;
+    uint32_t font_pending, font_id[2], font_base[2];
+    if (!get_uint(env, argv[1], "fontPending", &font_pending) || !get_uint(env, argv[1], "fontId0", &font_id[0]) ||
+        !get_uint(env, argv[1], "fontId1", &font_id[1]) || !get_uint(env, argv[1], "fontBase0", &font_base[0]) ||
+        !get_uint(env, argv[1], "fontBase1", &font_base[1])) {
+        napi_throw_type_error(env, NULL, "picovdp: a snapshot needs fontPending, fontId0, fontId1, fontBase0, fontBase1");
+        return NULL;
+    }
+    s.font_pending = (uint8_t)font_pending;
+    for (unsigned layer = 0; layer < 2; layer++) {
+        s.font_id[layer] = (uint8_t)font_id[layer];
+        s.font_base[layer] = (uint16_t)font_base[layer];
+    }
     napi_value map;
     CHECK_STATUS(env, napi_get_named_property(env, argv[1], "collisionMap", &map));
     uint8_t *collision_map = typed_arg(env, map, napi_uint8_array, sizeof s.collision_map);

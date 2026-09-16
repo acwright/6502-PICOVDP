@@ -50,7 +50,8 @@ static vdp_t *console(void) {
 TEST(the_bios_console) {
     vdp_t *v = console();
     uint8_t row[VDP_WIDTH];
-    poke(v, 0x0800 + 'A' * 8, 0xff);        // row 0 of 'A': all eight bits set
+    poke(v, 0x0800 + 'A' * 8, 0xff);        // row 0 of 'A': all eight bits set, over reset's font (§15)
+    poke(v, 0x0800 + 'A' * 8 + 1, 0x00);    // row 1: clear
     poke(v, 0x0000, 'A');                   // cell (0, 0)
     poke(v, 39, 'A');                       // cell (39, 0)
 

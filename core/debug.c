@@ -70,6 +70,9 @@ void vdp_debug_save(const vdp_t *v, vdp_snapshot_t *s, uint8_t *vram) {
     s->frame_events = v->frame_events;
     s->overflow_sprite = v->overflow_sprite;
     memcpy(s->collision_map, v->collision_map, sizeof s->collision_map);
+    s->font_pending = v->font_pending;
+    memcpy(s->font_id, v->font_id, sizeof s->font_id);
+    memcpy(s->font_base, v->font_base, sizeof s->font_base);
     memcpy(vram, v->vram, VDP_VRAM_SIZE);
 }
 
@@ -86,6 +89,14 @@ void vdp_debug_restore(vdp_t *v, const vdp_snapshot_t *s, const uint8_t *vram) {
     v->frame_events = s->frame_events & VDP_IRQ_SOURCES;
     v->overflow_sprite = s->overflow_sprite & 0x3f;
     memcpy(v->collision_map, s->collision_map, sizeof v->collision_map);
+    // Only font $00 at a whole pattern table is a load (vdp_font_command).
+    v->font_pending = 0;
+    for (unsigned layer = 0; layer < 2; layer++) {
+        if (!(s->font_pending & (1u << layer)) || s->font_id[layer] != VDP_FONT_CP437) continue;
+        v->font_id[layer] = VDP_FONT_CP437;
+        v->font_base[layer] = (uint16_t)(s->font_base[layer] & 0xf800);
+        v->font_pending |= (uint8_t)(1u << layer);
+    }
     memcpy(v->vram, vram, VDP_VRAM_SIZE);
 
     memcpy(v->render_vram, v->vram, VDP_VRAM_SIZE);
@@ -94,6 +105,8 @@ void vdp_debug_restore(vdp_t *v, const vdp_snapshot_t *s, const uint8_t *vram) {
     v->render_screen_line = (uint16_t)((v->screen_line + 1) % VDP_SCREEN_LINES);
     v->journal_head = v->journal_tail = 0;
     v->dirty_pages = 0;
+    v->bulk_head = v->bulk_tail = 0;
+    v->bulk_pages = 0;
     v->latch_head = v->latch_tail = 0;
     vdp_palette_reload(v);
     // The sprites of the line it was saved building. Their overflow, if any,

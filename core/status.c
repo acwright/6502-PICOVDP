@@ -25,7 +25,12 @@ void VDP_HOT(vdp_raster_line_start)(vdp_t *v, uint16_t screen_line) {
     // Graphics and Full. F sets whatever IRQEN and the display say (§6). A
     // picture that shrinks past its new end raises it at once; one that grows
     // after it has fired does not raise it again.
-    if (screen_line >= g->origin_y + g->lines && vdp_frame_event(v, VDP_IRQ_VBLANK)) {
+    //
+    // A pending FONT load lands here first, before F sets and before /INT is
+    // latched for it (§7, §14): whoever waits for either finds the copy whole.
+    if (screen_line >= g->origin_y + g->lines && !(v->frame_events & VDP_IRQ_VBLANK)) {
+        if (v->font_pending) vdp_font_complete(v);
+        vdp_frame_event(v, VDP_IRQ_VBLANK);
         v->stat0 |= VDP_STAT0_F;
     }
 

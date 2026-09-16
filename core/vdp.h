@@ -28,6 +28,7 @@
 // holds interrupts off around. vdp_line_start is all three at once. The layers
 // and sprites are drawn a word at a time, and a row is built in two halves, one
 // a core, each into a line of its own (vdp_build_half).
+// Draft 0.5: the built-in font (§7), at reset and by FONT at vertical blank.
 
 #pragma once
 
@@ -56,6 +57,12 @@
 // line. A power of two: the journal is a ring.
 #define VDP_JOURNAL_ENTRIES 1024
 #define VDP_VRAM_PAGE_SHIFT 10
+
+// Bulk writes — reset's palette and font, FONT's loads — waiting for the render
+// side: two a frame from FONT, two a reset. One that finds the ring full marks
+// its pages instead, which a late catch-up takes from the bus copy as it then
+// is. A power of two.
+#define VDP_BULK_ENTRIES 16
 
 // Latches the render side can fall behind by (§18's late lines). A latch that
 // finds them all waiting is merged into the newest, whose line is then never
@@ -105,6 +112,16 @@ typedef struct vdp_half {
     uint32_t owner_bits[VDP_CLAIM_WORDS][VDP_SPRITES_PER_LINE];
 } vdp_half_t;
 
+// A bulk write (vdp_bulk_write): `length` bytes of constant data, written to the
+// bus copy at once and to the render copy when the journal's replay reaches
+// `at`, its place among the single writes.
+typedef struct vdp_bulk {
+    const uint8_t *bytes;
+    uint32_t at;
+    uint16_t address;
+    uint16_t length;
+} vdp_bulk_t;
+
 // One port pair (§4). $9C02/$9C03 are a complete second copy of $9C00/$9C01.
 typedef struct vdp_port {
     uint16_t pointer;  // the full 16-bit VRAM pointer
@@ -118,7 +135,9 @@ typedef struct vdp_port {
 // VRAM, which the journal carries.
 typedef struct vdp_latch_record {
     uint8_t reg[VDP_REGISTERS];
-    uint64_t dirty_pages;    // pages written past a full journal before the latch
+    uint64_t dirty_pages;    // pages written past a full journal, or a full bulk ring, before the latch
+    bool overflowed;         // some of them because the journal was full
+    uint32_t bulk_end;       // the bulk ring's tail at the latch
     uint32_t journal_end;    // the journal's tail at the latch: the writes before it
     uint32_t tag;            // the platform's, handed back with the render side (vdp_latch)
     uint16_t screen_line;
@@ -144,6 +163,14 @@ typedef struct vdp {
     uint64_t dirty_pages;                   // pages written after the journal filled, since the last latch
     uint32_t journal_overflows;             // catch-ups that fell back to page copies
 
+    // Bulk writes the render side has not taken (vdp_bulk_write), a ring the
+    // same way, each placed in the journal's order by the tail it found.
+    vdp_bulk_t bulk[VDP_BULK_ENTRIES];
+    uint32_t bulk_head;
+    uint32_t bulk_tail;
+    uint64_t bulk_pages;                    // pages of bulk writes that found the ring full, since the last latch
+    uint8_t reset_palette[512];             // §11's table as reset writes it, for bulk writes to point at
+
     // Latches the render side has not taken, a ring the same way: latch_tail
     // is vdp_latch's, latch_head vdp_catch_up's.
     vdp_latch_record_t latch[VDP_LATCHES];
@@ -162,6 +189,11 @@ typedef struct vdp {
     uint8_t frame_events;                   // IRQEN bits of the once-a-frame events spent this frame
     uint8_t overflow_sprite;                // STAT7
     uint8_t collision_map[8];               // STAT8-STAT15
+
+    // §7: FONT loads waiting for vertical blank, one a destination layer.
+    uint8_t font_pending;                   // bit n: a load for layer n
+    uint8_t font_id[2];                     // its font
+    uint16_t font_base[2];                  // its destination, LxPAT x $800 as the write found it
 
     // ---- the render side: the card as it stood at the last latch ----
     uint8_t render_reg[VDP_REGISTERS];

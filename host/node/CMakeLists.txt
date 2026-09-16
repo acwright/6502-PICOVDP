@@ -41,7 +41,7 @@ add_test(NAME node_addon_loads
 
 # The host executor (PLAN.md section 4): every fixture, replayed from
 # tests/oracle through the addon. Needs no emulator.
-foreach(fixture bios wizardslab vdp-modes vdp-layers)
+foreach(fixture bios wizardslab vdp-modes vdp-layers vdp-font)
     add_test(NAME replay_${fixture}
         COMMAND ${PICOVDP_NODE} ${CMAKE_SOURCE_DIR}/tools/replay.mjs ${fixture} --classes)
     set_tests_properties(replay_${fixture} PROPERTIES
