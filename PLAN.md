@@ -932,8 +932,12 @@ listed, with its Phase 10 injection result standing for it.
 - **Status freshness.** `STAT2` read from a scanline handler over 10⁴ interrupts
   gives the distribution of lag. `OVF` and `COL` publication delay, likewise.
 - **Load.** The worst-case scene, plus the Nano's fastest traffic on both ports,
-  plus a scanline interrupt every eight lines, plus USB snapshot streaming, for
-  thirty minutes.
+  plus a scanline interrupt every eight lines, plus `FONT` written for both
+  layers every frame (`vdpctl load --fonts`), plus USB snapshot streaming, for
+  thirty minutes. `latch_isr_max` is recorded: on the Pico 2 the two loads take
+  the latch interrupt from about 350 to about 3,200 cycles
+  (docs/results/draft-0.5.md), and back-to-back accesses at `fastest` across
+  vertical blank show whether a bus interrupt can wait that long.
 - **Release parity.** `pro-release` repeats Phases 11 and 12 through the bus,
   using VRAM readback and capture in place of the snapshot.
 

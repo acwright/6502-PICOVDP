@@ -293,6 +293,9 @@ static void save_state(uint32_t frame) {
     s->frame_events = card.frame_events;
     s->overflow_sprite = card.overflow_sprite;
     memcpy(s->collision_map, card.collision_map, sizeof s->collision_map);
+    s->font_pending = card.font_pending;
+    memcpy(s->font_id, card.font_id, sizeof s->font_id);
+    memcpy(s->font_base, card.font_base, sizeof s->font_base);
     state_at_239.interrupt = vdp_int_asserted(&card);
     restore_interrupts(irq);
     state_at_239.frame = frame;
@@ -695,6 +698,7 @@ static void scene_line(void) {
     scene_reads(&card_port, f->reads);
     if (scene_log_head - scene_log_tail < 64) scene_log_head++;
     scene_frame(scene_at((unsigned)scene), ++scene_frame_count, &card_port);
+    if (load.fonts) scene_fonts(scene_at((unsigned)scene), &card_port);
 }
 
 static void apply_request(void) {

@@ -1,0 +1,19 @@
+  exact   bios/ok — frame 419, 4230 operations (1 reads, 0 of STAT5 not compared), 13648 bytes, 7.5 s
+  exact   bios/screenful — frame 639, 4623 operations (1 reads, 0 of STAT5 not compared), 15430 bytes, 11.1 s
+  exact   bios/scroll — frame 840, 12597 operations (3681 reads, 0 of STAT5 not compared), 43384 bytes, 14.5 s
+  exact   wizardslab/frame-60 — frame 59, 92372 operations (86223 reads, 0 of STAT5 not compared), 267224 bytes, 1.5 s
+  exact   wizardslab/frame-180 — frame 179, 294439 operations (288254 reads, 0 of STAT5 not compared), 843726 bytes, 3.6 s
+  exact   wizardslab/frame-300 — frame 299, 496320 operations (490081 reads, 0 of STAT5 not compared), 1419736 bytes, 5.7 s
+  exact   wizardslab/frame-600 — frame 599, 1001097 operations (994750 reads, 0 of STAT5 not compared), 2859928 bytes, 11.0 s
+  exact   vdp-modes/text — frame 35, 59664 operations (53590 reads, 0 of STAT5 not compared), 175690 bytes, 1.0 s
+  exact   vdp-modes/compact — frame 98, 168676 operations (160984 reads, 0 of STAT5 not compared), 492726 bytes, 2.2 s
+  exact   vdp-modes/graphics — frame 162, 279274 operations (269546 reads, 0 of STAT5 not compared), 814458 bytes, 3.3 s
+  exact   vdp-modes/full — frame 226, 390488 operations (378520 reads, 0 of STAT5 not compared), 1137458 bytes, 4.4 s
+  exact   vdp-layers/parallax — frame 89, 122312 operations (114464 reads, 0 of STAT5 not compared), 375428 bytes, 2.0 s
+  exact   vdp-layers/scroll-bit8-l1 — frame 179, 287520 operations (278772 reads, 0 of STAT5 not compared), 847324 bytes, 3.5 s
+  exact   vdp-layers/occluded — frame 239, 397668 operations (388320 reads, 0 of STAT5 not compared), 1161934 bytes, 4.6 s
+  exact   vdp-layers/scroll-bit8-l0 — frame 299, 507805 operations (497857 reads, 0 of STAT5 not compared), 1476528 bytes, 5.6 s
+  exact   vdp-font/reset — frame 32, 55617 operations (53665 reads, 0 of STAT5 not compared), 162988 bytes, 1.0 s
+  exact   vdp-font/loaded — frame 96, 168592 operations (162660 reads, 0 of STAT5 not compared), 489438 bytes, 2.1 s
+  exact   vdp-font/relocated — frame 160, 229219 operations (219305 reads, 0 of STAT5 not compared), 666684 bytes, 3.1 s
+every checkpoint reproduces exactly on the board

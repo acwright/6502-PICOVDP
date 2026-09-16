@@ -198,6 +198,9 @@ void inject_after_line(vdp_t *v, uint32_t frame, uint16_t screen_line) {
             s->frame_events = v->frame_events;
             s->overflow_sprite = v->overflow_sprite;
             memcpy(s->collision_map, v->collision_map, sizeof s->collision_map);
+            s->font_pending = v->font_pending;
+            memcpy(s->font_id, v->font_id, sizeof s->font_id);
+            memcpy(s->font_base, v->font_base, sizeof s->font_base);
             end_state.interrupt = vdp_int_asserted(v);
             restore_interrupts(irq);
             end_state.frame = frame;

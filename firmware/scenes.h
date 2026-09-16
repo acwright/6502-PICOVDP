@@ -46,6 +46,13 @@ void scene_setup(const scene_t *s, const scene_port_t *port);
 // The scroll for scene frame n.
 void scene_frame(const scene_t *s, unsigned n, const scene_port_t *port);
 
+// §7's load, for both layers, as the program's frame can add it (LOAD's fonts):
+// FONT written for layer 0 and layer 1 with each pattern table pointed at VRAM
+// the scene does not use, then put back. Both loads land at the next vertical
+// blank, in the latch, and change nothing on screen, so vdp-scene's frames
+// still hold without them.
+void scene_fonts(const scene_t *s, const scene_port_t *port);
+
 // What the program reads each frame, in this order: STAT1, STAT7, STAT8-15,
 // then STAT0, which acknowledges the rest (§6).
 #define SCENE_READS 11

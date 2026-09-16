@@ -14,14 +14,15 @@
 //   vdpctl reboot [--bootsel]
 //   vdpctl fault <core0|core1|hang|panic>
 //   vdpctl scene <name>                  a worst-case scene (firmware/scenes.h)
-//   vdpctl load [--bus HZ] [--handicap FIRST,LAST,EVERY,CYCLES]
+//   vdpctl load [--bus HZ] [--handicap FIRST,LAST,EVERY,CYCLES] [--fonts]
 //   vdpctl scene-log                     what the scene's program read, frame by frame
 //   vdpctl profile [--row N] [--iterations N] [--json]   one row's stages, interrupts off
 //   vdpctl late [--scene NAME] [--handicap FIRST,LAST,EVERY,CYCLES] [--seconds N]
 //                                        §18's late line on purpose, checked against the host
-//   vdpctl scenes [--seconds N] [--minutes N] [--only a,b] [--bus HZ] [--stream] [--out FILE.json]
+//   vdpctl scenes [--seconds N] [--minutes N] [--only a,b] [--bus HZ] [--fonts] [--stream] [--out FILE.json]
 //                                        run the worst-case scenes: statistics for each, and with
-//                                        --stream every snapshot checked against vdp-scene
+//                                        --stream every snapshot checked against vdp-scene; --fonts
+//                                        adds FONT loads for both layers every frame (§7)
 //
 // The port is PICOVDP_PORT or the first /dev/cu.usbmodem*.
 
@@ -60,7 +61,7 @@ function options(args) {
     if (args[i].startsWith('--')) {
       const name = args[i].slice(2)
       const next = args[i + 1]
-      if (next !== undefined && !next.startsWith('--') && !['reset', 'json', 'power-on', 'bootsel', 'classes', 'stream', 'profile'].includes(name)) {
+      if (next !== undefined && !next.startsWith('--') && !['reset', 'json', 'power-on', 'bootsel', 'classes', 'stream', 'profile', 'fonts'].includes(name)) {
         flags.set(name, next)
         i++
       } else {
@@ -233,7 +234,7 @@ async function main() {
       break
     case 'load': {
       const [first, last, every, cycles] = String(flags.get('handicap') ?? '0,0,1,0').split(',').map(Number)
-      await withLink((link) => link.request(CMD.LOAD, packLoad({ busRate: Number(flags.get('bus') ?? 0), first, last, every, cycles })))
+      await withLink((link) => link.request(CMD.LOAD, packLoad({ busRate: Number(flags.get('bus') ?? 0), first, last, every, cycles, fonts: flags.has('fonts') })))
       break
     }
     case 'profile':
@@ -253,6 +254,7 @@ async function main() {
         seconds: flags.has('minutes') ? Number(flags.get('minutes')) * 60 : Number(flags.get('seconds') ?? 10),
         only: flags.has('only') ? String(flags.get('only')).split(',') : null,
         bus: Number(flags.get('bus') ?? 0),
+        fonts: flags.has('fonts'),
         stream: flags.has('stream'),
         out: flags.get('out'),
         profile: flags.has('profile'),

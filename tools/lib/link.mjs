@@ -266,6 +266,9 @@ export function decodeState(r) {
   state.frameEvents = r.u8()
   state.overflowSprite = r.u8()
   state.collisionMap = Buffer.from(r.bytes(8))
+  state.fontPending = r.u8()
+  state.fontId = [r.u8(), r.u8()]
+  state.fontBase = [r.u16(), r.u16()]
   state.interrupt = r.u8() === 1
   state.frame = r.u32()
   state.sceneFrame = r.u32()
@@ -319,13 +322,14 @@ export function u8(...values) {
   return Buffer.from(values)
 }
 
-export function packLoad({ busRate = 0, first = 0, last = 0, every = 1, cycles = 0 } = {}) {
-  const b = Buffer.alloc(14)
+export function packLoad({ busRate = 0, first = 0, last = 0, every = 1, cycles = 0, fonts = false } = {}) {
+  const b = Buffer.alloc(15)
   b.writeUInt32LE(busRate, 0)
   b.writeUInt16LE(first, 4)
   b.writeUInt16LE(last, 6)
   b.writeUInt16LE(every, 8)
   b.writeUInt32LE(cycles, 10)
+  b[14] = fonts ? 1 : 0
   return b
 }
 

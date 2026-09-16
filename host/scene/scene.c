@@ -5,7 +5,8 @@
 //   vdp-scene --list
 //   vdp-scene NAME --frame N [--out FILE]   the picture of scene frame N: 76,800 indices
 //   vdp-scene NAME --reads FRAMES           what the scene's program reads, frame by frame
-//   vdp-scene --check                       every scene is the worst case it claims to be
+//   vdp-scene --check                       every scene is the worst case it claims to be, and
+//                                           scene_fonts's loads change none of its frames
 //
 // The program runs as the firmware runs it: set up from a power-on reset at a
 // line start of screen line 250; at each later screen line 250, its reads, then
@@ -56,18 +57,45 @@ static void set_up(vdp_t *v, const scene_t *s, const scene_port_t *port) {
     scene_setup(s, port);
 }
 
+// Rows 0-239, each built as the screen line before it begins.
+static void draw(vdp_t *v, uint8_t *indices) {
+    vdp_line_start(v, VDP_SCREEN_LINES - 1);
+    vdp_build_line(v, indices);
+    for (unsigned row = 1; row < VDP_HEIGHT; row++) {
+        vdp_line_start(v, (uint16_t)(row - 1));
+        vdp_build_line(v, indices + row * VDP_WIDTH);
+    }
+}
+
 static void frame(const scene_t *s, unsigned n, uint8_t *indices) {
     static vdp_t v;
     const scene_port_t port = {port_write, port_read, &v};
     set_up(&v, s, &port);
     scene_frame(s, n, &port);
-    // Rows 0-239, each built as the screen line before it begins.
-    vdp_line_start(&v, VDP_SCREEN_LINES - 1);
-    vdp_build_line(&v, indices);
-    for (unsigned row = 1; row < VDP_HEIGHT; row++) {
-        vdp_line_start(&v, (uint16_t)(row - 1));
-        vdp_build_line(&v, indices + row * VDP_WIDTH);
+    draw(&v, indices);
+}
+
+// scene_fonts's loads (LOAD's fonts) land at vertical blank and change no
+// picture, so these frames stand for the firmware's with them too.
+static bool fonts_invisible(const scene_t *s) {
+    static vdp_t v;
+    static uint8_t plain[VDP_WIDTH * VDP_HEIGHT], loaded[VDP_WIDTH * VDP_HEIGHT];
+    const scene_port_t port = {port_write, port_read, &v};
+    frame(s, 1, plain);
+    set_up(&v, s, &port);
+    scene_fonts(s, &port);
+    const bool pending = v.font_pending == 0x03;
+    for (unsigned line = SCENE_LINE + 1; line < VDP_SCREEN_LINES; line++) vdp_line_start(&v, (uint16_t)line);
+    for (unsigned line = 0; line <= SCENE_LINE; line++) vdp_line_start(&v, (uint16_t)line);
+    // Glyph 1's first row, in both tables: the loads landed.
+    const bool landed = v.font_pending == 0 && v.vram[0x2808] == 0x70 && v.vram[0x3008] == 0x70;
+    scene_frame(s, 1, &port);
+    draw(&v, loaded);
+    const bool same = memcmp(plain, loaded, sizeof plain) == 0;
+    if (!(pending && landed && same)) {
+        printf("  %s: FONT loads pending %u, landed %u, the frame unchanged %u\n", s->name, pending, landed, same);
     }
+    return pending && landed && same;
 }
 
 static void reads(const scene_t *s, unsigned frames) {
@@ -140,7 +168,7 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "--check")) {
         unsigned failed = 0;
         for (unsigned i = 0; i < scene_count(); i++) {
-            if (!check(scene_at(i))) failed++;
+            if (!check(scene_at(i)) || !fonts_invisible(scene_at(i))) failed++;
         }
         printf("%u scenes, %u short of the worst case they claim\n", scene_count(), failed);
         return failed ? 1 : 0;

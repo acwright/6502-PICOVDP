@@ -19,7 +19,7 @@
 #include "renderer.h"
 #include "scenes.h"
 
-#define PROTOCOL 1
+#define PROTOCOL 2
 #define SYNC0 'P'
 #define SYNC1 'V'
 #define HEADER 8
@@ -192,6 +192,11 @@ static void put_state(writer_t *w, const renderer_state_t *s) {
     put8(w, s->card.frame_events);
     put8(w, s->card.overflow_sprite);
     put(w, s->card.collision_map, 8);
+    put8(w, s->card.font_pending);
+    put8(w, s->card.font_id[0]);
+    put8(w, s->card.font_id[1]);
+    put16(w, s->card.font_base[0]);
+    put16(w, s->card.font_base[1]);
     put8(w, s->interrupt);
     put32(w, s->frame);
     put32(w, s->scene_frame);
@@ -284,13 +289,14 @@ static void scene(uint8_t sequence, const uint8_t *payload, uint32_t count) {
 }
 
 static void load(uint8_t sequence, const uint8_t *payload, uint32_t count) {
-    if (count < 14) return error(sequence, "LOAD: bus rate, handicap first, last, every, cycles");
+    if (count < 14) return error(sequence, "LOAD: bus rate, handicap first, last, every, cycles[, fonts]");
     renderer_load_t l = {
         .bus_rate_hz = payload[0] | payload[1] << 8 | payload[2] << 16 | (uint32_t)payload[3] << 24,
         .handicap_first = (uint16_t)(payload[4] | payload[5] << 8),
         .handicap_last = (uint16_t)(payload[6] | payload[7] << 8),
         .handicap_every = (uint16_t)(payload[8] | payload[9] << 8),
         .handicap_cycles = payload[10] | payload[11] << 8 | payload[12] << 16 | (uint32_t)payload[13] << 24,
+        .fonts = count >= 15 && (payload[14] & 1),
     };
     if (!renderer_load(&l, 1000)) return error(sequence, "LOAD: core 1 did not answer");
     writer_t w = {response, response + sizeof response};

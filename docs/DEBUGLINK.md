@@ -1,7 +1,7 @@
 The Debug Link
 ==============
 
-**Protocol version 1.** How the firmware's debug builds (`pico2`, `pro-debug`)
+**Protocol version 2.** How the firmware's debug builds (`pico2`, `pro-debug`)
 are driven and inspected over their USB-C port, with no SWD (PLAN.md section 3,
 "The debug link"). `tools/vdpctl.mjs` is the host side; `firmware/link.c` the
 board's.
@@ -82,7 +82,7 @@ No payload. Answers in normal mode and in safe mode.
 
 | Field | Size | |
 |---|--:|---|
-| protocol | 1 | 1 |
+| protocol | 1 | 2 |
 | safe mode | 1 | 1 in safe mode (section 6) |
 | reset reason | 1 | 0 power-on or anything else, 1 our reboot after a fault record, 2 the watchdog |
 | version | 1 | `STAT5`, BCD |
@@ -160,7 +160,7 @@ Every subcommand answers with the status:
 | space | 4 | stream bytes the ring can take now |
 | buffered | 4 | stream bytes waiting |
 | taken | 4 | DATA: bytes accepted |
-| end state | 165 | section 5's state, as the card stood at END |
+| end state | 172 | section 5's state, as the card stood at END |
 | logged | 1 | up to 32 |
 | log | 13 each | operation (4), frame (2), line (2), kind (1), port (1), expected (1), got (1), status selected (1, `$FF` for none) |
 
@@ -193,7 +193,7 @@ scene's index (1) and name (32).
 ### LOAD `$0A`
 
 Payload: bus rate in Hz (4), handicap first row (2), last row (2), every (2),
-cycles (4). Zero turns each off.
+cycles (4), and optionally fonts (1). Zero turns each off.
 
 - **The bus stand-in** is Phase 1's: a PWM interrupt on core 1 at the highest
   priority, doing a data write through port B into the palette window, of the
@@ -201,6 +201,11 @@ cycles (4). Zero turns each off.
 - **The handicap** pads the build of rows [first, last), every `every` rows, on
   core 1, to at least `cycles` from the start of the row: §18's late line, on
   purpose.
+- **Fonts**, bit 0: a scene's program writes `FONT` for both layers every frame,
+  at screen line 250, each with its pattern table pointed at VRAM the scene does
+  not use and put back (`scene_fonts`). Both loads land in the latch interrupt at
+  the next vertical blank, and the picture does not change, so snapshots still
+  compare with `vdp-scene`.
 
 ### SCENE LOG `$0B`
 
@@ -264,7 +269,7 @@ A frame as it went to VGA:
 |---|--:|---|
 | frame | 4 | the raster frame |
 | state matches | 1 | 1 if the state is this frame's |
-| state | 165 | below |
+| state | 172 | below |
 | source | 240 | for each row, the row whose buffer its line sent: itself, or an earlier one when late |
 | late | 240 | 1 where the row was late |
 | rows | 76,800 | 240 rows of 320 palette indices, row-major |
@@ -277,8 +282,11 @@ built before the capture was armed shows indices that were not kept.
 raw registers (`$02`–`$06` at their homes, §5), each port pair's pointer (2),
 prefetch, payload, direction and flip-flop (1 each), the screen line and display
 line (2 each), `STAT0`, the latched interrupts, the frame's spent events and
-`STAT7` (1 each), the collision map (8), `/INT` (1), the raster frame (4) and the
-scene frames begun (4).
+`STAT7` (1 each), the collision map (8), the pending `FONT` loads (§7: a bit per
+destination layer (1), each layer's font ID (1 each) and base (2 each)), `/INT`
+(1), the raster frame (4) and the scene frames begun (4).
+
+Version 2 (SPEC draft 0.5) added the pending loads, and LOAD's fonts byte.
 
 ---
 
@@ -351,10 +359,10 @@ node tools/vdpctl.mjs reset [--power-on]
 node tools/vdpctl.mjs reboot [--bootsel]
 node tools/vdpctl.mjs fault <core0|core1|hang|panic>
 node tools/vdpctl.mjs scene <name>
-node tools/vdpctl.mjs load [--bus HZ] [--handicap FIRST,LAST,EVERY,CYCLES]
+node tools/vdpctl.mjs load [--bus HZ] [--handicap FIRST,LAST,EVERY,CYCLES] [--fonts]
 node tools/vdpctl.mjs scene-log
 node tools/vdpctl.mjs profile [--row N] [--iterations N] [--json]
-node tools/vdpctl.mjs scenes [--seconds N | --minutes N] [--only a,b] [--bus HZ] [--stream] [--profile] [--out FILE]
+node tools/vdpctl.mjs scenes [--seconds N | --minutes N] [--only a,b] [--bus HZ] [--fonts] [--stream] [--profile] [--out FILE]
 node tools/vdpctl.mjs late [--scene NAME] [--handicap FIRST,LAST,EVERY,CYCLES] [--seconds N]
 ```
 

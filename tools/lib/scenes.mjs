@@ -48,14 +48,14 @@ export function checkSnapshot(name, snapshot) {
   return { wrong, late, stateMatches: snapshot.stateMatches }
 }
 
-export async function runScenes({ seconds, only, bus, stream, out, profile }) {
+export async function runScenes({ seconds, only, bus, fonts, stream, out, profile }) {
   const names = sceneNames().filter((name) => !only || only.includes(name))
   const link = await Link.open()
   const results = []
   let failures = 0
   try {
-    await link.request(CMD.LOAD, packLoad({ busRate: bus }))
-    console.log(`${names.length} scenes, ${seconds} s each${bus ? `, bus stand-in at ${bus} Hz` : ''}${stream ? ', snapshots streaming' : ''}`)
+    await link.request(CMD.LOAD, packLoad({ busRate: bus, fonts }))
+    console.log(`${names.length} scenes, ${seconds} s each${bus ? `, bus stand-in at ${bus} Hz` : ''}${fonts ? ', FONT loads for both layers every frame' : ''}${stream ? ', snapshots streaming' : ''}`)
     for (const name of names) {
       await link.request(CMD.SCENE, Buffer.from(name))
       await sleep(1500)  // set up at the next line 250, and settled
@@ -86,7 +86,7 @@ export async function runScenes({ seconds, only, bus, stream, out, profile }) {
       console.log(
         `${bad ? 'LATE ' : 'ok   '} ${name.padEnd(22)} rows ${stats.rowsBuilt}, late ${stats.lateRows}, merged ${stats.latchesMerged}; ` +
           `latency max ${stats.latency.max} (${spare}% spare), 99.9% ${stats.latency.p999}, mean ${stats.latency.mean}; ` +
-          `core 1 half ${stats.halfMax}, core 0 ${stats.core0HalfMax}, split ${stats.splitMean}` +
+          `core 1 half ${stats.halfMax}, core 0 ${stats.core0HalfMax}, split ${stats.splitMean}; latch isr max ${stats.latchIsrMax}` +
           (stream ? `; ${snapshots.taken} snapshots, ${snapshots.wrong} rows wrong, ${snapshots.late} late, ${snapshots.stale} stale state` : '')
       )
     }

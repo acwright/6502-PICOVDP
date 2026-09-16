@@ -118,6 +118,7 @@ typedef struct renderer_load {
     uint16_t handicap_last;
     uint16_t handicap_every;          // ... every this many rows ...
     uint32_t handicap_cycles;         // ... to at least this many cycles
+    bool fonts;                       // a scene's program writes FONT for both layers every frame (scenes.h)
 } renderer_load_t;
 bool renderer_load(const renderer_load_t *load, uint32_t timeout_ms);
 

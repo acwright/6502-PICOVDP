@@ -11,6 +11,7 @@ enum {
     STATSEL_A = 0x0f,
     L0NAME = 0x10, L1NAME = 0x18,  // each layer's block: NAME ATTR PAT SCRX SCRY CTRL PAL
     SPRATTR = 0x20, SPRPAT = 0x21, SPRCOUNT = 0x22, SPRCTRL = 0x23, SPRLIMIT = 0x24, SPRPAL = 0x25,
+    FONT = 0x30,
 };
 enum { NAME, ATTR, PAT, SCRX, SCRY, CTRL, PAL };
 
@@ -20,6 +21,7 @@ enum {
     L0_NAME = 0x0000, L0_ATTR = 0x0800, L1_NAME = 0x1000, L1_ATTR = 0x1800,
     SPR_ATTR = 0x2000, PALETTE = 0x3c00,
     L0_PAT = 0x4000, L1_PAT = 0x8000, SPR_PAT = 0xc000,
+    FONT_0 = 0x2800, FONT_1 = 0x3000,  // unused: where scene_fonts's loads land
 };
 
 #define SPRITE_Y 100
@@ -207,6 +209,16 @@ void scene_frame(const scene_t *s, unsigned n, const scene_port_t *port) {
         reg(port, block + SCRX, (uint8_t)scroll[layer][0]);
         reg(port, block + SCRY, (uint8_t)scroll[layer][1]);
         reg(port, block + CTRL, control);
+    }
+}
+
+void scene_fonts(const scene_t *s, const scene_port_t *port) {
+    (void)s;
+    for (unsigned layer = 0; layer < 2; layer++) {
+        const unsigned block = layer ? L1NAME : L0NAME;
+        reg(port, block + PAT, (uint8_t)((layer ? FONT_1 : FONT_0) >> 11));
+        reg(port, FONT, layer ? 0x80 : 0x00);
+        reg(port, block + PAT, (uint8_t)((layer ? L1_PAT : L0_PAT) >> 11));
     }
 }
 

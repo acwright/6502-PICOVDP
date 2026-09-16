@@ -1,8 +1,8 @@
 SPEC draft 0.5 — the built-in font, in the core and on the Pico 2
 =================================================================
 
-**Status:** the core, on 2026-09-16. Every check below passed. `VDP-PLAN.md`
-(local) section 5, steps 4 and 5.
+**Status:** done on 2026-09-16, on the host and on the Pico 2. Every check below
+passed. `VDP-PLAN.md` (local) section 5, steps 4, 5 and 6.
 
 **The headline.**
 
@@ -19,13 +19,21 @@ SPEC draft 0.5 — the built-in font, in the core and on the Pico 2
 - **`Video.ts` and the core agree under fuzzing with `FONT` in the stream**:
   10⁷ operations in the tiles scope and 8 × 10⁶ in the frames scope, no
   divergence. A planted bug in layer 1's load diverges at operation 28,010.
+- **On the Pico 2, all eighteen checkpoints reproduce by injection**, and the
+  worst-case scenes with `FONT` loads for both layers every frame ran ten minutes
+  across all 36 and ten minutes on the harshest alone: 17.3 million rows, none
+  late, 8,487 snapshots, every row exact.
+- **The loads cost the latch interrupt about 2,900 cycles**: `latch_isr_max` is
+  350–355 without them and 3,142–3,246 with both. That is 8–9 µs at 352 MHz,
+  against the ~700 cycles an access may wait (§4), so it is a figure for Phase 11
+  and 13 to weigh, and for §18 (below).
 - **No font byte is typed into C.** `core/CMakeLists.txt` turns
   `fonts/cp437-6x8.bin` into `font_data.c` in the build tree, for the host and
   the RP2350 alike, and `test_font` checks the result against the file.
 
 Contents: [What was built](#what-was-built) · [Bulk writes](#bulk-writes) ·
 [The oracle](#the-oracle) · [Video.test.ts](#videotestts-against-the-core) ·
-[The fuzzer](#the-fuzzer) · [Done when](#done-when-the-core) ·
+[The fuzzer](#the-fuzzer) · [Done when](#done-when) · [On the Pico 2](#on-the-pico-2) ·
 [Differences from the plan](#differences-from-the-plan) · [Reproducing](#reproducing)
 
 ---
@@ -129,8 +137,8 @@ The fuzzer
 
 ---
 
-Done when (the core)
---------------------
+Done when
+---------
 
 | Check | Result |
 |---|---|
@@ -141,6 +149,77 @@ Done when (the core)
 | `node tools/replay.mjs --classes` | ✅ 18 exact, all static |
 | Fuzz tiles 10⁷, frames 8 × 10⁶ | ✅ no divergence |
 | `npm run test:picovdp` | ✅ 364 of 364 |
+| `vdpctl inject all` on the Pico 2 | ✅ 18 of 18 exact |
+| Ten minutes of scenes with loads every frame, no late line | ✅ 0 late, 0 merged, 0 rows wrong in 17.3 M rows |
+| `latch_isr_max` with and without loads recorded | ✅ 350–355 without, 3,142–3,246 with |
+
+---
+
+On the Pico 2
+-------------
+
+`pico2` debug build of the Step 6 tree (reported build `6c6bd02-dirty`: the
+Step 5 commit plus these firmware changes, before they were committed), flashed
+with `vdpctl flash`, no hands on the board.
+
+### What was built
+
+| Part | What it is |
+|---|---|
+| `firmware/link.c`, `docs/DEBUGLINK.md` | Protocol version 2: the snapshot and END state carry the pending loads (172 bytes, was 165); LOAD takes an optional fonts byte |
+| `firmware/renderer.c`, `inject.c` | The state saved at row 239 and at END carries the pending loads. With LOAD's fonts, the scene's program calls `scene_fonts` every frame |
+| `firmware/scenes.c`, `scenes.h` | `scene_fonts`: `FONT` for both layers, each pattern table pointed at unused VRAM (`$2800`, `$3000`) and put back, so the picture is unchanged |
+| `host/scene/scene.c` | `vdp-scene --check` also proves, for every scene, that both loads land and the frame is unchanged |
+| `tools/lib/link.mjs`, `scenes.mjs`, `vdpctl.mjs` | `decodeState`'s new fields; `load --fonts`, `scenes --fonts`; `scenes` prints `latch_isr_max` |
+
+The load itself needs nothing in `firmware/`: it runs in `latch_isr`'s
+`vdp_latch`, and the render side's copies in the renderer's catch-up.
+
+### Injection
+
+`node tools/vdpctl.mjs inject all`: **18 of 18 exact** (index frame, VRAM,
+registers, `STAT0`), 1 min 29 s, `vdp-font`'s three included
+(`draft-0.5/inject-all.txt`).
+
+### `latch_isr_max`
+
+Core 1's latch interrupt, DWT cycles, the maximum over each scene's run
+(`draft-0.5/*.json`). A display line is 22,372 cycles.
+
+| Firmware | Loads | Run | `latch_isr_max` |
+|---|---|---|--:|
+| `bbfef04` (draft 0.4) | — | 36 scenes, 3 s each | 352–355 |
+| draft 0.5 | none | 36 scenes, 5 s each | 350–355 |
+| draft 0.5 | both layers, every frame | 36 scenes, 5 s each | 3,142–3,224 |
+| draft 0.5 | both layers, every frame | 36 scenes, 16.7 s each, streaming | 3,236–3,245 |
+| draft 0.5 | both layers, every frame | `full-4bpp-32-det`, 600 s, streaming | 3,246 |
+
+Without loads the core's changes cost the latch nothing. Each 2,048-byte copy
+into the bus side costs about 1,450 cycles, about 4.1 µs.
+
+### Ten minutes with loads
+
+| Run | Rows | Late | Merged | Latency max | Snapshots | Rows wrong |
+|---|--:|--:|--:|---|--:|--:|
+| `scenes --seconds 16.7 --fonts --stream`, all 36 | 8,683,812 | 0 | 0 | 20,604 (`full-2bpp-32-det`, 8% spare) | 4,410 | 0 |
+| `scenes --seconds 600 --fonts --stream --only full-4bpp-32-det` | 8,631,040 | 0 | 0 | 20,514 (8% spare) | 4,077 | 0 |
+
+The harshest scene had 10% spare without loads in Phase 8 (20,216) and in
+this step's 5 s runs. The loads land in blanking, so the late-row margin that
+matters is unchanged; the percentage above moves with the latch interrupt that
+preempts the renderer.
+
+### Is the latch cost surprising?
+
+For the render side, no. For the bus, it is the figure to watch: §4 leaves an
+access about 700 cycles, and from Phase 11 the bus PIO's interrupts share the
+latch's priority, so an access arriving as vertical blank fires with two loads
+pending waits up to ~9 µs, two to four 6502 accesses. The plan's own estimate
+("about 4 KB of `memcpy` plus page marking in one latch") put it there, so this
+is the measurement, not a surprise, but §18 should carry it. That is a change to
+all three spec copies (rule 2), including the emulator's `docs/VDP-SPEC.md`, and
+is left to the coordinator (below). Phase 13's Load run now includes `--fonts`
+(PLAN.md).
 
 ---
 
@@ -155,6 +234,12 @@ Differences from the plan
   reference (`test_font`'s `a_debuggers_write`).
 - **`vdp-font`'s checkpoints are `reset`, `loaded` and `relocated`**, the
   emulator's names, not the plan's `reset`, `load-l0` and `load-l1`.
+- **`scenes --seconds 600 --stream`** would be 36 × 600 s; the ten minutes were
+  run as Phase 8 ran them, all 36 at 16.7 s and the harshest alone for 600 s,
+  both with `--fonts`.
+- **The loads in `scenes` land in unused VRAM**, so `vdp-scene`'s frames stay the
+  reference; `vdp-scene --check` proves the picture is unchanged.
+- **§18 does not yet state the latch cost** (above).
 - **`textGrid` in the adapter** applies the scroll, which the re-sync required:
   `replay_vdp-layers` failed on `textGrid` until it did.
 
@@ -173,6 +258,13 @@ node tools/replay.mjs --classes
 build/host/host/replay/vdp-replay --classes tests/oracle/*/*.vdpt.gz
 node tools/fuzz.mjs --scope tiles --seed 1 --ops 10000000
 node --max-old-space-size=8192 tools/fuzz.mjs --scope frames --seed 1 --ops 8000000
+
+cmake --build --preset pico2 && node tools/vdpctl.mjs flash
+node tools/vdpctl.mjs inject all
+node tools/vdpctl.mjs scenes --seconds 5 --out without-loads.json
+node tools/vdpctl.mjs scenes --seconds 5 --fonts --out with-loads.json
+node tools/vdpctl.mjs scenes --seconds 16.7 --fonts --stream
+node tools/vdpctl.mjs scenes --seconds 600 --fonts --stream --only full-4bpp-32-det
 
 # in the emulator checkout
 PICOVDP_ADDON=$HOME/Developer/C/6502-PICOVDP/host/node/Video.cjs npm run test:picovdp
