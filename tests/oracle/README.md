@@ -7,7 +7,7 @@ Oracle
 
 A pinned copy of 6502-EMULATOR's golden checkpoints and the traces of the
 programs that produced them, from `v3-vdp` at
-`87758ba41d7a9b0aa35371f8f3d7378e6c1963df` (2026-09-16T10:16:28-05:00).
+`527b53c81d4a0dbb848b807e802c58a6fae90dba` (2026-09-16T13:26:32-05:00).
 
 - `<fixture>/<checkpoint>.idx.bin` — the frame as 76,800 palette indices, row-major. **The oracle**: compared exactly.
 - `<fixture>/<checkpoint>.vram.bin` — all 64 KB of VRAM at the checkpoint.
@@ -35,3 +35,6 @@ programs that produced them, from `v3-vdp` at
 | `vdp-layers` | `scroll-bit8-l1` | 3000000 | 179 | 285508 | 1689 | static |
 | `vdp-layers` | `occluded` | 4000000 | 239 | 395655 | 1689 | static |
 | `vdp-layers` | `scroll-bit8-l0` | 5000000 | 299 | 505793 | 1689 | static |
+| `vdp-font` | `reset` | 550000 | 32 | 53590 | 1688 | static |
+| `vdp-font` | `loaded` | 1616667 | 96 | 166566 | 1687 | static |
+| `vdp-font` | `relocated` | 2683334 | 160 | 229219 | 0 | static |

@@ -3,8 +3,8 @@
   "emulator": {
     "repository": "https://github.com/acwright/6502-EMULATOR.git",
     "branch": "v3-vdp",
-    "commit": "87758ba41d7a9b0aa35371f8f3d7378e6c1963df",
-    "committed": "2026-09-16T10:16:28-05:00"
+    "commit": "527b53c81d4a0dbb848b807e802c58a6fae90dba",
+    "committed": "2026-09-16T13:26:32-05:00"
   },
   "traceFormat": 1,
   "fixtures": [
@@ -163,6 +163,39 @@
           "class": "static"
         }
       ]
+    },
+    {
+      "name": "vdp-font",
+      "description": "the VDP Font sample cartridge: the built-in font at reset, reloaded, and relocated",
+      "trace": "vdp-font/vdp-font.vdpt.gz",
+      "events": 271405,
+      "recordedAt": "83570ec0dfd77f603a259250abbcbb08eec21bd1",
+      "checkpoints": [
+        {
+          "name": "reset",
+          "cycles": 550000,
+          "frame": 32,
+          "settle": 53590,
+          "window": 1688,
+          "class": "static"
+        },
+        {
+          "name": "loaded",
+          "cycles": 1616667,
+          "frame": 96,
+          "settle": 166566,
+          "window": 1687,
+          "class": "static"
+        },
+        {
+          "name": "relocated",
+          "cycles": 2683334,
+          "frame": 160,
+          "settle": 229219,
+          "window": 0,
+          "class": "static"
+        }
+      ]
     }
   ],
   "files": {
@@ -179,20 +212,33 @@
     "bios/scroll.json": "92d0ef32f408255d073793077da5b996e99c08a88ace09fc48ba01cf48bae0d4",
     "bios/scroll.png": "8d84c958b446bd371c64fa04688354a230263d6c4a0f3068892ff64b92774d4f",
     "bios/scroll.vram.bin": "9ed883653a4f8c6c11873c8765f5f8b75c68fdfddd6b07db9586c25a24cdc517",
+    "vdp-font/loaded.idx.bin": "689c2b54590436102db258967ee816b15ef572a952887bbff5abf09145013524",
+    "vdp-font/loaded.json": "cbc0e24c0e94d09ea99e0cad74904a213a72cfd4c9d6519f87c99d5b7f51a8ee",
+    "vdp-font/loaded.png": "103a8f7396c656d08cfe57860e99d126d10052b4534438e91ad980aa2fed5231",
+    "vdp-font/loaded.vram.bin": "5e881ae6077bab3f9307f1d8a189cde427638f7e474053702a1086e104a53a2d",
+    "vdp-font/relocated.idx.bin": "942b23c4dc6d655471d4196157cd2457850869330909aa231ea453279a221a67",
+    "vdp-font/relocated.json": "1ac30087ade246d463be7b62b50b2abab7d1a94253d5e9baf64bb405ce8f0c2e",
+    "vdp-font/relocated.png": "36bda2e8bc9d513f5a105c6409a83ae71f3813eef835e2b17c5ec76c28877e68",
+    "vdp-font/relocated.vram.bin": "8a48738ac33ee715c696ec5fb50630d8dd95f61b788d4a443d84d1246efa1446",
+    "vdp-font/reset.idx.bin": "7909931e8638615111fa2f2e168a3680c73f5a72c16a36ecb9c1a90f258ae05e",
+    "vdp-font/reset.json": "f839baf27c931ab20a6a728199f94efb25784cebd805f20d7613aa7ec153fbe8",
+    "vdp-font/reset.png": "5e42bae86b07cdc7c519e99f075e834b5cf1bbafa6ea452393022a43d5d3ccf4",
+    "vdp-font/reset.vram.bin": "c395749192d8abb8bbb636b0507aecb46e575c4e51112b5b9e97a69a8eb75b36",
+    "vdp-font/vdp-font.vdpt.gz": "7a5735359f0974fd34d8a2274456883e6903d01211b60fb0f6593ce8e065a847",
     "vdp-layers/occluded.idx.bin": "cad98cf0933b12f54b63b204d1a520ac1f6018a1ce3e1d59c6ef95dcd86b28c4",
-    "vdp-layers/occluded.json": "6d2d6dcab9f9afc28e4635686743298990b07fcaed03de75d41b61558bd9b0d2",
+    "vdp-layers/occluded.json": "6923d1ff3bb407d7a204def188e87f14bc1f5368510e79b9e489f9dfeee81441",
     "vdp-layers/occluded.png": "6a13845065bc36963eba79262f487ff6987990e259ced11e00aef41e9cab00ba",
     "vdp-layers/occluded.vram.bin": "74383ff4d22419b36d88cec8318a8db0c51873a38f35e01b74a05802be6f54be",
     "vdp-layers/parallax.idx.bin": "8ba2b06f71ea8cc806549b9239c6d0827b276537e3e1a006f29f0b7a5991f3e7",
-    "vdp-layers/parallax.json": "816c4b834bcfc14064fd3cc92bf40a2926eb7ac61fd0fe36cc00a8e24562d5c0",
+    "vdp-layers/parallax.json": "92c2dd0b9e91ae44e72fa3f1ab1acee85fd887c62a15616e53cfa93ca990246b",
     "vdp-layers/parallax.png": "bf613d5b1782f55f33e341a97c10cbe0e542a11fbc4cea5846afb0161c3a7b15",
     "vdp-layers/parallax.vram.bin": "74383ff4d22419b36d88cec8318a8db0c51873a38f35e01b74a05802be6f54be",
     "vdp-layers/scroll-bit8-l0.idx.bin": "a49efe3dba7dfebac90290c4be5c753bc8a45e53c2f01d0977f0b7ca86483fb9",
-    "vdp-layers/scroll-bit8-l0.json": "9712ca1ca034d74915d46c6d5ee843a3767c405659f6750cfea3279e031de50f",
+    "vdp-layers/scroll-bit8-l0.json": "3cb26ff8ec4ad4cea0ba3de67b90271fc2df1bc132c7739066e2fad9beb04260",
     "vdp-layers/scroll-bit8-l0.png": "144fc71ad680d5f2615f2fc23e5e5db07a0dd2fa920ac352497659299af04a49",
     "vdp-layers/scroll-bit8-l0.vram.bin": "74383ff4d22419b36d88cec8318a8db0c51873a38f35e01b74a05802be6f54be",
     "vdp-layers/scroll-bit8-l1.idx.bin": "42e4df2a519ba9546f30725043bd52c6e57ff0c8b3c51f859b9dcf0ec36c8e53",
-    "vdp-layers/scroll-bit8-l1.json": "463fff5275af0b5467608d290b52869cd808357b391b956e5e3f05aa7d3a7016",
+    "vdp-layers/scroll-bit8-l1.json": "92f945e6417b0fb91be8b43c23dc162690923f5a95ea764ab367b815c4a80141",
     "vdp-layers/scroll-bit8-l1.png": "416f77f0da14e46beb24329c9d54a384ccb5c0e924898248db4a29d0717c61a9",
     "vdp-layers/scroll-bit8-l1.vram.bin": "74383ff4d22419b36d88cec8318a8db0c51873a38f35e01b74a05802be6f54be",
     "vdp-layers/vdp-layers.vdpt.gz": "330fd48d4eaa81ae8c035dac2e504d46b95b5ffc6225003ac5e8d2ef80f064c0",
