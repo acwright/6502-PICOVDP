@@ -7,7 +7,7 @@ Oracle
 
 A pinned copy of 6502-EMULATOR's golden checkpoints and the traces of the
 programs that produced them, from `v3-vdp` at
-`8e40c0cb636b96db675a664687478218314bbe63` (2026-09-13T14:23:43-05:00).
+`87758ba41d7a9b0aa35371f8f3d7378e6c1963df` (2026-09-16T10:16:28-05:00).
 
 - `<fixture>/<checkpoint>.idx.bin` — the frame as 76,800 palette indices, row-major. **The oracle**: compared exactly.
 - `<fixture>/<checkpoint>.vram.bin` — all 64 KB of VRAM at the checkpoint.
@@ -23,15 +23,15 @@ programs that produced them, from `v3-vdp` at
 | `bios` | `ok` | 7000000 | 419 | 4230 | 0 | static |
 | `bios` | `screenful` | 10680000 | 639 | 4623 | 0 | static |
 | `bios` | `scroll` | 14020000 | 840 | 12597 | 0 | static |
-| `wizardslab` | `frame-60` | 1000000 | 59 | 90458 | 1576 | static |
-| `wizardslab` | `frame-180` | 3000000 | 179 | 292525 | 1576 | static |
-| `wizardslab` | `frame-300` | 5000000 | 299 | 494406 | 1576 | static |
-| `wizardslab` | `frame-600` | 10000000 | 599 | 999183 | 1576 | static |
-| `vdp-modes` | `text` | 600000 | 35 | 57638 | 1688 | static |
-| `vdp-modes` | `compact` | 1650000 | 98 | 166651 | 1687 | static |
-| `vdp-modes` | `graphics` | 2716667 | 162 | 277248 | 1690 | static |
-| `vdp-modes` | `full` | 3783334 | 226 | 388462 | 1689 | static |
-| `vdp-layers` | `parallax` | 1500000 | 89 | 120302 | 1689 | static |
-| `vdp-layers` | `scroll-bit8-l1` | 3000000 | 179 | 285509 | 1689 | static |
-| `vdp-layers` | `occluded` | 4000000 | 239 | 395656 | 1690 | static |
-| `vdp-layers` | `scroll-bit8-l0` | 5000000 | 299 | 505794 | 1689 | static |
+| `wizardslab` | `frame-60` | 1000000 | 59 | 90457 | 1576 | static |
+| `wizardslab` | `frame-180` | 3000000 | 179 | 292524 | 1576 | static |
+| `wizardslab` | `frame-300` | 5000000 | 299 | 494405 | 1576 | static |
+| `wizardslab` | `frame-600` | 10000000 | 599 | 999182 | 1576 | static |
+| `vdp-modes` | `text` | 600000 | 35 | 57637 | 1687 | static |
+| `vdp-modes` | `compact` | 1650000 | 98 | 166649 | 1688 | static |
+| `vdp-modes` | `graphics` | 2716667 | 162 | 277247 | 1690 | static |
+| `vdp-modes` | `full` | 3783334 | 226 | 388461 | 1689 | static |
+| `vdp-layers` | `parallax` | 1500000 | 89 | 120301 | 1689 | static |
+| `vdp-layers` | `scroll-bit8-l1` | 3000000 | 179 | 285508 | 1689 | static |
+| `vdp-layers` | `occluded` | 4000000 | 239 | 395655 | 1689 | static |
+| `vdp-layers` | `scroll-bit8-l0` | 5000000 | 299 | 505793 | 1689 | static |
