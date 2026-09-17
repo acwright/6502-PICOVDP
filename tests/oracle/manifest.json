@@ -3,9 +3,9 @@
   "emulator": {
     "repository": "https://github.com/acwright/6502-EMULATOR.git",
     "branch": "main",
-    "commit": "845f4f20a54a075ec5dcd3215342b7bccb6cd99c",
-    "describe": "v3.1.0",
-    "committed": "2026-09-16T21:50:03-05:00"
+    "commit": "e13e744744f9a68e54c365333a91572f28e3ebdf",
+    "describe": "v3.1.1-10-ge13e744",
+    "committed": "2026-09-17T16:45:43-05:00"
   },
   "traceFormat": 1,
   "fixtures": [
@@ -14,7 +14,7 @@
       "description": "the bundled BIOS booting to the BASIC prompt on the video console",
       "trace": "bios/bios.vdpt.gz",
       "events": 131819,
-      "recordedAt": "65b67d1d1c7fb26dcea069d216f8a3ae1fdf0e37",
+      "recordedAt": "665d7a4983f83426f902a83d283ac3e57f0408ec-dirty",
       "checkpoints": [
         {
           "name": "ok",
@@ -200,7 +200,7 @@
     }
   ],
   "files": {
-    "bios/bios.vdpt.gz": "d41f2cf226a91f96bca85e8b663e725b6471b7ad8c748da6e1691eab2ebb25fd",
+    "bios/bios.vdpt.gz": "67b78017ab9741da254aba26e42be7ee28a523485ad31f86a3683ba07c0af345",
     "bios/ok.idx.bin": "5756e6b2a82a84cefb2f78c45496225915438c84579f727c2028c3b78f9cba6e",
     "bios/ok.json": "c0d20da318689a33a43b7dcdf44831d9bc7b8cb49f0a9481796dd63bc8b5bc4e",
     "bios/ok.png": "ccdcbf40328938a4ec7a088ea82e79db462a2a61d7cb1df949172bc60f97acd8",

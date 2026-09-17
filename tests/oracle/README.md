@@ -7,7 +7,7 @@ Oracle
 
 A pinned copy of 6502-EMULATOR's golden checkpoints and the traces of the
 programs that produced them, from `main` at
-`845f4f20a54a075ec5dcd3215342b7bccb6cd99c`, `v3.1.0` (2026-09-16T21:50:03-05:00).
+`e13e744744f9a68e54c365333a91572f28e3ebdf`, `v3.1.1-10-ge13e744` (2026-09-17T16:45:43-05:00).
 
 - `<fixture>/<checkpoint>.idx.bin` — the frame as 76,800 palette indices, row-major. **The oracle**: compared exactly.
 - `<fixture>/<checkpoint>.vram.bin` — all 64 KB of VRAM at the checkpoint.
