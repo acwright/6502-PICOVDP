@@ -375,11 +375,13 @@ that faces up and also powers the board. It is specified in `docs/DEBUGLINK.md`
 ### What the emulator holds
 
 `6502-EMULATOR/src/tests/goldens/` holds five fixtures and eighteen checkpoints.
-All but `vdp-font` are booted from `BIOS.bin` at 1 MHz.
+Since emulator 3.1.0 all five boot `BIOS2.bin`, BIOS 2.0, at 1 MHz; `vdp-font`
+never calls `KernalInit`. The oracle has no BIOS 1.6 boot on this card (the
+emulator's `tms9918a/bios` golden is the other card's).
 
 | Fixture | Program | Checkpoints |
 |---|---|---|
-| `bios` | BIOS alone, with typed input | `ok`, `screenful`, `scroll` |
+| `bios` | BIOS 2.0 alone, with typed input: Text mode, the logo and header, a scroll through `L0SCRY` | `ok`, `screenful`, `scroll` |
 | `wizardslab` | `WizardsLab.crt`, Graphics I, sprites, vblank IRQ | frame 60, 180, 300, 600 |
 | `vdp-modes` | `VdpModes.crt`: the four geometries at 1, 2, 4, 8bpp | `text`, `compact`, `graphics`, `full` |
 | `vdp-layers` | `VdpLayers.crt`: two scrolling 4bpp layers in Full mode, sprites at levels 1–6 | `parallax`, `scroll-bit8-l1`, `occluded`, `scroll-bit8-l0` |
@@ -957,8 +959,11 @@ listed, with its Phase 10 injection result standing for it.
 - §16's detection probe returns carry set.
 
 **Done when:**
-- the BIOS reaches `OK`; the `screenful` and `scroll` inputs typed by hand show
-  what the goldens show
+- the unmodified BIOS 1.6 reaches `OK` in its legacy text mode; no golden holds
+  this on the PICOVDP, so it is judged on the bench
+- BIOS 2.0 reaches `OK`: it detects the card by `STAT4` `$AC` and `STAT6` b7, and
+  the `screenful` and `scroll` inputs typed by hand show what the `bios` goldens
+  show, the scroll done in hardware through `L0SCRY`
 - `graphics-1.asm` draws what it drew
 - `VdpModes.crt` and `VdpLayers.crt` run and match their goldens' pictures within
   the capture tolerance, at matching visual states (frame numbers will not line
