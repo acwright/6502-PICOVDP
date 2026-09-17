@@ -47,21 +47,21 @@ LF. It is named `<fixture>.vdpt.gz`. Read it with anything that reads gzip:
 
 Text, because every consumer can parse it in a few lines, a person can read
 it, and gzip compresses the long runs of status polls it is mostly made of.
-The four fixtures hold 2.4 million events in 1.3 MB.
+The five fixtures hold 2.6 million events in 1.5 MB.
 
 The file has three parts:
 
 ```
 vdpt 1                                            magic and format version
 fixture bios                                      header: key, space, value
-emulator bc605e7e7fa4503b8bfe358a859c585bb23fbd7d
+emulator 65b67d1d1c7fb26dcea069d216f8a3ae1fdf0e37
 frequency 1000000
 ---                                               end of header
 0 X cold 24                                       events, one a line
 64 L 25 1
 …
-25 C scroll 14020000 frame=840 settle=12597 window=0 class=static
-end 232995                                        footer: the number of events
+63 C scroll 8000000 frame=479 settle=6056 window=0 class=static
+end 131819                                        footer: the number of events
 ```
 
 **Header.** The first line is `vdpt` and the format version. Then `key value`
@@ -139,20 +139,20 @@ as display line 192 begins — screen line 216 in Graphics I's 192-line geometry
 while the program is still writing VRAM:
 
 ```
-14 W 0 00
-3 L 216 192
+15 W 0 63
+12 L 216 192
 0 I 1
-11 W 0 0c
+3 W 0 00
 ```
 
-and acknowledged by a status read three screen lines into the next frame, which
+and acknowledged by a status read 43 screen lines into the next frame, which
 returns `$D0`: `F` and `OVF` set, with sprite 16 the first dropped:
 
 ```
-64 L 3 241
-47 R 1 d0
+64 L 43 19
+20 R 1 d0
 0 I 0
-16 L 4 242
+43 L 44 20
 ```
 
 **Version 1 holds exactly one cold reset, as its first event, at tick 0.** A
@@ -166,7 +166,7 @@ of the fixtures has one.
 --------------
 
 ```
-63 C ok 7000000 frame=419 settle=4230 window=0 class=static
+63 C ok 1000000 frame=59 settle=5028 window=0 class=static
 ```
 
 *Name* is the checkpoint's name in its fixture, and its golden files are
@@ -204,8 +204,8 @@ frame is the golden, byte for byte, the checkpoint is static; otherwise it is
 
 This is decided by running it, not by counting operations in the window. A
 status read in the window changes no picture, and neither does a write the
-remaining rows never read. Twelve of the fifteen goldens have 1,576–1,690
-operations in their window, every one a status poll on port A, and all fifteen
+remaining rows never read. Fourteen of the eighteen goldens have 1,534–1,690
+operations in their window, every one a status poll on port A, and all eighteen
 are static.
 
 What the class is for: `vdpctl replay` (Phase 12) plays a static checkpoint
