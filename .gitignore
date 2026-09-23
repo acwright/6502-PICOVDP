@@ -10,6 +10,13 @@ node_modules/
 # Captures and snapshots made on the bench
 captures/
 
+# KiCad
+*.lck
+*.bak
+*.kicad_prl
+*-backups/
+fp-info-cache
+
 # Editors and OS
 .DS_Store
 .vscode/

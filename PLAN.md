@@ -169,6 +169,7 @@ only what needs the PRO: the pins, the picture and the clock.
     replay/        vdp-replay — pure-C trace replay CLI
   spike/           Phase 1 timing spike (disposable)
   bench/nano/      Arduino Nano bus harness (PlatformIO, nanoatmega328new)
+  bench/hardware/  the harness as a KiCad schematic, with its own symbol library
   tools/           Node ESM, no build step: vdpctl, fuzz, sync-oracle, lib/
   tests/
     unit/          C unit tests, by SPEC section
@@ -484,10 +485,11 @@ Phases 1, 8 and 10–13 exist for those.
 5. The Bench
 ------------
 
-Specified in full in `docs/BENCH.md` (Phase 9). The PRO sits on a breadboard or a
-40-pin socket, driven by an Arduino Nano on the same breadboard. Its video goes
-to the Mac through the capture card, and its USB-C goes to the Mac for power and
-the debug link.
+Specified in full in `docs/BENCH.md`, and drawn in
+`bench/hardware/picovdp-bench.kicad_sch` — a wiring reference, not a board to
+fabricate. The PRO sits on a breadboard or a 40-pin socket, driven by an Arduino
+Nano on the same breadboard. Its video goes to the Mac through the dongle and the
+capture card, and its USB-C goes to the Mac for power and the debug link.
 
 The Nano (ATmega328P) was chosen over the Mega 2560 for a cleaner breadboard.
 It is the same 16 MHz AVR, so strobe timing and `/INT` capture resolution are
@@ -500,13 +502,13 @@ on hand as the fallback (section 7, risk 12).
 | Part | Status | Used from |
 |---|---|---|
 | Raspberry Pi Pico 2 | on hand | Phase 0 |
-| PICO9918 PRO v2.0, VGA dongle, FFC cable | on order | Phase 9 |
+| PICO9918 PRO v2.0, HDMI dongle, FFC cable | on hand | Phase 9 |
 | Arduino Nano (ATmega328P, 5 V, 16 MHz) | on hand | Phase 9 |
 | Arduino Mega 2560 | on hand, fallback | — |
-| VGA-to-HDMI converter, HDMI capture card | on hand | Phase 9 |
+| HDMI capture card | on hand | Phase 9 |
 | One 0.1″ male header pin for `MDE1` | needed | Phase 9 |
 | 8 × 220 Ω resistors, 2 × 10 kΩ resistors, breadboard or DIP-40 socket, jumpers | needed | Phase 9 |
-| 74HCT-family gate, for tapping VSYNC into the Nano | optional | Phase 13 |
+| 74HCT-family gate, for tapping frame sync into the Nano | optional | Phase 13 |
 
 ### Preparing the PRO
 
@@ -516,6 +518,8 @@ unreachable without it, on the bench and in the AC6502 alike. No other
 modification is needed.
 
 ### Wiring
+
+The table below is the schematic's netlist in words; the two are kept in step.
 
 TI numbers the TMS9918 data bus backwards: **CD0 is the most significant bit and
 CD7 the least**. pico9918 samples GPIO 14 (CD7) as bit 0. Get this wrong and
@@ -541,7 +545,7 @@ for.
 | MDE1 | 11 (fitted pin) | MODE1 = CPU A1 | A3 | PC3 |
 | RST | 34 | `/RESET` | A4 | PC4 |
 | INT | 16 | `/INT` (10 k pull-up on the PRO) | D8 | PB0 = ICP1 |
-| — | — | VSYNC, via the 74HCT gate (optional, Phase 13) | A5 | PC5 = PCINT13 |
+| — | — | frame sync, via the 74HCT gate (optional, Phase 13) | A5 | PC5 = PCINT13 |
 | GND | 12 | ground | GND | |
 | +5V | 33 | **leave unconnected** — the PRO runs from its USB-C | | |
 
@@ -555,10 +559,17 @@ single port write:
   apart, and the PRO holds the bus throughout.
 
 Timer 1's input capture on `D8` timestamps `/INT` edges to 62.5 ns. That is the
-328P's only input-capture pin. The optional VSYNC tap is timestamped instead,
-from Timer 1's count inside its pin-change interrupt. That is good to a few µs,
-against a 63.6 µs line. `D11`–`D13` stay free; `D13`'s on-board LED is the
-harness's status light.
+328P's only input-capture pin. The optional frame-sync tap is timestamped
+instead, from Timer 1's count inside its pin-change interrupt. That is good to a
+few µs, against a 63.6 µs line. `D11`–`D13` stay free; `D13`'s on-board LED is
+the harness's status light.
+
+**Where that tap comes from is now open.** It was to be the VGA dongle's VSYNC
+pin. The HDMI dongle has no analogue sync to clip onto, so if Phase 13 wants a
+raster reference independent of `/INT`, this repo's firmware must bring one out
+on a spare PRO GPIO. The tap is optional either way: Phase 13's latch and
+interrupt measurements are all relative to `/INT`, which the input capture
+already timestamps. Decided in Phase 13, not before.
 
 The socket side of the PRO is 5 V logic, so the Nano needs no level shifting: a
 74HC245 drives out and a 5 V-tolerant 74LVC245 receives. The 220 Ω resistors
@@ -599,16 +610,17 @@ Nano's buffer run faster than any 6502.
 
 ### Video capture
 
-VGA dongle → VGA-to-HDMI converter → HDMI capture card → Mac. `vdpctl grab` runs
-`ffmpeg -f avfoundation` and saves a PNG. The first run triggers macOS's camera
-permission prompt for the calling app. `vdpctl compare-capture` downsamples a
-grab to 320 × 240, maps each pixel to the nearest palette entry, and reports the
-match rate against a golden or snapshot, with a mismatch image.
+HDMI dongle → HDMI capture card → Mac. `vdpctl grab` runs `ffmpeg -f
+avfoundation` and saves a PNG. The first run triggers macOS's camera permission
+prompt for the calling app. `vdpctl compare-capture` downsamples a grab to
+320 × 240, maps each pixel to the nearest palette entry, and reports the match
+rate against a golden or snapshot, with a mismatch image.
 
-Capture can never be exact — the converter resamples and the card compresses — so
-it is **never the pass/fail oracle** (the snapshot is). It proves what the snapshot
-cannot see: sync lock, DAC bit order, line doubling, a picture that stays stable
-under load. It is used in Phases 9, 10, 13 and 14.
+Capture can never be exact — the dongle resamples the DAC's output on its way to
+HDMI, and the card compresses — so it is **never the pass/fail oracle** (the
+snapshot is). It proves what the snapshot cannot see: sync lock, DAC bit order,
+line doubling, a picture that stays stable under load. It is used in Phases 9,
+10, 13 and 14.
 
 ### Host tools (`tools/`)
 
@@ -845,8 +857,9 @@ frames with no divergence.
 *Before any of this repo's firmware touches the PRO. If something fails here, it
 is the bench.*
 
-- **Owner:** fit the `MDE1` pin, mount the PRO, wire it per section 5, connect the VGA
-  dongle, converter and capture card.
+- **Owner:** fit the `MDE1` pin, mount the PRO, wire it per section 5 and
+  `bench/hardware/picovdp-bench.kicad_sch`, connect the HDMI dongle and the
+  capture card.
 - Back up the PRO's stock flash first: `picotool save` in BOOTSEL, kept outside
   the repo.
 - `bench/nano` primitives and scripts; `vdpctl bus`, `sweep`, `irq-timing`,
@@ -872,10 +885,10 @@ is the bench.*
 
 ### Phase 10 — The firmware on the PRO, no bus → **goldens by injection; the picture on the monitor**
 
-*Phase 8 again, on the PRO, with a VGA DAC attached.*
+*Phase 8 again, on the PRO, with its DAC and dongle attached.*
 
-- `pro-debug` preset: `pico9918pro.h`, VGA dongle output. The first flash needs
-  BOOT; none after.
+- `pro-debug` preset: `pico9918pro.h`, VGA output over the FFC to the HDMI
+  dongle. The first flash needs BOOT; none after.
 
 **Done when:**
 - Phase 8's three criteria hold on the PRO
@@ -929,7 +942,7 @@ listed, with its Phase 10 injection result standing for it.
   and `L0SCRX`. The snapshot must show the change from line N + 2, on every one of
   10⁴ trials, with N swept through picture, border and blanking.
 - **Interrupt timing.** vblank period and phase; scanline-compare offsets per
-  geometry; with the optional VSYNC tap, both relative to the raster — including
+  geometry; with the optional frame-sync tap, both relative to the raster — including
   where the odd VGA line falls.
 - **Status freshness.** `STAT2` read from a scanline handler over 10⁴ interrupts
   gives the distribution of lag. `OVF` and `COL` publication delay, likewise.
@@ -1041,9 +1054,9 @@ listed, with its Phase 10 injection result standing for it.
     submodule is pinned at 2.1.1, and upgrading is a decision, not an accident.
 
 12. **The Nano runs out of room.** 2 KB of RAM caps blocks and scripts at 256
-    bytes. Its one input-capture pin serves `/INT`, leaving VSYNC to a
-    pin-change interrupt. If a script outgrows that, or VSYNC timing needs better
-    than a few µs, the harness moves to the Mega 2560 on hand. It is the same
+    bytes. Its one input-capture pin serves `/INT`, leaving frame sync to a
+    pin-change interrupt. If a script outgrows that, or frame-sync timing needs
+    better than a few µs, the harness moves to the Mega 2560 on hand. It is the same
     16 MHz AVR with the same protocol and profiles; only the pin map, block size
     and capture timers change, and the host tools are untouched.
 
