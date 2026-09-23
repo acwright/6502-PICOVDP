@@ -1,0 +1,43 @@
+# §4, §5: the pointer carries into the bank bits and wraps at 64 KB; VBANK is
+# sampled when an address command completes; VINC is signed and shared.
+reg A $09 1
+write A $3ffe
+fill A $a1 $a2 $a3 $a4       # $3ffe-$4001: carries from bank 0 into bank 1
+reg A $08 3                  # VBANK 3 moves no pointer already set
+fill A $a5                   # $4002
+read B $3ffe
+r B 5                        # $a1-$a5
+write A $fffe
+fill A $b1 $b2 $b3           # $fffe, $ffff, $0000
+read B $fffe
+r B 3
+reg A $09 $ff                # -1, through A and for B too
+write A $0001
+fill A $c1 $c2 $c3           # $0001, $0000, $ffff
+read B $0001
+r B 3                        # $c1 $c2 $c3, reading down
+reg A $09 $80                # -128
+write A $4040
+fill A $d1 $d2               # $4040, $3fc0
+reg B $09 $7f                # +127, through B
+read A $3fc0
+r A                          # $d2
+read A $4040
+r A                          # $d1
+reg A $09 0                  # no increment
+write B $2000
+fill B $e1 $e2 $e3           # all to $2000
+read A $2000
+r A 3                        # $e3, three times
+reg A $09 1
+# VBANK stores its high bits and uses b1:0.
+reg B $08 $fd                # bank 1
+c B $00
+c B $50                      # write address $1000 in bank 1: $5000
+fill B $f1 $f2
+read A $5000
+r A 2
+reg A $08 $fe                # bank 2
+c A $ff
+c A $3f                      # read address $bfff: prefetch, then carry into bank 3
+r A 2

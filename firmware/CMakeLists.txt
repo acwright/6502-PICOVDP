@@ -2,6 +2,7 @@
 add_executable(picovdp
     main.c
     renderer.c
+    bus.c
     fault.c
     vga/vga.c
     pio-utils/pio_utils.c)
@@ -12,6 +13,7 @@ pico_set_program_name(picovdp "6502-PICOVDP")
 pico_set_program_description(picovdp "6502-PICOVDP video card firmware")
 pico_set_binary_type(picovdp copy_to_ram)
 pico_generate_pio_header(picovdp ${CMAKE_CURRENT_LIST_DIR}/vga/vga.pio)
+pico_generate_pio_header(picovdp ${CMAKE_CURRENT_LIST_DIR}/bus.pio)
 
 execute_process(
     COMMAND git describe --always --dirty --exclude "*"

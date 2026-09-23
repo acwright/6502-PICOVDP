@@ -40,6 +40,15 @@
 //                                        the wiring check: ping, status, and a VRAM readback
 //                                        that would show a reversed data bus at once.
 //                                        NAME is 6502-1mhz (default), 6502-2mhz or fastest
+//   vdpctl conformance [--timing NAME|all] [--ops N] [--seed N] [--scripts a,b|none]
+//                [--check-every N] [--out FILE.json] [--nano PATH]
+//                                        Phase 11: tests/bench's scripts and N accesses of a seeded
+//                                        stream on all four ports, through the Nano, every read the
+//                                        reference can answer untimed compared with Video.ts, and the
+//                                        whole card compared over the debug link every N accesses
+//   vdpctl reset-pin [--trials N] [--seed N] [--timing NAME] [--nano PATH]
+//                                        Phase 11: §15 through the RST pin, from a scrambled card with
+//                                        a FONT load pending, checked over the bus and the debug link
 //   vdpctl profile [--row N] [--iterations N] [--json]   one row's stages, interrupts off
 //   vdpctl late [--scene NAME] [--handicap FIRST,LAST,EVERY,CYCLES] [--seconds N]
 //                                        §18's late line on purpose, checked against the host
@@ -100,7 +109,7 @@ const reverseBits = (v) => {
 
 function usage(message) {
   if (message) console.error(`vdpctl: ${message}`)
-  console.error('usage: vdpctl flash|info|stats|snapshot|vram|inject|card|reset|reboot|fault|scene|load|scene-log|profile|scenes|late|bus|soak|reopen|irq-timing|sweep|text|grab|compare-capture ... (see the header of tools/vdpctl.mjs)')
+  console.error('usage: vdpctl flash|info|stats|conformance|reset-pin|snapshot|vram|inject|card|reset|reboot|fault|scene|load|scene-log|profile|scenes|late|bus|soak|reopen|irq-timing|sweep|text|grab|compare-capture ... (see the header of tools/vdpctl.mjs)')
   process.exit(2)
 }
 
@@ -197,6 +206,11 @@ export function printStats(s) {
     `  stage maxima: core 1 catch-up ${s.catchUpMax}, half ${s.halfMax}, expand ${s.expandMax}, wait ${s.waitMax}, publish ${s.publishMax}; core 0 half and expand ${s.core0HalfMax}`
   )
   console.log(`  split mean ${s.splitMean} over ${s.splitRows} divided rows; latch interrupt max ${s.latchIsrMax}, line-start interrupt max ${s.lineIsrMax}`)
+  if (s.bus) {
+    const b = s.bus
+    console.log(`  bus: ${b.writes} writes, ${b.reads} reads, STALE DATA READS ${b.staleData}, stale status reads ${b.staleStatus}, coincident ${b.coincident}, resets ${b.resets}, /INT ${b.intLevel ? 'asserted' : 'released'}`)
+    console.log(`       FIFO OVERRUNS write ${b.writeOverruns} read ${b.readOverruns}, staging waits ${b.stagingWaits}, interrupt max ${b.isrMax} cycles`)
+  }
 }
 
 async function withLink(fn) {
@@ -483,6 +497,9 @@ async function main() {
           const back = await readVram(nano, 0x0000, probe.length)
           return back.equals(probe)
         }
+        // From a known card: an RST pulse clears a half pair, VINC or VBANK left
+        // behind by whatever drove the bus last (Phase 11's stream does).
+        await nano.reset(100)
         const base = { ...PROFILES['6502-1mhz'] }
         console.log('each step writes and reads 1 KB of VRAM, the other three axes held at 6502-1mhz')
         const label = {
@@ -586,6 +603,52 @@ async function main() {
       } finally {
         await nano.close()
       }
+    }
+    case 'conformance': {
+      const { loadScripts, runConformance } = await import('./lib/conformance.mjs')
+      const timings = flags.get('timing') === 'all' ? Object.keys(PROFILES) : [timingOf(flags)]
+      const only = flags.get('scripts')
+      const scripts = only === 'none' ? [] : loadScripts(typeof only === 'string' ? only.split(',') : null)
+      const nano = await Nano.open(flags.get('nano') ?? null)
+      const link = await Link.open()
+      let results
+      try {
+        results = await runConformance({
+          nano,
+          link,
+          timings,
+          ops: Number(flags.get('ops') ?? 100_000),
+          seed: Number(flags.get('seed') ?? 1) >>> 0,
+          scripts,
+          checkEvery: Number(flags.get('check-every') ?? 1_000_000),
+        })
+        await nano.idle()
+      } finally {
+        link.close()
+        await nano.close()
+      }
+      if (flags.get('out')) {
+        writeFileSync(String(flags.get('out')), JSON.stringify(results, null, 1) + '\n')
+        console.log(`wrote ${flags.get('out')}`)
+      }
+      const failed = results.some((r) => r.mismatches.length || r.stateFailures.length || r.backToBack.some((b) => b.required && b.wrong) || r.bus.writeOverruns || r.bus.readOverruns)
+      process.exit(failed ? 1 : 0)
+    }
+    case 'reset-pin': {
+      const { runResetCheck } = await import('./lib/conformance.mjs')
+      const nano = await Nano.open(flags.get('nano') ?? null)
+      const link = await Link.open()
+      let failures
+      try {
+        await nano.profile(timingOf(flags))
+        failures = await runResetCheck({ nano, link, trials: Number(flags.get('trials') ?? 20), seed: Number(flags.get('seed') ?? 1) >>> 0 })
+        await nano.idle()
+      } finally {
+        link.close()
+        await nano.close()
+      }
+      console.log(`${failures.length ? `${failures.length} trial(s) FAILED` : 'every pulse left the state §15 names'}`)
+      process.exit(failures.length ? 1 : 0)
     }
     case 'bus': {
       const name = timingOf(flags)

@@ -1,0 +1,5 @@
+each step writes and reads 1 KB of VRAM, the other three axes held at 6502-1mhz
+  width  0:ok  1:ok  2:ok  3:ok  4:ok   least that works: 250 ns strobe
+  hold   0:ok  1:ok  2:ok  3:ok  4:ok   least that works: 0 ns hold
+  setup  0:ok  1:ok  2:ok  3:ok  4:ok   least that works: 0 ns setup
+  gap    0:ok  1:ok  2:ok  3:ok  4:ok   least that works: 0 us apart

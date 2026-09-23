@@ -12,7 +12,7 @@ PRO running this firmware; every golden checkpoint the emulator holds reproduces
 byte for byte on the PRO; and the per-line budget, interrupt timing and status
 freshness are measured on the PRO and written back into SPEC.md.
 
-**Status:** Phases 0–10 done ([results](docs/results/)). Phase 1 measured
+**Status:** Phases 0–11 done ([results](docs/results/)). Phase 1 measured
 the line at 2.5–4× §18's estimates, and settled SPEC.md draft 0.4 from it: the
 sprites are built on core 0 (section 3), the clock is 352 MHz, `SPRLIMIT` resets
 to 16, and a late line is specified. Phase 2 exported the oracle: the fixtures'
@@ -47,8 +47,14 @@ one's picture is captured off the monitor and scored against its golden, the
 DAC card measures every channel's sixteen levels with no cross-talk and the
 palette card carries all 256 of §11's entries with every ramp still a ramp,
 and the worst-case scenes, the late line and the faults all behave as they did
-on the Pico 2 — whose budget the PRO matches to 0.4% of a line. **Phase 11, the
-bus, is next**: the only part of SPEC.md that has never run on hardware.
+on the Pico 2 — whose budget the PRO matches to 0.4% of a line. Phase 11 put
+the bus on the pins: four ports through a read program that stages all four
+answers in one word, and 10⁷ random accesses at each of the Nano's three
+profiles — every command form, both pairs — with no read wrong against
+`Video.ts` and the whole card exact at every check; reads 4 µs apart back to
+back always right; RST leaving §15's state 50 times in 50; no FIFO overrun.
+Reads 2 µs apart are stale about once in 170, behind core 1's latch interrupt,
+which Phase 13 inherits. **Phase 12, the traces through the bus, is next.**
 
 ---
 
@@ -1036,8 +1042,14 @@ listed, with its Phase 10 injection result standing for it.
 5. **The read PIO cannot serve four ports in time.** Four staged bytes plus a
    branch on two pins is a few more PIO instructions at 3.3 ns each, against a
    6502's hundreds of nanoseconds. The real risk is restaging after a read before
-   the next one, 2–4 µs later. Phase 11 measures it with back-to-back reads at
-   `fastest`.
+   the next one, 2–4 µs later. Phase 11 measured both. The first program, a loop
+   that shifted to the port's byte, was 20 ns too slow for the harness's floor;
+   the one that shipped chooses its byte through a jump table during the
+   debounce and drives the bus 43–48 ns after `/CSR` falls. Back-to-back data
+   reads 4 µs apart are always right; 2 µs apart, about 1 in 170 is stale,
+   because a read landing in core 1's latch interrupt (up to 1.6 µs) waits for
+   it before its restage. The plan requires 4 µs; 2 µs is Phase 13's to weigh
+   (docs/results/phase-11.md, "Back to back").
 
 6. **Status is stale.** The status byte is staged before the read arrives (§6).
    Phase 13 measures by how much. If it is more than a line, §6 says so rather
@@ -1140,6 +1152,13 @@ proves it.
 - `STAT5` reads the firmware version; the first release's value is set in Phase 14.
 - `OVF` and `COL` are published when core 1 finishes the row's build, not at its
   latch (Phase 8). Their lag is measured in Phase 13.
+- A status read served a byte staged before a flag set acknowledges only what it
+  showed: a `STAT0` read clears the flags in the byte it returned, with what
+  details each and its `STAT1` latch, and a `STAT1` read the latches in its
+  byte. A flag the CPU never saw stays set (Phase 11). §6 says a read clears the
+  flags; it does not say which read, when the read and the card disagree.
+- RST acts on its falling edge, taking any accesses already waiting first
+  (Phase 11).
 
 ---
 

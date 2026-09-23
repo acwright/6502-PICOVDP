@@ -123,6 +123,17 @@ core named.
 | bins | 2 | 512 |
 | shift | 1 | 7: a bin is 128 cycles |
 | histogram | 2 × bins | latency, saturating at 65,535 |
+| bus writes | 4 | Phase 11 on: accesses the bus program handed over (`firmware/bus.h`) |
+| bus reads | 4 | |
+| stale data reads | 4 | data-port reads served a byte the card had moved past before the handler's restage reached the read program |
+| stale status reads | 4 | status reads likewise: a latch had moved the raster or set a flag since the byte was staged (§6) |
+| coincident | 4 | times a read and a write were both waiting: they came closer together than the bus interrupt answers, and their order is lost |
+| write overruns | 4 | lines on which the write program stalled on a full FIFO, missing writes |
+| read overruns | 4 | lines on which the read program stalled on a full FIFO, answering no reads |
+| staging waits | 4 | restages that found the staging FIFO full |
+| resets | 4 | falling edges of RST (§15) |
+| bus interrupt max | 4 | cycles, core 1 |
+| `/INT` | 4 | 1 while the card drives it asserted |
 
 ### SNAPSHOT `$03`
 

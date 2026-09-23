@@ -19,7 +19,7 @@ listed here as they arrive (PLAN.md, Appendix A):
 | `src/vga/vga.c`, `vga.h` (with `vga-modes.c`'s 640 × 480 timing) | `firmware/vga/vga.c`, `vga.h` — modified in Phase 8: VGA 640 × 480 only; a PIO interrupt at every screen line's start; the RGB buffer chosen per row at its line start; explicit priorities. The changes are listed at the top of `vga.c` | MIT |
 | `src/vga/vga.pio` | `firmware/vga/vga.pio` — unchanged, Phase 8 | MIT |
 | `src/pio-utils/` | `firmware/pio-utils/` — unchanged, Phase 8 | MIT |
-| `src/tms9918.pio` | `firmware/bus.pio` | MIT — Phase 11 |
+| `src/tms9918.pio` | `firmware/bus.pio` — Phase 11: `tmsWrite` unchanged; `tmsRead` rewritten for four ports, from a word staging all four answers, with a jump table on MODE1:MODE. The bus handlers in `firmware/bus.c` are written anew around the core, after `src/main.c`'s | MIT |
 
 pico9918 is © Troy Schrapel, MIT-licensed for its firmware
 (`LICENSE_FIRMWARE.md` in that repository).

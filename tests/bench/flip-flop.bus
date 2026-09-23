@@ -1,0 +1,32 @@
+# §4: a half pair is abandoned by a data access or a status read of its own
+# pair, and by nothing on the other. STATSEL_A shows which writes completed.
+reg A $0f 6
+s A                 # STAT6
+c A $04             # a payload for pair A ...
+r A                 # ... abandoned by a data read
+c A $04
+c A $8f             # STATSEL_A = 4
+s A                 # STAT4
+c A $06             # a payload ...
+s A                 # ... abandoned by a status read
+c A $06
+w A $00             # ... and by a data write
+c A $06
+c A $8f             # STATSEL_A = 6
+s A                 # STAT6
+# Pair B's accesses leave pair A's half pair alone.
+c A $04             # a payload for pair A
+reg B $0e 4         # a whole register write on B
+s B                 # STAT4 through B, which resets B's flip-flop only
+r B
+w B $12
+c A $8f             # completes A's pair: STATSEL_A = 4
+s A                 # STAT4
+reg B $0e 6
+s B                 # STAT6
+# And the other way round.
+c B $04
+c A $06
+s A                 # A abandons its own half pair
+c B $8e             # completes B's: STATSEL_B = 4
+s B                 # STAT4

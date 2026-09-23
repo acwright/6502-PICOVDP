@@ -13,6 +13,7 @@
 #include "pico/stdlib.h"
 #include "pico/unique_id.h"
 
+#include "bus.h"
 #include "fault.h"
 #include "inject.h"
 #include "profile.h"
@@ -172,6 +173,12 @@ static void stats(uint8_t sequence, const uint8_t *payload, uint32_t count) {
     put16(&w, RENDERER_HISTOGRAM_BINS);
     put8(&w, RENDERER_HISTOGRAM_SHIFT);
     for (unsigned i = 0; i < RENDERER_HISTOGRAM_BINS; i++) put16(&w, s.histogram[i]);
+    // Phase 11: the bus, appended.
+    bus_stats_t b;
+    bus_stats(&b, count >= 1 && (payload[0] & 1));
+    const uint32_t bus[] = {b.writes, b.reads, b.stale_data, b.stale_status, b.coincident, b.write_overruns,
+                            b.read_overruns, b.staging_waits, b.resets, b.isr_max, b.int_level};
+    for (unsigned i = 0; i < sizeof bus / sizeof bus[0]; i++) put32(&w, bus[i]);
     reply(CMD_STATS, sequence, &w);
 }
 

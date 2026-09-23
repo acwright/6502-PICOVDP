@@ -104,6 +104,37 @@ uint8_t VDP_HOT(vdp_status_read)(vdp_t *v, unsigned select) {
     return value;
 }
 
+// §6's acknowledgement of a read that returned `served`, for a card that holds
+// more than it showed (vdp_read_served). STAT0 clears the flags it showed, and
+// with each what details it and the STAT1 latch it stands for; STAT1 clears the
+// latches it showed, and those IRQEN no longer enables, which no read shows.
+void VDP_HOT(vdp_status_acknowledge)(vdp_t *v, unsigned select, uint8_t served) {
+    switch (select & VDP_STATSEL_MASK) {
+    case 0: {
+        uint8_t flags = (uint8_t)(served & (VDP_STAT0_F | VDP_STAT0_OVF | VDP_STAT0_COL));
+        uint8_t latches = 0;
+        if (flags & VDP_STAT0_F) latches |= VDP_IRQ_VBLANK;
+        if (flags & VDP_STAT0_OVF) {
+            flags |= VDP_STAT0_SPRITE;
+            v->overflow_sprite = 0;
+            latches |= VDP_IRQ_OVERFLOW;
+        }
+        if (flags & VDP_STAT0_COL) {
+            memset(v->collision_map, 0, sizeof v->collision_map);
+            latches |= VDP_IRQ_COLLISION;
+        }
+        v->stat0 &= (uint8_t)~flags;
+        v->irq_latch &= (uint8_t)~latches;
+        break;
+    }
+    case 1:
+        v->irq_latch &= (uint8_t)(~served & v->reg[VDP_REG_IRQEN]);
+        break;
+    default:
+        break;
+    }
+}
+
 void vdp_status_reset(vdp_t *v, bool power_on) {
     // /INT released; every flag, STAT7, the map and every latch clear (§15).
     acknowledge_flags(v);

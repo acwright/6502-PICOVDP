@@ -123,6 +123,34 @@ uint8_t VDP_HOT(vdp_read)(vdp_t *v, unsigned port) {
     return value;
 }
 
+// §2: the read program answers from a word staged before the read, one byte a
+// port in A1:A0's order — data A, status A, data B, status B — each what
+// vdp_read would return now. Nothing here changes the card.
+uint32_t VDP_HOT(vdp_staged)(const vdp_t *v) {
+    return (uint32_t)v->port[0].prefetch |
+           (uint32_t)vdp_status_peek(v, v->reg[VDP_REG_STATSEL_A]) << 8 |
+           (uint32_t)v->port[1].prefetch << 16 |
+           (uint32_t)vdp_status_peek(v, v->reg[VDP_REG_STATSEL_B]) << 24;
+}
+
+// A read the pins have already answered with `served`, from a staged word. When
+// that is what a read now returns, this is vdp_read exactly. When the card has
+// moved on since the word was staged — a flag set by a latch the restage had
+// not yet reached — the read acknowledges only what it showed (§6): a flag the
+// CPU never saw is not cleared. A data read moves its port on the same way
+// whatever it returned. Returns what vdp_read would have, so the caller can
+// count reads that were served stale.
+uint8_t VDP_HOT(vdp_read_served)(vdp_t *v, unsigned port, uint8_t served) {
+    if (!(port & 1)) return vdp_read(v, port);
+    unsigned pair = (port >> 1) & 1;
+    unsigned select = v->reg[pair ? VDP_REG_STATSEL_B : VDP_REG_STATSEL_A];
+    uint8_t now = vdp_status_peek(v, select);
+    if (now == served) return vdp_read(v, port);
+    v->port[pair].second = false;
+    vdp_status_acknowledge(v, select, served);
+    return now;
+}
+
 void VDP_HOT(vdp_write)(vdp_t *v, unsigned port, uint8_t value) {
     vdp_port_t *p = &v->port[(port >> 1) & 1];
     if (port & 1) {

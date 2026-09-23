@@ -1,0 +1,16 @@
+# §4's prefetch table, on both pairs.
+write A $1000
+fill A $11 $22 $33 $44
+read B $1000        # set a read address: fetch $11 into the prefetch; advance
+r B 3               # $11 $22 $33: return the prefetch; fetch; advance
+w B $99             # store at $1004; the written byte is the prefetch
+r B                 # $99
+write A $1000       # set a write address: nothing more
+r A 2               # A's prefetch as it stood ($44), then $11
+w A $55             # at $1002
+read A $1000
+r A 4               # $11 $22 $55 $44
+# The direction latch is read by nothing: a read-pointed port writes.
+w A $66             # at $1005
+read B $1004
+r B                 # $99

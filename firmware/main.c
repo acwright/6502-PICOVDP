@@ -3,6 +3,7 @@
 // Phase 8: everything but the bus. Core 0 runs the raster and, in debug
 // builds, the debug link; core 1 latches and renders (renderer.h). A Pico 2
 // drives the VGA pins with nothing on them; the PRO (Phase 10) drives its DAC.
+// Phase 11: the bus, on core 1 beside the latch (bus.h), on the PRO only.
 
 #include "pico/stdlib.h"
 #include "hardware/clocks.h"

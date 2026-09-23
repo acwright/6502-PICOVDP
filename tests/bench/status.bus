@@ -1,0 +1,15 @@
+# §6: STAT4 and STAT6 on both pairs, each through its own selector, with
+# STATSEL's high bits ignored.
+reg A $0f 4
+reg B $0e 6
+s A                 # $AC
+s B                 # $BF
+reg A $0f $f6
+s A                 # $BF
+s B
+reg B $0e $14
+s B                 # $AC
+s A
+reg A $0e 6         # STATSEL_B through pair A's command port
+s B                 # $BF
+s A

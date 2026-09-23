@@ -300,6 +300,10 @@ uint8_t vdp_status_read(vdp_t *v, unsigned select);
 // The same without the acknowledgement: a debugger's look.
 uint8_t vdp_status_peek(const vdp_t *v, unsigned select);
 
+// The acknowledgement of a read that returned `served` when the card now holds
+// more: only what it showed (vdp_read_served).
+void vdp_status_acknowledge(vdp_t *v, unsigned select, uint8_t served);
+
 // §15: flags, latches, and at power-on the frame's spent events.
 void vdp_status_reset(vdp_t *v, bool power_on);
 

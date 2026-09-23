@@ -251,8 +251,19 @@ export function decodeStats(payload) {
   const bins = r.u16()
   s.histogramShift = r.u8()
   s.histogram = Array.from({ length: bins }, () => r.u16())
+  // The bus's counts, appended in Phase 11 (docs/DEBUGLINK.md). Absent from an
+  // image that predates it.
+  if (r.at < payload.length) {
+    s.bus = {}
+    for (const name of BUS_COUNTS) s.bus[name] = r.u32()
+  }
   return s
 }
+
+/** STATS' bus block, in order (firmware/bus.h's bus_stats_t). */
+export const BUS_COUNTS = [
+  'writes', 'reads', 'staleData', 'staleStatus', 'coincident', 'writeOverruns', 'readOverruns', 'stagingWaits', 'resets', 'isrMax', 'intLevel',
+]
 
 export function decodeState(r) {
   const state = { registers: Buffer.from(r.bytes(128)), ports: [] }

@@ -1,0 +1,104 @@
+;
+; Project: pico9918
+;
+; Copyright (c) 2024 Troy Schrapel
+;
+; This code is licensed under the MIT license
+;
+; https://github.com/visrealm/pico9918
+;
+; The bus (SPEC.md §2, PLAN.md section 3): tmsWrite is pico9918's src/tms9918.pio
+; program, unchanged. tmsRead is rewritten for four ports by 6502-PICOVDP.
+;
+; Pins: CD7..CD0 on GPIO 14..21 (CD7, GPIO 14, is the bus's bit 0), /CSR 26,
+; /CSW 27, MODE 28 (A0), MODE1 29 (A1).
+
+; -----------------------------------------------------------------------------
+; tmsRead - answer a read on any of the four ports from a staged word
+;
+;           The CPU stages what each port reads now, a byte a port in A1:A0's
+;           order, in one word. The program keeps the latest word it has been
+;           given. When /CSR falls it samples MODE and MODE1 and jumps through
+;           a table to that port's byte, which it latches on CD0-7 while the
+;           strobe is debounced; then one instruction drives the bus, until
+;           /CSR rises. It releases the bus and tells the CPU which port it
+;           answered and with what.
+;
+;           The table is why the program sits at offset 0: `mov pc, isr` jumps
+;           to the port's number. /CSR falling to CD0-7 driven is 15 cycles for
+;           ports 0 and 3 and 17 for 1 and 2, 43-48 ns at 352 MHz, the debounce
+;           of at least 8 cycles included (docs/results/phase-11.md).
+;
+; fifo osr  0b|status B|data B  |status A|data A  |
+;             |port 3  |port 2  |port 1  |port 0  |
+;
+; fifo isr  0b|0000000000000000000000|pp|dddddddd|
+;             |                      |po|  byte  |
+;             |                      |rt| served |
+;
+; Pin directions are a constant (mov pindirs), not bits of the word, so all 32
+; carry bytes. RP2350 only.
+
+.program tmsRead
+.pio_version 1
+.origin 0
+.define public CSR_PIN 26
+
+  jmp port0             ; 0: data A, the low byte
+  jmp port1             ; 1: status A
+  jmp port2             ; 2: data B
+  out null, 24          ; 3: status B, the high byte, and on into port0
+port0:
+  in osr, 8             ; the byte served, beside its port, for the handler
+  out pins, 8           ; latched on CD0-7, not yet driven
+  nop               [2] ; /CSR has been low 8 cycles here, ~23 ns
+  jmp pin bounced       ; high again: a glitch, not a read
+  mov pindirs, ~null    ; drive CD0-7
+  wait 1 gpio CSR_PIN   ; until the read ends
+  mov pindirs, null     ; release the bus
+  push block            ; and tell the handler (which may stall here, counted)
+idle:
+  pull noblock          ; continuously empty the tx fifo: an empty fifo gives x
+  mov x, osr            ; back, so x, and osr, are always the latest word staged
+  jmp pin idle          ; /CSR high: wait on
+  in pins, 2            ; MODE, MODE1: the port
+  mov pc, isr           ; to its slot above
+port1:
+  out null, 8
+  jmp port0
+port2:
+  out null, 16
+  jmp port0
+bounced:
+  mov isr, null
+  jmp idle
+
+; -----------------------------------------------------------------------------
+; tmsWrite - monitor the CSW pin and pass on pin state via FIFO
+;
+;            very simple grab the data and send it through...
+;            state at CSW going low in the high 16-bits
+;            state at CSW going high in the low 16-bits
+;
+; fifo isr   0b|x|m|w|r|xxxx|dddddddd|x|m|w|r|xxxx|dddddddd|
+;              | |o|r|e|    |  CD0-7 | | | | |    |  CD0-7 |
+;              | |d|i|a|    | ignore | | | | |    |        |
+;              | |e|t|d|    |        | | | | |    |        |
+;              | | |e| |    |        | | | | |    |        |
+
+.program tmsWrite
+.define public CSW_PIN 27
+
+  wait 0 gpio CSW_PIN [7]   ; wait for CSW to go active (low)
+  in pins, 16               ; grab the initial (mode) state
+pollWriteLoop:
+  mov x, pins               ; continuously grab pin state
+  jmp pin captureWrite      ; and wait for csw high
+  jmp pollWriteLoop
+captureWrite:
+  nop                 [7]   ; ~32 ns debounce delay for CSW settling
+  jmp pin confirmed         ; if CSW still HIGH, it's stable
+  jmp pollWriteLoop         ; if CSW bounced back LOW, retry
+confirmed:
+  in x, 16                  ; grab the final state (CSW confirmed stable HIGH)
+.wrap

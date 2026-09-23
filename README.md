@@ -18,15 +18,19 @@ package).
   and `vdpctl`.
 - `docs/results/` — what each phase measured and checked.
 
-Status: Phase 10 (the firmware on the PRO, no bus) done. Everything but the bus
-runs on the card itself: all eighteen golden checkpoints reproduce exactly on
+Status: Phase 11 (the bus) done. All four ports work through the PRO's pins,
+driven by an Arduino Nano: 10⁷ random accesses at each of three timing profiles
+with no read wrong against the emulator's `Video.ts`, back-to-back reads 4 µs
+apart always right, RST performing §15, and no FIFO overrun. See
+`docs/results/phase-11.md`. Before it, Phase 10 put everything but the bus on
+the card itself: all eighteen golden checkpoints reproduce exactly on
 the PRO by injection, and each one's picture is captured off the monitor and
 scored against its golden; Phase 1's 36 worst-case scenes run with no late line
 while snapshots stream; a deliberately late line shows the line before it and
 leaves status untouched; and a fault or hang is recorded, recovered from and
 reflashed over USB with no hands on the board. The PRO's RP2354A matches the
 Pico 2 to 0.4% of a line. See `docs/results/phase-10.md`, and
-`docs/results/phase-09.md` for the bench itself. The bus is Phase 11.
+`docs/results/phase-09.md` for the bench itself.
 
 Layout
 ------
@@ -37,10 +41,11 @@ Layout
 | `host/node/` | the core as a Node-API addon, and `Video.cjs`, which presents it as the emulator's `Video` |
 | `host/replay/` | `vdp-replay`: a trace into the core in pure C, each checkpoint against its golden |
 | `host/scene/` | `vdp-scene`: the firmware's worst-case scenes drawn on the host, the reference for the board's snapshots |
-| `firmware/` | RP2350 only: `main.c`; `renderer.c`, the card on two cores; `vga/`, pico9918's VGA driver cut to §3's raster; `fault.c`, fault records, the watchdog and safe mode; and in debug builds `link.c`, `inject.c`, `scenes.c`, `profile.c` |
+| `firmware/` | RP2350 only: `main.c`; `renderer.c`, the card on two cores; `vga/`, pico9918's VGA driver cut to §3's raster; `bus.pio` and `bus.c`, the four ports on the pins (Phase 11); `fault.c`, fault records, the watchdog and safe mode; and in debug builds `link.c`, `inject.c`, `scenes.c`, `profile.c` |
 | `spike/` | Phase 1 timing spike: renderer, worst-case scenes, Pico 2 harness (disposable) |
 | `fonts/` | `cp437-6x8.bin`, the card's built-in font (§7), from 6502-BIOS v1.6. Checked by `tools/font.mjs` |
 | `tests/unit/` | C unit tests, run by CTest |
+| `tests/bench/` | port conformance scripts for the Nano, played by `vdpctl conformance` |
 | `tests/oracle/` | the emulator's goldens and traces, pinned. Written by `tools/sync-oracle.mjs` only |
 | `tools/` | Node ESM host tools: `vdpctl`, `sync-oracle`, `replay`, `card`, `fuzz`, `font`, `check-spec` |
 | `bench/nano/` | Arduino Nano bus harness (PlatformIO) |

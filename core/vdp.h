@@ -29,6 +29,9 @@
 // and sprites are drawn a word at a time, and a row is built in two halves, one
 // a core, each into a line of its own (vdp_build_half).
 // Draft 0.5: the built-in font (§7), at reset and by FONT at vertical blank.
+// Phase 11: the bus's read program answers from a staged word, so the card
+// stages all four ports' answers (vdp_staged) and takes each read as what it
+// returned (vdp_read_served).
 
 #pragma once
 
@@ -234,6 +237,12 @@ void    vdp_publish(vdp_t *v, const vdp_half_t *a, const vdp_half_t *b); // the 
 void    vdp_build_line(vdp_t *v, uint8_t *indices);         // both halves on one thread, published, into 320 indices (host)
 void    vdp_expand_line(const vdp_t *v, const uint8_t *indices, uint16_t *rgb); // 12-bit 0x0BGR, x2
 bool    vdp_int_asserted(const vdp_t *v);                   // §14
+
+// Phase 11: the bus on real pins. A read is answered from a byte staged before
+// it arrives (§2, §6), so the card offers all four ports' answers at once, and
+// takes each read as what it actually returned.
+uint32_t vdp_staged(const vdp_t *v);                        // what each port reads now: a byte a port, port 0 lowest
+uint8_t  vdp_read_served(vdp_t *v, unsigned port, uint8_t served); // a read that returned `served`; what one now would return
 
 #ifdef __cplusplus
 }

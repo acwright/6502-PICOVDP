@@ -15,6 +15,7 @@ picovdp_unit_test(test_reset)     # §15
 picovdp_unit_test(test_font       # §7's built-in font, §14, §15
     ${CMAKE_SOURCE_DIR}/fonts/cp437-6x8.bin)
 picovdp_unit_test(test_status)    # §3's line numbering, §6, §14
+picovdp_unit_test(test_served)    # §2, §4, §6: the staged word, and reads served from it
 picovdp_unit_test(test_tiles)     # §8 at 1bpp, §9, the backdrop and border
 picovdp_unit_test(test_layers)    # §8 at 2, 4 and 8bpp, §12's seven levels, §13 at depth
 picovdp_unit_test(test_sprites)   # §10, §9's legacy sprites, §12 against the layers, the cores' split

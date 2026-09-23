@@ -10,6 +10,7 @@
 #include "pico/multicore.h"
 #include "pico/stdlib.h"
 #include "vga.h"
+#include "bus.h"
 
 #if PICOVDP_DEBUG
 #include "hardware/clocks.h"
@@ -240,6 +241,10 @@ static void __isr __time_critical_func(latch_isr)(void) {
         latch_cycles[n & (EVENTS - 1)] = now;
         if (!thread_latches) vdp_latch(&card, events[n & (EVENTS - 1)].screen_line, n);
     }
+    // The latch may have changed what a status port reads; and whatever the
+    // thread did through the card since the last line is staged by now at the
+    // latest (bus.h).
+    bus_line();
 #if PICOVDP_DEBUG
     maximum(&stats.latch_isr_max, cycles() - now);
 #endif
@@ -355,6 +360,7 @@ static void __time_critical_func(render_line)(uint32_t n) {
 
     uint32_t irq = save_and_disable_interrupts();
     vdp_publish(&card, posted ? &core0_half : NULL, row < PICTURE_ROWS ? &card.half : NULL);
+    bus_sync();
     restore_interrupts(irq);
     const uint32_t t_publish = cycles();
 
@@ -396,6 +402,7 @@ static void __time_critical_func(core1_main)(void) {
     irq_set_exclusive_handler(SIO_IRQ_BELL, latch_isr);
     irq_set_priority(SIO_IRQ_BELL, PICO_HIGHEST_IRQ_PRIORITY);
     irq_set_enabled(SIO_IRQ_BELL, true);
+    bus_start(&card);
     core1_ready = true;
 
 #if PICOVDP_DEBUG
@@ -626,6 +633,7 @@ static void port_write(void *context, unsigned port, uint8_t value) {
     (void)context;
     const uint32_t irq = save_and_disable_interrupts();
     vdp_write(&card, port, value);
+    bus_sync();
     restore_interrupts(irq);
 }
 
@@ -633,6 +641,7 @@ static uint8_t port_read(void *context, unsigned port) {
     (void)context;
     const uint32_t irq = save_and_disable_interrupts();
     const uint8_t value = vdp_read(&card, port);
+    bus_sync();
     restore_interrupts(irq);
     return value;
 }
@@ -650,6 +659,7 @@ static void __isr __time_critical_func(bus_standin_isr)(void) {
         vdp_write(&card, 3, (uint8_t)(0x40 | ((base >> 8) & 0x3f)));
     }
     vdp_write(&card, 2, card.vram[card.port[1].pointer]);
+    bus_sync();
     stats.bus_standins++;
 }
 
@@ -686,6 +696,7 @@ static void scene_program(void) {
         scene_pending = false;
         uint32_t irq = save_and_disable_interrupts();
         vdp_reset(&card, true);
+        bus_sync();
         restore_interrupts(irq);
         scene_setup(scene_at((unsigned)scene), &card_port);
         scene_frame_count = 0;
@@ -723,6 +734,7 @@ static void apply_request(void) {
     case REQUEST_RESET:
         irq = save_and_disable_interrupts();
         vdp_reset(&card, request.power_on);
+        bus_sync();
         restore_interrupts(irq);
         scene = -1;
         break;

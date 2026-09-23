@@ -24,7 +24,7 @@ Contents
 5. [The Nano Harness](#5-the-nano-harness)
 6. [Video Capture](#6-video-capture)
 7. [Bring-Up Order](#7-bring-up-order)
-8. [What Phase 9 Proves](#8-what-phase-9-proves)
+8. [What Phase 9 Proves](#8-what-phase-9-proves), and Phase 11
 9. [The Schematic](#9-the-schematic)
 
 ---
@@ -276,6 +276,10 @@ sustained load.
 | `$08` | IDLE | — | — |
 | `$09` | INT | — | level(1), edges(2), ticks(4) |
 | `$0A` | INT_PERIOD | count(1), budget(1) | edges(1), first(4), last(4) |
+| `$0B` | SCRIPT | (op(1), value(1)) × 1–120 | differed(1), ticks(4), (index(1), expected(1), got(1)) × up to 8 |
+| `$0C` | READ_RUN | port(1), count(1), extra(1) | ticks(4), bytes(count) |
+
+PING answers firmware 2, protocol 2 since Phase 11 added `$0B` and `$0C`.
 
 `port` is `MODE1:MODE`, which is the CPU's `A1:A0` — the port decode in section
 3. INT's `ticks` is Timer 1's count at the last falling edge, and Timer 1 runs
@@ -312,10 +316,67 @@ has to happen on the Nano: a host round trip is about 4 ms against a 16.68 ms
 frame, so from there frames would be missed and the average would come out a
 multiple of the period rather than the period.
 
-The general script runner — wait, delay, compare, loop — is `$0B` onward and
-arrives with Phase 13's timing work.
+`$0B` SCRIPT (Phase 11) is a batch of accesses on any ports, played back to
+back with reads compared on the Nano, so one round trip carries 120 of them. An
+op's b7:6 is 0 to write `value`, 1 to read and compare with `value`, 2 to read
+and ignore it, 3 a control; b3:2 is the port, `MODE1:MODE` where `PORTC` has
+them. A control's b3:2 is 0 to pulse `/RESET` low for `value` µs and 1 to wait
+that long. The answer counts the reads that differed, gives Timer 1's ticks from
+the first access to the end of the last, and logs up to eight differing reads
+by their index in the batch.
 
-**The host side** is `tools/lib/nano.mjs` and `vdpctl bus`.
+SCRIPT's strobes are the instruction sequences WRITE and READ compile to, so the
+width and sample point are the table's. What differs is around them. The data
+drivers stay on from one write to the next and are released before a read;
+`/CSR` rises as soon as the data is sampled, 5 cycles after it fell at width 0;
+and **`gap` is a period**, from one access's strobe to the next, paced by
+Timer 1 — how a CPU's instruction timing spaces accesses — not a pause added
+after each. With every setting 0 (`fastest`) the loop has nothing to test
+between edges and runs at about 3.5 µs an access; a paced profile cannot go
+faster than its own loop, so `6502-2mhz` comes out near 5 µs and `6502-1mhz`
+near 6. The block commands keep Phase 9's pause.
+
+`$0C` READ_RUN reads one port `count` times (1 to 120) in a hand-counted loop:
+18 cycles a read with `extra` 0, 1.125 µs, and 16 + 3 × `extra` otherwise — 2 µs
+at 5 or 6, 4 µs exactly at 16. `/CSR` is low for 5 cycles and sampled 3 cycles
+after it falls. It exists for §4's tightest case, reads back to back on one
+port (PLAN.md risk 5), at the spacing a 1 MHz and a 2 MHz 6502 give them.
+
+The general script runner's remaining parts — wait for `/INT`, record a
+timestamp, loop — are `$0D` onward and arrive with Phase 13's timing work.
+
+**The host side** is `tools/lib/nano.mjs`, `vdpctl bus` and, from Phase 11,
+`tools/lib/conformance.mjs` behind `vdpctl conformance` and `vdpctl reset-pin`.
+
+### Port conformance (Phase 11)
+
+`vdpctl conformance` plays accesses on all four ports through SCRIPT and
+compares every read the reference can answer without a clock: every data read,
+and status reads of `STAT4` and `STAT6`. The rest of status moves with the
+raster, and `STAT5` is this firmware's version where `Video.ts` reports the
+spec's, so those are read — each still resets its pair's flip-flop — but not
+compared. A `FONT` command naming font `$00` would load at the next vertical
+blank, which an untimed run cannot place, so the reference sends it to a
+reserved register instead; `FONT` naming a reserved font does nothing and goes
+through. Each run starts from an RST pulse, with the card's own VRAM read over
+the debug link and given to `Video.ts`. Every million accesses, and at the end,
+the card's VRAM, registers and both ports are read over the debug link and
+compared whole, which catches a write that went astray where no read looked.
+
+The accesses come from two places. `tests/bench/*.bus` are directed scripts in a
+small language (`tools/lib/conformance.mjs` documents it) — §4's prefetch table,
+the flip-flop, `VBANK` and `VINC` at their limits, both read orders, every
+register, the constant status registers. And a seeded stream: runs of
+`tools/fuzz.mjs`'s bus scope with its ticks, pokes and resets taken out, between
+edge cases the fuzzer does not dwell on — strides at their limits across carries
+and wraps, the two pairs' data ports read interleaved one way and then the
+other, every command form with half pairs abandoned, register writes on one pair
+between the halves of the other's.
+
+`vdpctl reset-pin` puts the card far from reset over the bus, then in one SCRIPT
+asks for a `FONT` load and pulses RST before the load can land, reads `STAT0`,
+`STAT1`, `STAT7` and the collision map straight after, and later compares the
+whole card with `Video.ts` after its own reset.
 
 ### The host talks through `serialport`, not `stty`
 
@@ -436,6 +497,17 @@ never again.
 12. `vdpctl card dac` and `vdpctl card palette`.
 13. `vdpctl scenes`, `vdpctl late`, `vdpctl fault`.
 
+Phase 11 brings the Nano back, now driving this repo's firmware on all four
+ports.
+
+14. Upload the harness again: SCRIPT and READ_RUN are new (firmware 2).
+15. `vdpctl bus` — the walking-one readback, now through this firmware's read
+    program.
+16. `vdpctl conformance --timing all --ops 10000000` — the directed scripts,
+    back-to-back reads, and 10⁷ stream accesses at each profile.
+17. `vdpctl reset-pin`, `vdpctl sweep`, and `vdpctl stats` for the bus's counts:
+    no FIFO overruns.
+
 ---
 
 8. What Phase 9 Proved
@@ -461,6 +533,21 @@ card's limit, which the Nano cannot reach.
 And **MODE1 is untested.** The stock firmware decodes MODE alone and ignores
 MODE1, so ports 2 and 3 behave as 0 and 1. The soldered `MDE1` pin stays
 unproven until this repo's firmware decodes all four ports in Phase 11.
+
+### Phase 11
+
+All criteria passed on 2026-09-23, on this repo's firmware
+(`docs/results/phase-11.md`):
+
+| Criterion | Result |
+|---|---|
+| 10⁷ random accesses on all four ports at each profile | 10,000,595 each, 1,475,718 reads compared each, **0 wrong** |
+| Back-to-back reads 4 µs apart | 12,000 at 4.05 µs, **0 wrong** (at 2 µs, 0.58% stale) |
+| Strobe and hold margins | the same as Phase 9: nothing the harness can produce fails |
+| RST gives §15's state | **50 of 50** |
+| FIFO overruns | **none** |
+
+`MDE1` is proven: every access on ports 2 and 3 went through it.
 
 ---
 

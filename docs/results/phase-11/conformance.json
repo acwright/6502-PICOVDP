@@ -1,0 +1,296 @@
+[
+ {
+  "timing": "6502-1mhz",
+  "profile": {
+   "setup": 2,
+   "width": 2,
+   "hold": 2,
+   "gap": 4
+  },
+  "scripts": [
+   {
+    "name": "flip-flop",
+    "accesses": 31,
+    "ok": true
+   },
+   {
+    "name": "prefetch",
+    "accesses": 38,
+    "ok": true
+   },
+   {
+    "name": "read-orders",
+    "accesses": 126,
+    "ok": true
+   },
+   {
+    "name": "registers",
+    "accesses": 274,
+    "ok": true
+   },
+   {
+    "name": "status",
+    "accesses": 18,
+    "ok": true
+   },
+   {
+    "name": "vbank-vinc",
+    "accesses": 108,
+    "ok": true
+   }
+  ],
+  "accesses": 10000595,
+  "reads": 1726249,
+  "compared": 1475718,
+  "mismatches": [],
+  "stateChecks": 16,
+  "stateFailures": [],
+  "fontsRedirected": 2779,
+  "seconds": 713.579,
+  "bus": {
+   "writes": 8274346,
+   "reads": 1726249,
+   "staleData": 0,
+   "staleStatus": 549,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 7,
+   "isrMax": 418,
+   "intLevel": 1
+  },
+  "busBefore": {
+   "writes": 58666,
+   "reads": 56546,
+   "staleData": 376,
+   "staleStatus": 0,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 12,
+   "isrMax": 256,
+   "intLevel": 0
+  },
+  "backToBack": [
+   {
+    "spacing": "4 us",
+    "periodNs": 4054,
+    "reads": 12000,
+    "wrong": 0,
+    "first": null
+   },
+   {
+    "spacing": "2 us",
+    "periodNs": 1975,
+    "reads": 12000,
+    "wrong": 70,
+    "first": "trial 0, read 96 of port 2: expected $a6, got $27"
+   },
+   {
+    "spacing": "flat out",
+    "periodNs": 1159,
+    "reads": 12000,
+    "wrong": 306,
+    "first": "trial 0, read 9 of port 2: expected $ca, got $6e"
+   }
+  ]
+ },
+ {
+  "timing": "6502-2mhz",
+  "profile": {
+   "setup": 1,
+   "width": 0,
+   "hold": 1,
+   "gap": 2
+  },
+  "scripts": [
+   {
+    "name": "flip-flop",
+    "accesses": 31,
+    "ok": true
+   },
+   {
+    "name": "prefetch",
+    "accesses": 38,
+    "ok": true
+   },
+   {
+    "name": "read-orders",
+    "accesses": 126,
+    "ok": true
+   },
+   {
+    "name": "registers",
+    "accesses": 274,
+    "ok": true
+   },
+   {
+    "name": "status",
+    "accesses": 18,
+    "ok": true
+   },
+   {
+    "name": "vbank-vinc",
+    "accesses": 108,
+    "ok": true
+   }
+  ],
+  "accesses": 10000595,
+  "reads": 1726249,
+  "compared": 1475718,
+  "mismatches": [],
+  "stateChecks": 16,
+  "stateFailures": [],
+  "fontsRedirected": 2779,
+  "seconds": 718.718,
+  "bus": {
+   "writes": 8274346,
+   "reads": 1726249,
+   "staleData": 0,
+   "staleStatus": 487,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 7,
+   "isrMax": 418,
+   "intLevel": 1
+  },
+  "busBefore": {
+   "writes": 8274346,
+   "reads": 1726249,
+   "staleData": 0,
+   "staleStatus": 549,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 7,
+   "isrMax": 418,
+   "intLevel": 1
+  },
+  "backToBack": [
+   {
+    "spacing": "4 us",
+    "periodNs": 4054,
+    "reads": 12000,
+    "wrong": 0,
+    "first": null
+   },
+   {
+    "spacing": "2 us",
+    "periodNs": 1975,
+    "reads": 12000,
+    "wrong": 70,
+    "first": "trial 0, read 96 of port 2: expected $a6, got $27"
+   },
+   {
+    "spacing": "flat out",
+    "periodNs": 1159,
+    "reads": 12000,
+    "wrong": 306,
+    "first": "trial 0, read 9 of port 2: expected $ca, got $6e"
+   }
+  ]
+ },
+ {
+  "timing": "fastest",
+  "profile": {
+   "setup": 0,
+   "width": 0,
+   "hold": 0,
+   "gap": 0
+  },
+  "scripts": [
+   {
+    "name": "flip-flop",
+    "accesses": 31,
+    "ok": true
+   },
+   {
+    "name": "prefetch",
+    "accesses": 38,
+    "ok": true
+   },
+   {
+    "name": "read-orders",
+    "accesses": 126,
+    "ok": true
+   },
+   {
+    "name": "registers",
+    "accesses": 274,
+    "ok": true
+   },
+   {
+    "name": "status",
+    "accesses": 18,
+    "ok": true
+   },
+   {
+    "name": "vbank-vinc",
+    "accesses": 108,
+    "ok": true
+   }
+  ],
+  "accesses": 10000595,
+  "reads": 1726249,
+  "compared": 1475718,
+  "mismatches": [],
+  "stateChecks": 16,
+  "stateFailures": [],
+  "fontsRedirected": 2779,
+  "seconds": 709.006,
+  "bus": {
+   "writes": 8274346,
+   "reads": 1726249,
+   "staleData": 0,
+   "staleStatus": 523,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 7,
+   "isrMax": 415,
+   "intLevel": 1
+  },
+  "busBefore": {
+   "writes": 8274346,
+   "reads": 1726249,
+   "staleData": 0,
+   "staleStatus": 487,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 7,
+   "isrMax": 418,
+   "intLevel": 1
+  },
+  "backToBack": [
+   {
+    "spacing": "4 us",
+    "periodNs": 4054,
+    "reads": 12000,
+    "wrong": 0,
+    "first": null
+   },
+   {
+    "spacing": "2 us",
+    "periodNs": 1975,
+    "reads": 12000,
+    "wrong": 70,
+    "first": "trial 0, read 96 of port 2: expected $a6, got $27"
+   },
+   {
+    "spacing": "flat out",
+    "periodNs": 1159,
+    "reads": 12000,
+    "wrong": 306,
+    "first": "trial 0, read 9 of port 2: expected $ca, got $6e"
+   }
+  ]
+ }
+]

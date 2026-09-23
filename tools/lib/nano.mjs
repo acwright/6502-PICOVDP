@@ -27,7 +27,25 @@ export const CMD = {
   IDLE: 0x08,
   INT: 0x09,
   INT_PERIOD: 0x0a,
+  SCRIPT: 0x0b,
+  READ_RUN: 0x0c,
 }
+
+/**
+ * SCRIPT's access kinds, in b7:6 of each access's op byte, or'd with scriptPort.
+ * A control does something else instead: RESET pulses /RESET low for the
+ * value's microseconds, WAIT waits that long.
+ */
+export const ACCESS = { WRITE: 0x00, READ: 0x40, READ_IGNORED: 0x80, RESET: 0xc0, WAIT: 0xc4 }
+
+/** A port as a SCRIPT op carries it: MODE1:MODE in b3:2, where PORTC has them. */
+export const scriptPort = (port) => (port & 3) << 2
+
+/** The port a SCRIPT op names. */
+export const opPort = (op) => (op >> 2) & 3
+
+/** The most accesses one SCRIPT carries: two bytes each, inside BLOCK_MAX. */
+export const SCRIPT_MAX = 120
 
 const ANSWER = 0x80
 const ERROR = 0xff
@@ -292,6 +310,35 @@ export class Nano {
     return this.request(CMD.READ_BLOCK, [port & 3, count])
   }
 
+  /**
+   * Up to SCRIPT_MAX accesses, back to back at the current profile, as pairs of
+   * (op, value) bytes (ACCESS). Reads are compared on the Nano. Returns how many
+   * differed and the first few, each as { index, expected, got }, and how long
+   * the accesses took on the Nano's Timer 1, in nanoseconds.
+   */
+  async script(pairs) {
+    const body = Buffer.from(pairs)
+    if (!body.length || body.length & 1 || body.length > 2 * SCRIPT_MAX) {
+      throw new NanoError(`script of ${body.length} bytes: 2 to ${2 * SCRIPT_MAX}, in pairs`)
+    }
+    const out = await this.request(CMD.SCRIPT, body)
+    const differed = out[0]
+    const ns = out.readUInt32LE(1) * TICK_NS
+    const log = []
+    for (let at = 5; at + 3 <= out.length; at += 3) log.push({ index: out[at], expected: out[at + 1], got: out[at + 2] })
+    return { differed, ns, log }
+  }
+
+  /**
+   * `count` reads of one port back to back, 1 to 120, `extra` spacing each by
+   * 3 more Nano cycles: 1.125 us apart at 0, 16 + 3 x extra cycles otherwise
+   * (READ_RUN_PERIOD). Returns the bytes and the run's length in nanoseconds.
+   */
+  async readRun(port, count, extra = 0) {
+    const out = await this.request(CMD.READ_RUN, [port & 3, count, extra])
+    return { bytes: Buffer.from(out.subarray(4)), ns: out.readUInt32LE(0) * TICK_NS }
+  }
+
   async reset(microseconds = 100) {
     await this.request(CMD.RESET, [microseconds & 0xff, (microseconds >> 8) & 0xff])
   }
@@ -327,6 +374,9 @@ export class Nano {
     }
   }
 }
+
+/** READ_RUN's spacing, in Nano cycles, for an `extra`. */
+export const readRunCycles = (extra) => (extra ? 16 + 3 * extra : 18)
 
 /** Timer 1 runs at F_CPU, so one tick is 62.5 ns. */
 export const TICK_NS = 1000 / 16

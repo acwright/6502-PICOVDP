@@ -14,8 +14,8 @@
 #include <Arduino.h>
 #include <util/delay_basic.h>
 
-static const uint8_t FIRMWARE_VERSION = 1;
-static const uint8_t PROTOCOL_VERSION = 1;
+static const uint8_t FIRMWARE_VERSION = 2;
+static const uint8_t PROTOCOL_VERSION = 2;
 
 // ---------------------------------------------------------------- the bus
 
@@ -151,10 +151,244 @@ ISR(TIMER1_CAPT_vect) {
   intEdges++;
 }
 
+// Timer 1's count, extended by its overflows: 62.5 ns a tick.
+static uint32_t ticksNow() {
+  const uint8_t sreg = SREG;
+  cli();
+  const uint16_t low = TCNT1;
+  uint16_t high = t1High;
+  if ((TIFR1 & _BV(TOV1)) && low < 0x8000) high++;
+  SREG = sreg;
+  return ((uint32_t)high << 16) | low;
+}
+
 static void captureBegin() {
   TCCR1A = 0;
   TCCR1B = _BV(ICNC1) | _BV(CS10);   // noise canceller, /1, falling edge
   TIMSK1 = _BV(ICIE1) | _BV(TOIE1);
+}
+
+// ---------------------------------------------------------------- scripts
+//
+// SCRIPT's loop (Phase 11), written to go as fast as a 6502 does: a 1 MHz part
+// reads back to back every 4 us, 64 cycles here, and a 2 MHz one every 2 us.
+// The strobes are the same instruction sequences busWrite and busRead compile
+// to, in assembly so they stay that way, so the profiles' widths and sample
+// points are Phase 9's (docs/BENCH.md). Around them, nothing is reloaded or
+// called: the timings are in registers, the port arrives already in PORTC's
+// bits, the data drivers stay on from one write to the next and are released
+// before a read, and /CSR rises as soon as the data is sampled. The profile's
+// gap is the period from one access's strobe to the next, paced by Timer 1, as
+// a CPU's instruction timing spaces them; with no gap the loop runs flat out.
+
+static const uint8_t SCRIPT_LOG = 8;
+
+// /CSW low for 3 x width + 2 cycles, 4 at width 0: busWrite's strobe.
+static HOT void strobeWrite(uint8_t c, uint8_t low, uint8_t width) {
+  asm volatile(
+    "out %[port], %[low]\n\t"
+    "tst %[w]\n\t"
+    "breq 2f\n\t"
+    "1: dec %[w]\n\t"
+    "brne 1b\n\t"
+    "2: out %[port], %[c]\n\t"
+    : [w] "+r"(width)
+    : [port] "I"(_SFR_IO_ADDR(PORTC)), [low] "r"(low), [c] "r"(c));
+}
+
+// The same at width 0 with nothing to test: /CSW low for 4 cycles.
+static HOT void strobeWriteFlat(uint8_t c, uint8_t low) {
+  asm volatile(
+    "out %[port], %[low]\n\t"
+    "rjmp .+0\n\t"
+    "nop\n\t"
+    "out %[port], %[c]\n\t"
+    :
+    : [port] "I"(_SFR_IO_ADDR(PORTC)), [low] "r"(low), [c] "r"(c));
+}
+
+// The data sampled 3 cycles after /CSR falls at width 0, as busRead samples it,
+// and /CSR raised straight after.
+static HOT uint8_t strobeRead(uint8_t c, uint8_t low, uint8_t width) {
+  uint8_t d, b;
+  asm volatile(
+    "out %[port], %[low]\n\t"
+    "tst %[w]\n\t"
+    "breq 2f\n\t"
+    "1: dec %[w]\n\t"
+    "brne 1b\n\t"
+    "2: in %[d], %[pind]\n\t"
+    "in %[b], %[pinb]\n\t"
+    "out %[port], %[c]\n\t"
+    : [w] "+r"(width), [d] "=&r"(d), [b] "=&r"(b)
+    : [port] "I"(_SFR_IO_ADDR(PORTC)), [low] "r"(low), [c] "r"(c),
+      [pind] "I"(_SFR_IO_ADDR(PIND)), [pinb] "I"(_SFR_IO_ADDR(PINB)));
+  return (uint8_t)((d & DATA_D) >> 2) | (uint8_t)(__builtin_avr_swap((uint8_t)(b & DATA_B)) << 1);
+}
+
+// The same at width 0 with nothing to test: sampled 3 cycles after the fall.
+static HOT uint8_t strobeReadFlat(uint8_t c, uint8_t low) {
+  uint8_t d, b;
+  asm volatile(
+    "out %[port], %[low]\n\t"
+    "rjmp .+0\n\t"
+    "nop\n\t"
+    "in %[d], %[pind]\n\t"
+    "in %[b], %[pinb]\n\t"
+    "out %[port], %[c]\n\t"
+    : [d] "=&r"(d), [b] "=&r"(b)
+    : [port] "I"(_SFR_IO_ADDR(PORTC)), [low] "r"(low), [c] "r"(c),
+      [pind] "I"(_SFR_IO_ADDR(PIND)), [pinb] "I"(_SFR_IO_ADDR(PINB)));
+  return (uint8_t)((d & DATA_D) >> 2) | (uint8_t)(__builtin_avr_swap((uint8_t)(b & DATA_B)) << 1);
+}
+
+static void waitMicroseconds(uint8_t n) {
+  while (n--) _delay_loop_2(4);
+}
+
+struct ScriptLog {
+  const uint8_t *start;
+  uint8_t *entries;
+  uint8_t differed;
+};
+
+// A read that differed: off the loop's path.
+static __attribute__((noinline)) void scriptMiss(ScriptLog &log, const uint8_t *p, uint8_t value, uint8_t got) {
+  if (log.differed < SCRIPT_LOG) {
+    uint8_t *e = log.entries + 3 * log.differed;
+    e[0] = (uint8_t)((p - log.start) / 2 - 1);
+    e[1] = value;
+    e[2] = got;
+  }
+  if (log.differed < 255) log.differed++;
+}
+
+static __attribute__((noinline)) void scriptControl(uint8_t op, uint8_t value) {
+  if (op & 0x0C) {
+    waitMicroseconds(value);
+  } else {
+    PORTC = IDLE_C & (uint8_t)~RST;
+    waitMicroseconds(value);
+    PORTC = IDLE_C;
+  }
+}
+
+// kFlat: the fastest profile, no setup, hold or gap and width 0, so nothing is
+// tested between the strobes' edges.
+template <bool kFlat>
+static uint8_t runScript(const uint8_t *p, uint8_t count, ScriptLog &log) {
+  const uint8_t setup = tSetup, width = tWidth, hold = tHold;
+  const uint16_t period = (uint16_t)tGap * 16;
+  uint16_t last = TCNT1 - period;
+  bool driving = false;
+  const uint16_t *w = (const uint16_t *)p;  // op and value in one load: the AVR has no alignment
+  for (; count; count--) {
+    const uint16_t pair = *w++;
+    const uint8_t op = (uint8_t)pair;
+    const uint8_t value = (uint8_t)(pair >> 8);
+    const uint8_t c = (uint8_t)((op & 0x0C) | IDLE_C);
+    if (!(op & 0x80)) {
+      if (!(op & 0x40)) {
+        // A write.
+        PORTD = (uint8_t)((PORTD & (uint8_t)~DATA_D) | (uint8_t)(value << 2));
+        PORTB = (uint8_t)((PORTB & (uint8_t)~DATA_B) | ((uint8_t)(__builtin_avr_swap(value) >> 1) & DATA_B));
+        if (!driving) {
+          DDRD |= DATA_D;
+          DDRB |= DATA_B;
+          driving = true;
+        }
+        if (!kFlat && period) {
+          while ((uint16_t)(TCNT1 - last) < period) {
+          }
+          last += period;
+        }
+        PORTC = c;
+        if (kFlat) {
+          strobeWriteFlat(c, (uint8_t)(c & ~CSW));
+        } else {
+          spin(setup);
+          strobeWrite(c, (uint8_t)(c & ~CSW), width);
+          spin(hold);
+        }
+        continue;
+      }
+    } else if (op & 0x40) {
+      scriptControl(op, value);
+      continue;
+    }
+    // A read, compared (b7 clear) or not.
+    if (driving) {
+      dataRelease();
+      driving = false;
+    }
+    if (!kFlat && period) {
+      while ((uint16_t)(TCNT1 - last) < period) {
+      }
+      last += period;
+    }
+    PORTC = c;
+    uint8_t got;
+    if (kFlat) {
+      got = strobeReadFlat(c, (uint8_t)(c & ~CSR));
+    } else {
+      spin(setup);
+      got = strobeRead(c, (uint8_t)(c & ~CSR), width);
+      spin(hold);
+    }
+    if (!(op & 0x80) && got != value) scriptMiss(log, (const uint8_t *)w, value, got);
+  }
+  if (driving) dataRelease();
+  PORTC = IDLE_C;
+  return log.differed;
+}
+
+static uint8_t runScript(const uint8_t *p, uint8_t length, uint8_t *entries) {
+  ScriptLog log = {p, entries, 0};
+  if (!tSetup && !tWidth && !tHold && !tGap) return runScript<true>(p, length / 2, log);
+  return runScript<false>(p, length / 2, log);
+}
+
+// Back-to-back reads of one port at a set spacing (Phase 11): the prefetch
+// restaged between one read and the next is the bus's tightest case (PLAN.md
+// risk 5). Each iteration is 18 cycles with `extra` 0 and 16 + 3 x extra
+// otherwise: 1.125 us flat out, 2 us at 5 or 6, 4 us exactly at 16. /CSR is low
+// for 5 cycles and sampled 3 cycles after it falls, as SCRIPT's flat reads are.
+// `raw` takes PIND and PINB for each read, combined after the run. Returns
+// Timer 1's ticks for the reads alone.
+static uint32_t readRun(uint8_t port, uint8_t count, uint8_t extra, uint8_t *raw) {
+  const uint8_t c = (uint8_t)(IDLE_C | ((port & 3) << 2));
+  const uint8_t low = (uint8_t)(c & ~CSR);
+  dataRelease();
+  PORTC = c;
+  uint8_t *x = raw;
+  uint8_t n = count;
+  uint8_t d, b, k;
+  const uint32_t began = ticksNow();
+  asm volatile(
+    "1: out %[portc], %[low]\n\t"
+    "rjmp .+0\n\t"
+    "nop\n\t"
+    "in %[d], %[pind]\n\t"
+    "in %[b], %[pinb]\n\t"
+    "out %[portc], %[c]\n\t"
+    "st %a[x]+, %[d]\n\t"
+    "st %a[x]+, %[b]\n\t"
+    "mov %[k], %[extra]\n\t"
+    "tst %[k]\n\t"
+    "breq 3f\n\t"
+    "2: dec %[k]\n\t"
+    "brne 2b\n\t"
+    "3: dec %[n]\n\t"
+    "brne 1b\n\t"
+    : [x] "+e"(x), [n] "+r"(n), [d] "=&r"(d), [b] "=&r"(b), [k] "=&r"(k)
+    : [portc] "I"(_SFR_IO_ADDR(PORTC)), [low] "r"(low), [c] "r"(c), [extra] "r"(extra),
+      [pind] "I"(_SFR_IO_ADDR(PIND)), [pinb] "I"(_SFR_IO_ADDR(PINB))
+    : "memory");
+  const uint32_t spent = ticksNow() - began;
+  for (uint8_t i = 0; i < count; i++) {
+    raw[i] = (uint8_t)((raw[2 * i] & DATA_D) >> 2) | (uint8_t)(__builtin_avr_swap((uint8_t)(raw[2 * i + 1] & DATA_B)) << 1);
+  }
+  return spent;
 }
 
 // ---------------------------------------------------------------- framing
@@ -173,6 +407,8 @@ enum : uint8_t {
   CMD_IDLE = 0x08,
   CMD_INT = 0x09,
   CMD_INT_PERIOD = 0x0A,
+  CMD_SCRIPT = 0x0B,
+  CMD_READ_RUN = 0x0C,
 };
 
 enum : uint8_t {
@@ -343,6 +579,44 @@ static void dispatch(uint8_t type, uint8_t sequence, uint8_t *payload, uint8_t l
         };
         reply(type | ANSWER, sequence, out, 9);
       }
+      return;
+    }
+    case CMD_READ_RUN: {
+      // port, count (1 to 120), extra: count reads of one port back to back
+      // (readRun). Answers Timer 1's ticks for the run (u32), then the bytes.
+      if (length != 3) { fail(sequence, ERR_LENGTH); return; }
+      const uint8_t count = payload[1];
+      if (count == 0 || count > BLOCK_MAX / 2) { fail(sequence, ERR_LENGTH); return; }
+      static uint8_t raw[BLOCK_MAX + 4];
+      const uint32_t spent = readRun(payload[0], count, payload[2], raw + 4);
+      raw[0] = (uint8_t)spent;
+      raw[1] = (uint8_t)(spent >> 8);
+      raw[2] = (uint8_t)(spent >> 16);
+      raw[3] = (uint8_t)(spent >> 24);
+      reply(type | ANSWER, sequence, raw, (uint8_t)(4 + count));
+      return;
+    }
+    case CMD_SCRIPT: {
+      // A run of accesses on any ports, with reads compared here so a batch
+      // costs one round trip (Phase 11). Two bytes an access: op, value. op
+      // b7:6 is 0 write `value`, 1 read and compare with `value`, 2 read and
+      // ignore it, 3 a control; b3:2 the port, MODE1:MODE as PORTC has them.
+      // A control's b3:2 is 0 to pulse /RESET low `value` us, 1 to wait `value`
+      // us. Answers the number of reads that differed, saturating at 255, Timer
+      // 1's ticks from the first access to the end of the last (u32), then up
+      // to SCRIPT_LOG of the reads as (access index, expected, got).
+      if (length == 0 || (length & 1)) { fail(sequence, ERR_LENGTH); return; }
+      uint8_t out[5 + 3 * SCRIPT_LOG];
+      const uint32_t began = ticksNow();
+      const uint8_t differed = runScript(payload, length, out + 5);
+      const uint32_t spent = ticksNow() - began;
+      out[0] = differed;
+      out[1] = (uint8_t)spent;
+      out[2] = (uint8_t)(spent >> 8);
+      out[3] = (uint8_t)(spent >> 16);
+      out[4] = (uint8_t)(spent >> 24);
+      const uint8_t logged = differed < SCRIPT_LOG ? differed : SCRIPT_LOG;
+      reply(type | ANSWER, sequence, out, 5 + 3 * logged);
       return;
     }
     default:

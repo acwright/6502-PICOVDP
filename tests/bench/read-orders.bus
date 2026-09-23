@@ -1,0 +1,36 @@
+# Both read orders: the pairs interleaved each way round, data and status in
+# turn on each, and runs of back-to-back reads of one port.
+reg A $0f 4
+reg B $0e 6
+write A $2000
+fill A $01 $02 $03 $04 $05 $06 $07 $08 $09 $0a $0b $0c $0d $0e $0f $10
+write B $3000
+fill B $81 $82 $83 $84 $85 $86 $87 $88 $89 $8a $8b $8c $8d $8e $8f $90
+read A $2000
+read B $3000
+r A
+r B
+r A
+r B
+r B
+r A
+r B
+r A
+s A
+r A
+s B
+r B
+r A
+s A
+s B
+r B
+s B
+s A
+read A $2000
+r A 16
+read B $3000
+r B 16
+read A $2008
+read B $3008
+r B 4
+r A 4

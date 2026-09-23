@@ -1,0 +1,59 @@
+  back to back, 4 us: 12000 data reads 4.05 us apart: all right
+  back to back, 2 us: 12000 data reads 1.98 us apart: 70 WRONG, the first trial 0, read 96 of port 2: expected $a6, got $27
+  back to back, flat out: 12000 data reads 1.16 us apart: 306 WRONG, the first trial 0, read 9 of port 2: expected $ca, got $6e
+  6502-1mhz: script flip-flop, 31 accesses: ok
+  6502-1mhz: script prefetch, 38 accesses: ok
+  6502-1mhz: script read-orders, 126 accesses: ok
+  6502-1mhz: script registers, 274 accesses: ok
+  6502-1mhz: script status, 18 accesses: ok
+  6502-1mhz: script vbank-vinc, 108 accesses: ok
+  6502-1mhz: 1,000,000 accesses, 13,865 a second
+  6502-1mhz: 2,000,000 accesses, 13,987 a second
+  6502-1mhz: 3,000,000 accesses, 14,004 a second
+  6502-1mhz: 4,000,000 accesses, 14,026 a second
+  6502-1mhz: 5,000,000 accesses, 14,034 a second
+  6502-1mhz: 6,000,000 accesses, 14,036 a second
+  6502-1mhz: 7,000,000 accesses, 14,032 a second
+  6502-1mhz: 8,000,000 accesses, 14,020 a second
+  6502-1mhz: 9,000,000 accesses, 14,023 a second
+  6502-1mhz: 10,000,000 accesses, 14,019 a second
+6502-1mhz: 10,000,595 accesses (1,726,249 reads, 1,475,718 compared) in 714 s; 0 mismatching batches, 0 of 16 state checks differ
+  card: 8274346 writes, 1726249 reads, 0 stale data reads, 549 stale status reads, 0 coincident, FIFO overruns 0/0, staging waits 0, resets 7, interrupt max 418 cycles
+  6502-2mhz: script flip-flop, 31 accesses: ok
+  6502-2mhz: script prefetch, 38 accesses: ok
+  6502-2mhz: script read-orders, 126 accesses: ok
+  6502-2mhz: script registers, 274 accesses: ok
+  6502-2mhz: script status, 18 accesses: ok
+  6502-2mhz: script vbank-vinc, 108 accesses: ok
+  6502-2mhz: 1,000,000 accesses, 13,565 a second
+  6502-2mhz: 2,000,000 accesses, 13,781 a second
+  6502-2mhz: 3,000,000 accesses, 13,856 a second
+  6502-2mhz: 4,000,000 accesses, 13,890 a second
+  6502-2mhz: 5,000,000 accesses, 13,908 a second
+  6502-2mhz: 6,000,000 accesses, 13,911 a second
+  6502-2mhz: 7,000,000 accesses, 13,912 a second
+  6502-2mhz: 8,000,000 accesses, 13,915 a second
+  6502-2mhz: 9,000,000 accesses, 13,916 a second
+  6502-2mhz: 10,000,000 accesses, 13,919 a second
+6502-2mhz: 10,000,595 accesses (1,726,249 reads, 1,475,718 compared) in 719 s; 0 mismatching batches, 0 of 16 state checks differ
+  card: 8274346 writes, 1726249 reads, 0 stale data reads, 487 stale status reads, 0 coincident, FIFO overruns 0/0, staging waits 0, resets 7, interrupt max 418 cycles
+  fastest: script flip-flop, 31 accesses: ok
+  fastest: script prefetch, 38 accesses: ok
+  fastest: script read-orders, 126 accesses: ok
+  fastest: script registers, 274 accesses: ok
+  fastest: script status, 18 accesses: ok
+  fastest: script vbank-vinc, 108 accesses: ok
+  fastest: 1,000,000 accesses, 13,785 a second
+  fastest: 2,000,000 accesses, 13,940 a second
+  fastest: 3,000,000 accesses, 14,008 a second
+  fastest: 4,000,000 accesses, 14,043 a second
+  fastest: 5,000,000 accesses, 14,060 a second
+  fastest: 6,000,000 accesses, 14,068 a second
+  fastest: 7,000,000 accesses, 14,080 a second
+  fastest: 8,000,000 accesses, 14,093 a second
+  fastest: 9,000,000 accesses, 14,108 a second
+  fastest: 10,000,000 accesses, 14,110 a second
+fastest: 10,000,595 accesses (1,726,249 reads, 1,475,718 compared) in 709 s; 0 mismatching batches, 0 of 16 state checks differ
+  card: 8274346 writes, 1726249 reads, 0 stale data reads, 523 stale status reads, 0 coincident, FIFO overruns 0/0, staging waits 0, resets 7, interrupt max 415 cycles
+wrote docs/results/phase-11/conformance.json
+exit 1

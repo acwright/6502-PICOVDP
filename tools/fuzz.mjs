@@ -148,7 +148,7 @@ const ADDRESSES = [0x0000, 0x0400, 0x0800, 0x1000, 0x1b00, 0x3800, 0x3ffe, 0x400
  * `{ x: cold }`, and in the bus scope a debugger's `{ p: address, v }` (VRAM) and
  * `{ g: register, v }`. Each kind of thing a program does becomes a few of them.
  */
-function generate(seed, count, scope) {
+export function generate(seed, count, scope) {
   const next = random(seed)
   const pick = (list) => list[Math.floor(next() * list.length)]
   const byte = () => (next() < 0.6 ? pick(VALUES) : Math.floor(next() * 256))
@@ -573,4 +573,5 @@ function firstDifference(a, b) {
 
 const hex = (value) => value.toString(16).padStart(2, '0')
 
-main()
+// Imported, it lends its stream to the bench (lib/conformance.mjs) and runs nothing.
+if (import.meta.url === `file://${process.argv[1]}`) main()
