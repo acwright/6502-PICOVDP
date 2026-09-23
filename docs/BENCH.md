@@ -24,7 +24,7 @@ Contents
 5. [The Nano Harness](#5-the-nano-harness)
 6. [Video Capture](#6-video-capture)
 7. [Bring-Up Order](#7-bring-up-order)
-8. [What Phase 9 Proves](#8-what-phase-9-proves), and Phase 11
+8. [What Phase 9 Proves](#8-what-phase-9-proves), and Phases 11 and 12
 9. [The Schematic](#9-the-schematic)
 
 ---
@@ -346,7 +346,8 @@ The general script runner's remaining parts — wait for `/INT`, record a
 timestamp, loop — are `$0D` onward and arrive with Phase 13's timing work.
 
 **The host side** is `tools/lib/nano.mjs`, `vdpctl bus` and, from Phase 11,
-`tools/lib/conformance.mjs` behind `vdpctl conformance` and `vdpctl reset-pin`.
+`tools/lib/conformance.mjs` behind `vdpctl conformance` and `vdpctl reset-pin`,
+and from Phase 12 `tools/lib/bus-replay.mjs` behind `vdpctl replay`.
 
 ### Port conformance (Phase 11)
 
@@ -377,6 +378,32 @@ between the halves of the other's.
 asks for a `FONT` load and pulses RST before the load can land, reads `STAT0`,
 `STAT1`, `STAT7` and the collision map straight after, and later compares the
 whole card with `Video.ts` after its own reset.
+
+### Trace replay (Phase 12)
+
+`vdpctl replay` (`tools/lib/bus-replay.mjs`) is PLAN.md's bus executor: a
+fixture's trace (docs/TRACE.md) played through the Nano with no timing, its reads
+and writes in order, 120 to a SCRIPT. It starts from the trace's cold reset,
+which is `RESET` with power-on over the debug link: RST performs §15 and leaves
+VRAM as it was, where a cold start zeroes it. It compares what an untimed replay
+can:
+
+- every data read against the value the trace recorded, and status reads of
+  `STAT4` and `STAT6` likewise; `STAT5` against the version `INFO` reports, not
+  the emulator's. The rest of status is read, as the program read it, and not
+  compared. `Video.ts`, played the same operations with no ticks, says which
+  register each status read selects;
+- at each checkpoint's settle point, the next complete frame (`SNAPSHOT`),
+  taken 20 ms after the last operation so every row is latched after it,
+  against the golden index frame;
+- at the checkpoint, VRAM and the 128 registers over the debug link against the
+  golden's, and at a fixture's last checkpoint all 64 KB once more, read
+  through the bus on pair B.
+
+A `FONT` load lands at the next vertical blank (§7). The replay finds each
+load's landing line in the trace and holds the next operation back until a
+snapshot shows no load pending; it reports any data access between a `FONT`
+and its landing, which would make the fixture depend on the raster.
 
 ### The host talks through `serialport`, not `stty`
 
@@ -508,6 +535,11 @@ ports.
 17. `vdpctl reset-pin`, `vdpctl sweep`, and `vdpctl stats` for the bus's counts:
     no FIFO overruns.
 
+Phase 12 plays the oracle through the bus.
+
+18. `vdpctl replay all --timing all` — every fixture's trace through the Nano
+    at each profile, each static checkpoint against its golden.
+
 ---
 
 8. What Phase 9 Proved
@@ -548,6 +580,20 @@ All criteria passed on 2026-09-23, on this repo's firmware
 | FIFO overruns | **none** |
 
 `MDE1` is proven: every access on ports 2 and 3 went through it.
+
+### Phase 12
+
+All criteria passed on 2026-09-23 (`docs/results/phase-12.md`):
+
+| Criterion | Result |
+|---|---|
+| Every static checkpoint through the bus: frame from the settle point, VRAM and registers at the checkpoint | **18 of 18** at each profile, 54 replays exact |
+| Reads compared: `STAT4`–`STAT6` (the traces make no data reads) | every one right; all 64 KB also read back through the bus at each fixture's end, exact |
+| Accesses | 2,139,773 at each profile, every one taken once; no FIFO overrun |
+
+The harness lost one answer in the first full run, and the host's retry read a
+block twice. The replay now asks the card what it took rather than retrying
+blindly.
 
 ---
 

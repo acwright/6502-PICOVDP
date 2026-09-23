@@ -1,0 +1,94 @@
+Phase 12 negative controls, 2026-09-23, pro-debug build 71a2245, 6502-1mhz.
+
+Each ran tools/lib/bus-replay.mjs unchanged but for one alteration to the plan
+planTrace() returns, made in a scratch copy:
+
+  (a) noholds  every FONT hold removed
+  (b) corrupt  bit 0 flipped in the last data write before the first checkpoint's
+               settle point
+  (c) early    each checkpoint's frame taken at the last write before its settle
+               point, so that write is not yet played
+
+"card" and per-fixture summary lines are left out.
+
+== (a) no FONT holds: passes. The 1,020-1,832 status polls after each FONT take
+   several frames through the harness, so the load lands during them anyway.
+
+  exact   vdp-font/reset (6502-1mhz): frame from operation 53,590, raster frame 21711; VRAM and registers at operation 55,617
+  exact   vdp-font/loaded (6502-1mhz): frame from operation 166,566, raster frame 22197; VRAM and registers at operation 168,592
+  exact   vdp-font/relocated (6502-1mhz): frame from operation 229,219, raster frame 22473; VRAM and registers at operation 229,219, and VRAM read back through the bus
+CONTROL: the replay passed
+  exact   vdp-modes/text (6502-1mhz): frame from operation 60,144, raster frame 23036; VRAM and registers at operation 62,171
+  exact   vdp-modes/compact (6502-1mhz): frame from operation 169,284, raster frame 23498; VRAM and registers at operation 171,311
+  exact   vdp-modes/graphics (6502-1mhz): frame from operation 279,882, raster frame 23957; VRAM and registers at operation 281,909
+  exact   vdp-modes/full (6502-1mhz): frame from operation 391,095, raster frame 24424; VRAM and registers at operation 393,122, and VRAM read back through the bus
+CONTROL: the replay passed
+  exact   bios/ok (6502-1mhz): frame from operation 5,027, raster frame 24765; VRAM and registers at operation 5,027
+  exact   bios/screenful (6502-1mhz): frame from operation 5,555, raster frame 24791; VRAM and registers at operation 5,555
+  exact   bios/scroll (6502-1mhz): frame from operation 6,055, raster frame 24817; VRAM and registers at operation 6,055, and VRAM read back through the bus
+CONTROL: the replay passed
+
+== (b) one bit of one write: fails, in VRAM by both routes. $3013 is not on
+   screen in parallax, so the frame is exact.
+
+control: flipped bit 0 of the data write at operation 5149
+  DIFFERS vdp-layers/parallax (6502-1mhz): frame from operation 121,635, raster frame 25631; VRAM and registers at operation 123,648, and VRAM read back through the bus
+          VRAM: 1 bytes differ, the first at $3013: $01, the golden $00
+          VRAM read through the bus: 1 bytes differ, the first at $3013: $01, the golden $00
+CONTROL: the replay FAILED, as it should
+
+== (c) frames taken one write early: 11 of 18 frames differ. In vdp-layers and
+   bios the last write before the settle point changes nothing on screen.
+
+control: parallax frame taken at operation 121512, not 121635
+control: scroll-bit8-l1 frame taken at operation 286720, not 286842
+control: occluded frame taken at operation 396868, not 396991
+control: scroll-bit8-l0 frame taken at operation 507005, not 507127
+  exact   vdp-layers/parallax (6502-1mhz): frame from operation 121,512, raster frame 27434; VRAM and registers at operation 123,648
+  exact   vdp-layers/scroll-bit8-l1 (6502-1mhz): frame from operation 286,720, raster frame 28122; VRAM and registers at operation 288,854
+  exact   vdp-layers/occluded (6502-1mhz): frame from operation 396,868, raster frame 28596; VRAM and registers at operation 399,002
+  exact   vdp-layers/scroll-bit8-l0 (6502-1mhz): frame from operation 507,005, raster frame 29066; VRAM and registers at operation 509,139, and VRAM read back through the bus
+CONTROL: the replay passed
+control: text frame taken at operation 2991, not 60144
+control: compact frame taken at operation 113248, not 169284
+control: graphics frame taken at operation 222806, not 279882
+control: full frame taken at operation 333777, not 391095
+  DIFFERS vdp-modes/text (6502-1mhz): frame from operation 2,991, raster frame 29413; VRAM and registers at operation 62,171
+          index frame: 13451 pixels differ, the first at (40, 24)
+  DIFFERS vdp-modes/compact (6502-1mhz): frame from operation 113,248, raster frame 29886; VRAM and registers at operation 171,311
+          index frame: 48244 pixels differ, the first at (32, 24)
+  DIFFERS vdp-modes/graphics (6502-1mhz): frame from operation 222,806, raster frame 30343; VRAM and registers at operation 281,909
+          index frame: 60896 pixels differ, the first at (32, 0)
+  DIFFERS vdp-modes/full (6502-1mhz): frame from operation 333,777, raster frame 30803; VRAM and registers at operation 393,122, and VRAM read back through the bus
+          index frame: 76504 pixels differ, the first at (0, 0)
+CONTROL: the replay FAILED, as it should
+control: frame-60 frame taken at operation 79748, not 91598
+control: frame-180 frame taken at operation 241328, not 293665
+control: frame-300 frame taken at operation 483697, not 495546
+control: frame-600 frame taken at operation 968436, not 1000323
+  DIFFERS wizardslab/frame-60 (6502-1mhz): frame from operation 79,748, raster frame 31685; VRAM and registers at operation 93,133
+          index frame: 24 pixels differ, the first at (98, 81)
+  DIFFERS wizardslab/frame-180 (6502-1mhz): frame from operation 241,328, raster frame 32351; VRAM and registers at operation 295,200
+          index frame: 24 pixels differ, the first at (98, 97)
+  DIFFERS wizardslab/frame-300 (6502-1mhz): frame from operation 483,697, raster frame 33366; VRAM and registers at operation 497,081
+          index frame: 24 pixels differ, the first at (98, 121)
+  DIFFERS wizardslab/frame-600 (6502-1mhz): frame from operation 968,436, raster frame 35301; VRAM and registers at operation 1,002,238, and VRAM read back through the bus
+          index frame: 24 pixels differ, the first at (98, 169)
+CONTROL: the replay FAILED, as it should
+control: ok frame taken at operation 5026, not 5027
+control: screenful frame taken at operation 5554, not 5555
+control: scroll frame taken at operation 6054, not 6055
+  exact   bios/ok (6502-1mhz): frame from operation 5,026, raster frame 35768; VRAM and registers at operation 5,027
+  exact   bios/screenful (6502-1mhz): frame from operation 5,554, raster frame 35794; VRAM and registers at operation 5,555
+  exact   bios/scroll (6502-1mhz): frame from operation 6,054, raster frame 35819; VRAM and registers at operation 6,055, and VRAM read back through the bus
+CONTROL: the replay passed
+control: reset frame taken at operation 1951, not 53590
+control: loaded frame taken at operation 116243, not 166566
+control: relocated frame taken at operation 229218, not 229219
+  DIFFERS vdp-font/reset (6502-1mhz): frame from operation 1,951, raster frame 36140; VRAM and registers at operation 55,617
+          index frame: 5298 pixels differ, the first at (40, 32)
+  DIFFERS vdp-font/loaded (6502-1mhz): frame from operation 116,243, raster frame 36630; VRAM and registers at operation 168,592
+          index frame: 5298 pixels differ, the first at (40, 32)
+  DIFFERS vdp-font/relocated (6502-1mhz): frame from operation 229,218, raster frame 37106; VRAM and registers at operation 229,219, and VRAM read back through the bus
+          index frame: 5298 pixels differ, the first at (40, 32)
+CONTROL: the replay FAILED, as it should

@@ -304,10 +304,14 @@ export class Nano {
     await this.request(CMD.WRITE_BLOCK, [port & 3, ...body])
   }
 
-  /** Up to BLOCK_MAX bytes from one port. */
-  async readBlock(port, count) {
+  /**
+   * Up to BLOCK_MAX bytes from one port. `retry: false` for a caller that must
+   * know whether a block whose answer was lost was read: a data read moves the
+   * pointer, so a blind retry reads the next block instead.
+   */
+  async readBlock(port, count, { retry = true } = {}) {
     if (count < 1 || count > BLOCK_MAX) throw new NanoError(`block of ${count} bytes: the range is 1 to ${BLOCK_MAX}`)
-    return this.request(CMD.READ_BLOCK, [port & 3, count])
+    return this.request(CMD.READ_BLOCK, [port & 3, count], { retry })
   }
 
   /**
@@ -316,12 +320,12 @@ export class Nano {
    * differed and the first few, each as { index, expected, got }, and how long
    * the accesses took on the Nano's Timer 1, in nanoseconds.
    */
-  async script(pairs) {
+  async script(pairs, { retry = true } = {}) {
     const body = Buffer.from(pairs)
     if (!body.length || body.length & 1 || body.length > 2 * SCRIPT_MAX) {
       throw new NanoError(`script of ${body.length} bytes: 2 to ${2 * SCRIPT_MAX}, in pairs`)
     }
-    const out = await this.request(CMD.SCRIPT, body)
+    const out = await this.request(CMD.SCRIPT, body, { retry })
     const differed = out[0]
     const ns = out.readUInt32LE(1) * TICK_NS
     const log = []

@@ -49,6 +49,13 @@
 //   vdpctl reset-pin [--trials N] [--seed N] [--timing NAME] [--nano PATH]
 //                                        Phase 11: §15 through the RST pin, from a scrambled card with
 //                                        a FONT load pending, checked over the bus and the debug link
+//   vdpctl replay <fixture|all|trace> [checkpoint ...] [--timing NAME|all] [--out FILE.json]
+//                [--frames DIR] [--nano PATH]
+//                                        Phase 12: a trace's operations through the Nano, untimed, from a
+//                                        cold start: data reads and STAT4-STAT6 compared on the Nano, the
+//                                        frame after each settle point and VRAM and registers at each
+//                                        checkpoint compared with the goldens (tools/lib/bus-replay.mjs);
+//                                        --frames keeps any frame that differs
 //   vdpctl profile [--row N] [--iterations N] [--json]   one row's stages, interrupts off
 //   vdpctl late [--scene NAME] [--handicap FIRST,LAST,EVERY,CYCLES] [--seconds N]
 //                                        §18's late line on purpose, checked against the host
@@ -109,7 +116,7 @@ const reverseBits = (v) => {
 
 function usage(message) {
   if (message) console.error(`vdpctl: ${message}`)
-  console.error('usage: vdpctl flash|info|stats|conformance|reset-pin|snapshot|vram|inject|card|reset|reboot|fault|scene|load|scene-log|profile|scenes|late|bus|soak|reopen|irq-timing|sweep|text|grab|compare-capture ... (see the header of tools/vdpctl.mjs)')
+  console.error('usage: vdpctl flash|info|stats|conformance|reset-pin|replay|snapshot|vram|inject|card|reset|reboot|fault|scene|load|scene-log|profile|scenes|late|bus|soak|reopen|irq-timing|sweep|text|grab|compare-capture ... (see the header of tools/vdpctl.mjs)')
   process.exit(2)
 }
 
@@ -649,6 +656,37 @@ async function main() {
       }
       console.log(`${failures.length ? `${failures.length} trial(s) FAILED` : 'every pulse left the state §15 names'}`)
       process.exit(failures.length ? 1 : 0)
+    }
+    case 'replay': {
+      if (!positional.length) usage('replay <fixture|all|trace> [checkpoint ...]')
+      const { replayTraces, replayFailed } = await import('./lib/bus-replay.mjs')
+      const timings = flags.get('timing') === 'all' ? Object.keys(PROFILES) : [timingOf(flags)]
+      const nano = await Nano.open(flags.get('nano') ?? null)
+      const link = await Link.open()
+      let results
+      try {
+        results = await replayTraces({
+          nano,
+          link,
+          target: positional[0],
+          names: positional.slice(1),
+          timings,
+          out: flags.get('frames') ?? null,
+        })
+        await nano.idle()
+      } finally {
+        link.close()
+        await nano.close()
+      }
+      if (flags.get('out')) {
+        writeFileSync(String(flags.get('out')), JSON.stringify(results, null, 1) + '\n')
+        console.log(`wrote ${flags.get('out')}`)
+      }
+      const failed = replayFailed(results)
+      const exact = results.reduce((n, r) => n + r.checkpoints.filter((c) => !c.problems.length).length, 0)
+      const played = results.reduce((n, r) => n + r.checkpoints.length, 0)
+      console.log(failed ? `${played - exact} of ${played} checkpoint replays differ, or a read was wrong` : `all ${played} checkpoint replays exact through the bus, every read right`)
+      process.exit(failed ? 1 : 0)
     }
     case 'bus': {
       const name = timingOf(flags)

@@ -1,0 +1,86 @@
+  exact   bios/ok (6502-1mhz): frame from operation 5,027, raster frame 74578; VRAM and registers at operation 5,027
+  exact   bios/screenful (6502-1mhz): frame from operation 5,555, raster frame 74603; VRAM and registers at operation 5,555
+  exact   bios/scroll (6502-1mhz): frame from operation 6,055, raster frame 74628; VRAM and registers at operation 6,055, and VRAM read back through the bus
+  bios, 6502-1mhz: 6,055 operations, 1,837 of them reads; compared 0 data, 1 STAT4, 1 STAT5, 1 STAT6: 0 wrong; 1 FONT holds; 4.4 s
+    card: 4224 writes, 67373 reads, 0 stale data reads, 0 stale status reads, 0 coincident, FIFO overruns 0/0, interrupt max 345 cycles
+  exact   bios/ok (6502-2mhz): frame from operation 5,027, raster frame 74844; VRAM and registers at operation 5,027
+  exact   bios/screenful (6502-2mhz): frame from operation 5,555, raster frame 74870; VRAM and registers at operation 5,555
+  exact   bios/scroll (6502-2mhz): frame from operation 6,055, raster frame 74895; VRAM and registers at operation 6,055, and VRAM read back through the bus
+  bios, 6502-2mhz: 6,055 operations, 1,837 of them reads; compared 0 data, 1 STAT4, 1 STAT5, 1 STAT6: 0 wrong; 1 FONT holds; 4.3 s
+    card: 4224 writes, 67373 reads, 0 stale data reads, 0 stale status reads, 0 coincident, FIFO overruns 0/0, interrupt max 344 cycles
+  exact   bios/ok (fastest): frame from operation 5,027, raster frame 75101; VRAM and registers at operation 5,027
+  exact   bios/screenful (fastest): frame from operation 5,555, raster frame 75126; VRAM and registers at operation 5,555
+  exact   bios/scroll (fastest): frame from operation 6,055, raster frame 75151; VRAM and registers at operation 6,055, and VRAM read back through the bus
+  bios, fastest: 6,055 operations, 1,837 of them reads; compared 0 data, 1 STAT4, 1 STAT5, 1 STAT6: 0 wrong; 1 FONT holds; 4.1 s
+    card: 4224 writes, 67373 reads, 0 stale data reads, 0 stale status reads, 0 coincident, FIFO overruns 0/0, interrupt max 346 cycles
+  exact   wizardslab/frame-60 (6502-1mhz): frame from operation 91,598, raster frame 75727; VRAM and registers at operation 93,133
+  exact   wizardslab/frame-180 (6502-1mhz): frame from operation 293,665, raster frame 76609; VRAM and registers at operation 295,200
+  exact   wizardslab/frame-300 (6502-1mhz): frame from operation 495,546, raster frame 77488; VRAM and registers at operation 497,081
+  exact   wizardslab/frame-600 (6502-1mhz): frame from operation 1,000,323, raster frame 79640; VRAM and registers at operation 1,002,238, and VRAM read back through the bus
+  wizardslab, 6502-1mhz: 1,002,238 operations, 997,951 of them reads; compared 0 data, 1 STAT4, 1 STAT5, 1 STAT6: 0 wrong; 0 FONT holds; 74.9 s
+    card: 4293 writes, 1063487 reads, 0 stale data reads, 109 stale status reads, 0 coincident, FIFO overruns 0/0, interrupt max 272 cycles
+  exact   wizardslab/frame-60 (6502-2mhz): frame from operation 91,598, raster frame 80221; VRAM and registers at operation 93,133
+  exact   wizardslab/frame-180 (6502-2mhz): frame from operation 293,665, raster frame 81095; VRAM and registers at operation 295,200
+  exact   wizardslab/frame-300 (6502-2mhz): frame from operation 495,546, raster frame 81961; VRAM and registers at operation 497,081
+  exact   wizardslab/frame-600 (6502-2mhz): frame from operation 1,000,323, raster frame 84100; VRAM and registers at operation 1,002,238, and VRAM read back through the bus
+  wizardslab, 6502-2mhz: 1,002,238 operations, 997,951 of them reads; compared 0 data, 1 STAT4, 1 STAT5, 1 STAT6: 0 wrong; 0 FONT holds; 74.2 s
+    card: 4293 writes, 1063487 reads, 0 stale data reads, 89 stale status reads, 0 coincident, FIFO overruns 0/0, interrupt max 270 cycles
+  exact   wizardslab/frame-60 (fastest): frame from operation 91,598, raster frame 84663; VRAM and registers at operation 93,133
+  exact   wizardslab/frame-180 (fastest): frame from operation 293,665, raster frame 85526; VRAM and registers at operation 295,200
+  exact   wizardslab/frame-300 (fastest): frame from operation 495,546, raster frame 86390; VRAM and registers at operation 497,081
+  exact   wizardslab/frame-600 (fastest): frame from operation 1,000,323, raster frame 88516; VRAM and registers at operation 1,002,238, and VRAM read back through the bus
+  wizardslab, fastest: 1,002,238 operations, 997,951 of them reads; compared 0 data, 1 STAT4, 1 STAT5, 1 STAT6: 0 wrong; 0 FONT holds; 73.6 s
+    card: 4293 writes, 1063487 reads, 0 stale data reads, 108 stale status reads, 0 coincident, FIFO overruns 0/0, interrupt max 273 cycles
+  exact   vdp-modes/text (6502-1mhz): frame from operation 60,144, raster frame 88965; VRAM and registers at operation 62,171
+  exact   vdp-modes/compact (6502-1mhz): frame from operation 169,284, raster frame 89447; VRAM and registers at operation 171,311
+  exact   vdp-modes/graphics (6502-1mhz): frame from operation 279,882, raster frame 89937; VRAM and registers at operation 281,909
+  exact   vdp-modes/full (6502-1mhz): frame from operation 391,095, raster frame 90427; VRAM and registers at operation 393,122, and VRAM read back through the bus
+  vdp-modes, 6502-1mhz: 393,122 operations, 385,262 of them reads; compared 0 data, 1 STAT4, 1 STAT5, 1 STAT6: 0 wrong; 1 FONT holds; 32.0 s
+    card: 7866 writes, 450798 reads, 0 stale data reads, 37 stale status reads, 0 coincident, FIFO overruns 0/0, interrupt max 273 cycles
+  exact   vdp-modes/text (6502-2mhz): frame from operation 60,144, raster frame 90879; VRAM and registers at operation 62,171
+  exact   vdp-modes/compact (6502-2mhz): frame from operation 169,284, raster frame 91359; VRAM and registers at operation 171,311
+  exact   vdp-modes/graphics (6502-2mhz): frame from operation 279,882, raster frame 91846; VRAM and registers at operation 281,909
+  exact   vdp-modes/full (6502-2mhz): frame from operation 391,095, raster frame 92338; VRAM and registers at operation 393,122, and VRAM read back through the bus
+  vdp-modes, 6502-2mhz: 393,122 operations, 385,262 of them reads; compared 0 data, 1 STAT4, 1 STAT5, 1 STAT6: 0 wrong; 1 FONT holds; 31.7 s
+    card: 7866 writes, 450798 reads, 0 stale data reads, 22 stale status reads, 0 coincident, FIFO overruns 0/0, interrupt max 273 cycles
+  exact   vdp-modes/text (fastest): frame from operation 60,144, raster frame 92779; VRAM and registers at operation 62,171
+  exact   vdp-modes/compact (fastest): frame from operation 169,284, raster frame 93258; VRAM and registers at operation 171,311
+  exact   vdp-modes/graphics (fastest): frame from operation 279,882, raster frame 93740; VRAM and registers at operation 281,909
+  exact   vdp-modes/full (fastest): frame from operation 391,095, raster frame 94227; VRAM and registers at operation 393,122, and VRAM read back through the bus
+  vdp-modes, fastest: 393,122 operations, 385,262 of them reads; compared 0 data, 1 STAT4, 1 STAT5, 1 STAT6: 0 wrong; 1 FONT holds; 31.4 s
+    card: 7866 writes, 450798 reads, 0 stale data reads, 48 stale status reads, 0 coincident, FIFO overruns 0/0, interrupt max 274 cycles
+  exact   vdp-layers/parallax (6502-1mhz): frame from operation 121,635, raster frame 94930; VRAM and registers at operation 123,648
+  exact   vdp-layers/scroll-bit8-l1 (6502-1mhz): frame from operation 286,842, raster frame 95651; VRAM and registers at operation 288,854
+  exact   vdp-layers/occluded (6502-1mhz): frame from operation 396,991, raster frame 96140; VRAM and registers at operation 399,002
+  exact   vdp-layers/scroll-bit8-l0 (6502-1mhz): frame from operation 507,127, raster frame 96628; VRAM and registers at operation 509,139, and VRAM read back through the bus
+  vdp-layers, 6502-1mhz: 509,139 operations, 501,231 of them reads; compared 0 data, 1 STAT4, 1 STAT5, 1 STAT6: 0 wrong; 0 FONT holds; 40.1 s
+    card: 7914 writes, 566767 reads, 0 stale data reads, 67 stale status reads, 0 coincident, FIFO overruns 0/0, interrupt max 276 cycles
+  exact   vdp-layers/parallax (6502-2mhz): frame from operation 121,635, raster frame 97331; VRAM and registers at operation 123,648
+  exact   vdp-layers/scroll-bit8-l1 (6502-2mhz): frame from operation 286,842, raster frame 98044; VRAM and registers at operation 288,854
+  exact   vdp-layers/occluded (6502-2mhz): frame from operation 396,991, raster frame 98529; VRAM and registers at operation 399,002
+  exact   vdp-layers/scroll-bit8-l0 (6502-2mhz): frame from operation 507,127, raster frame 99018; VRAM and registers at operation 509,139, and VRAM read back through the bus
+  vdp-layers, 6502-2mhz: 509,139 operations, 501,231 of them reads; compared 0 data, 1 STAT4, 1 STAT5, 1 STAT6: 0 wrong; 0 FONT holds; 39.7 s
+    card: 7914 writes, 566767 reads, 0 stale data reads, 45 stale status reads, 0 coincident, FIFO overruns 0/0, interrupt max 272 cycles
+  exact   vdp-layers/parallax (fastest): frame from operation 121,635, raster frame 99708; VRAM and registers at operation 123,648
+  exact   vdp-layers/scroll-bit8-l1 (fastest): frame from operation 286,842, raster frame 100418; VRAM and registers at operation 288,854
+  exact   vdp-layers/occluded (fastest): frame from operation 396,991, raster frame 100900; VRAM and registers at operation 399,002
+  exact   vdp-layers/scroll-bit8-l0 (fastest): frame from operation 507,127, raster frame 101383; VRAM and registers at operation 509,139, and VRAM read back through the bus
+  vdp-layers, fastest: 509,139 operations, 501,231 of them reads; compared 0 data, 1 STAT4, 1 STAT5, 1 STAT6: 0 wrong; 0 FONT holds; 39.3 s
+    card: 7914 writes, 566767 reads, 0 stale data reads, 45 stale status reads, 0 coincident, FIFO overruns 0/0, interrupt max 272 cycles
+  exact   vdp-font/reset (6502-1mhz): frame from operation 53,590, raster frame 101792; VRAM and registers at operation 55,617
+  exact   vdp-font/loaded (6502-1mhz): frame from operation 166,566, raster frame 102303; VRAM and registers at operation 168,592
+  exact   vdp-font/relocated (6502-1mhz): frame from operation 229,219, raster frame 102598; VRAM and registers at operation 229,219, and VRAM read back through the bus
+  vdp-font, 6502-1mhz: 229,219 operations, 219,305 of them reads; compared 0 data, 0 STAT4, 0 STAT5, 0 STAT6: 0 wrong; 2 FONT holds; 20.3 s
+    card: 9920 writes, 284841 reads, 0 stale data reads, 20 stale status reads, 0 coincident, FIFO overruns 0/0, interrupt max 273 cycles
+  exact   vdp-font/reset (6502-2mhz): frame from operation 53,590, raster frame 103007; VRAM and registers at operation 55,617
+  exact   vdp-font/loaded (6502-2mhz): frame from operation 166,566, raster frame 103511; VRAM and registers at operation 168,592
+  exact   vdp-font/relocated (6502-2mhz): frame from operation 229,219, raster frame 103805; VRAM and registers at operation 229,219, and VRAM read back through the bus
+  vdp-font, 6502-2mhz: 229,219 operations, 219,305 of them reads; compared 0 data, 0 STAT4, 0 STAT5, 0 STAT6: 0 wrong; 2 FONT holds; 20.0 s
+    card: 9920 writes, 284841 reads, 0 stale data reads, 11 stale status reads, 0 coincident, FIFO overruns 0/0, interrupt max 272 cycles
+  exact   vdp-font/reset (fastest): frame from operation 53,590, raster frame 104202; VRAM and registers at operation 55,617
+  exact   vdp-font/loaded (fastest): frame from operation 166,566, raster frame 104704; VRAM and registers at operation 168,592
+  exact   vdp-font/relocated (fastest): frame from operation 229,219, raster frame 104997; VRAM and registers at operation 229,219, and VRAM read back through the bus
+  vdp-font, fastest: 229,219 operations, 219,305 of them reads; compared 0 data, 0 STAT4, 0 STAT5, 0 STAT6: 0 wrong; 2 FONT holds; 19.7 s
+    card: 9920 writes, 284841 reads, 0 stale data reads, 25 stale status reads, 0 coincident, FIFO overruns 0/0, interrupt max 273 cycles
+wrote docs/results/phase-12/replay.json
+all 54 checkpoint replays exact through the bus, every read right

@@ -1,0 +1,16 @@
+The lost-answer recovery, exercised on purpose, 2026-09-23, pro-debug 71a2245.
+A scratch runner wrapped Nano.request to drop the answer to SCRIPT 20 after
+the Nano ran it, to fail SCRIPT 35 without sending it, and to drop the answer
+to READ_BLOCK 100 after it was read. `replay bios` at 6502-1mhz:
+
+  bios: the Nano's answer to operations 2248-2367 was lost; the card took all 120, 0 of them compared reads left unchecked
+  exact   bios/ok (6502-1mhz): frame from operation 5,027, raster frame 73921; VRAM and registers at operation 5,027
+  exact   bios/screenful (6502-1mhz): frame from operation 5,555, raster frame 73947; VRAM and registers at operation 5,555
+  exact   bios/scroll (6502-1mhz): frame from operation 6,055, raster frame 73972; VRAM and registers at operation 6,055, and VRAM read back through the bus
+  bios, 6502-1mhz: 6,055 operations, 1,837 of them reads; compared 0 data, 1 STAT4, 1 STAT5, 1 STAT6: 0 wrong; 1 FONT holds; 4.8 s
+    card: 4230 writes, 67613 reads, 0 stale data reads, 1 stale status reads, 0 coincident, FIFO overruns 0/0, interrupt max 345 cycles
+    the Nano lost 3 answer(s), each recovered without repeating an access: [{"op":2248,"count":120,"ran":true,"unverified":0},{"op":4048,"count":120,"ran":false,"unverified":0},{"readback":1}]
+
+The 240 extra reads and 6 extra writes are the readback block read again from
+its own address, after re-pointing; the program's own accesses arrived once
+each, which each checkpoint's count check confirms.

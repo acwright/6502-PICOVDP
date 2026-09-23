@@ -1,0 +1,1469 @@
+[
+ {
+  "fixture": "bios",
+  "timing": "6502-1mhz",
+  "operations": 6055,
+  "reads": 1837,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "ok",
+    "frame": 59,
+    "settle": 5027,
+    "at": 5027,
+    "problems": [],
+    "rasterFrame": 74578,
+    "pixelsDiffering": 0,
+    "accessesTaken": 5027,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 128
+    }
+   },
+   {
+    "name": "screenful",
+    "frame": 278,
+    "settle": 5555,
+    "at": 5555,
+    "problems": [],
+    "rasterFrame": 74603,
+    "pixelsDiffering": 0,
+    "accessesTaken": 5555,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 128
+    }
+   },
+   {
+    "name": "scroll",
+    "frame": 479,
+    "settle": 6055,
+    "at": 6055,
+    "problems": [],
+    "rasterFrame": 74628,
+    "pixelsDiffering": 0,
+    "accessesTaken": 6055,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 128
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [
+   {
+    "at": 1888,
+    "font": 0,
+    "written": 53,
+    "landed": true,
+    "rasterFrame": 74556
+   }
+  ],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 4.403,
+  "bus": {
+   "writes": 4224,
+   "reads": 67373,
+   "staleData": 0,
+   "staleStatus": 0,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 0,
+   "isrMax": 345,
+   "intLevel": 0
+  }
+ },
+ {
+  "fixture": "bios",
+  "timing": "6502-2mhz",
+  "operations": 6055,
+  "reads": 1837,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "ok",
+    "frame": 59,
+    "settle": 5027,
+    "at": 5027,
+    "problems": [],
+    "rasterFrame": 74844,
+    "pixelsDiffering": 0,
+    "accessesTaken": 5027,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 128
+    }
+   },
+   {
+    "name": "screenful",
+    "frame": 278,
+    "settle": 5555,
+    "at": 5555,
+    "problems": [],
+    "rasterFrame": 74870,
+    "pixelsDiffering": 0,
+    "accessesTaken": 5555,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 128
+    }
+   },
+   {
+    "name": "scroll",
+    "frame": 479,
+    "settle": 6055,
+    "at": 6055,
+    "problems": [],
+    "rasterFrame": 74895,
+    "pixelsDiffering": 0,
+    "accessesTaken": 6055,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 128
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [
+   {
+    "at": 1888,
+    "font": 0,
+    "written": 53,
+    "landed": true,
+    "rasterFrame": 74822
+   }
+  ],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 4.27,
+  "bus": {
+   "writes": 4224,
+   "reads": 67373,
+   "staleData": 0,
+   "staleStatus": 0,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 0,
+   "isrMax": 344,
+   "intLevel": 0
+  }
+ },
+ {
+  "fixture": "bios",
+  "timing": "fastest",
+  "operations": 6055,
+  "reads": 1837,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "ok",
+    "frame": 59,
+    "settle": 5027,
+    "at": 5027,
+    "problems": [],
+    "rasterFrame": 75101,
+    "pixelsDiffering": 0,
+    "accessesTaken": 5027,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 128
+    }
+   },
+   {
+    "name": "screenful",
+    "frame": 278,
+    "settle": 5555,
+    "at": 5555,
+    "problems": [],
+    "rasterFrame": 75126,
+    "pixelsDiffering": 0,
+    "accessesTaken": 5555,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 128
+    }
+   },
+   {
+    "name": "scroll",
+    "frame": 479,
+    "settle": 6055,
+    "at": 6055,
+    "problems": [],
+    "rasterFrame": 75151,
+    "pixelsDiffering": 0,
+    "accessesTaken": 6055,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 128
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [
+   {
+    "at": 1888,
+    "font": 0,
+    "written": 53,
+    "landed": true,
+    "rasterFrame": 75079
+   }
+  ],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 4.109,
+  "bus": {
+   "writes": 4224,
+   "reads": 67373,
+   "staleData": 0,
+   "staleStatus": 0,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 0,
+   "isrMax": 346,
+   "intLevel": 0
+  }
+ },
+ {
+  "fixture": "wizardslab",
+  "timing": "6502-1mhz",
+  "operations": 1002238,
+  "reads": 997951,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "frame-60",
+    "frame": 59,
+    "settle": 91598,
+    "at": 93133,
+    "problems": [],
+    "rasterFrame": 75727,
+    "pixelsDiffering": 0,
+    "accessesTaken": 93133,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "frame-180",
+    "frame": 179,
+    "settle": 293665,
+    "at": 295200,
+    "problems": [],
+    "rasterFrame": 76609,
+    "pixelsDiffering": 0,
+    "accessesTaken": 295200,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "frame-300",
+    "frame": 299,
+    "settle": 495546,
+    "at": 497081,
+    "problems": [],
+    "rasterFrame": 77488,
+    "pixelsDiffering": 0,
+    "accessesTaken": 497081,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "frame-600",
+    "frame": 599,
+    "settle": 1000323,
+    "at": 1002238,
+    "problems": [],
+    "rasterFrame": 79640,
+    "pixelsDiffering": 0,
+    "accessesTaken": 1002238,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 74.915,
+  "bus": {
+   "writes": 4293,
+   "reads": 1063487,
+   "staleData": 0,
+   "staleStatus": 109,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 0,
+   "isrMax": 272,
+   "intLevel": 1
+  }
+ },
+ {
+  "fixture": "wizardslab",
+  "timing": "6502-2mhz",
+  "operations": 1002238,
+  "reads": 997951,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "frame-60",
+    "frame": 59,
+    "settle": 91598,
+    "at": 93133,
+    "problems": [],
+    "rasterFrame": 80221,
+    "pixelsDiffering": 0,
+    "accessesTaken": 93133,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "frame-180",
+    "frame": 179,
+    "settle": 293665,
+    "at": 295200,
+    "problems": [],
+    "rasterFrame": 81095,
+    "pixelsDiffering": 0,
+    "accessesTaken": 295200,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "frame-300",
+    "frame": 299,
+    "settle": 495546,
+    "at": 497081,
+    "problems": [],
+    "rasterFrame": 81961,
+    "pixelsDiffering": 0,
+    "accessesTaken": 497081,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "frame-600",
+    "frame": 599,
+    "settle": 1000323,
+    "at": 1002238,
+    "problems": [],
+    "rasterFrame": 84100,
+    "pixelsDiffering": 0,
+    "accessesTaken": 1002238,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 74.186,
+  "bus": {
+   "writes": 4293,
+   "reads": 1063487,
+   "staleData": 0,
+   "staleStatus": 89,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 0,
+   "isrMax": 270,
+   "intLevel": 1
+  }
+ },
+ {
+  "fixture": "wizardslab",
+  "timing": "fastest",
+  "operations": 1002238,
+  "reads": 997951,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "frame-60",
+    "frame": 59,
+    "settle": 91598,
+    "at": 93133,
+    "problems": [],
+    "rasterFrame": 84663,
+    "pixelsDiffering": 0,
+    "accessesTaken": 93133,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "frame-180",
+    "frame": 179,
+    "settle": 293665,
+    "at": 295200,
+    "problems": [],
+    "rasterFrame": 85526,
+    "pixelsDiffering": 0,
+    "accessesTaken": 295200,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "frame-300",
+    "frame": 299,
+    "settle": 495546,
+    "at": 497081,
+    "problems": [],
+    "rasterFrame": 86390,
+    "pixelsDiffering": 0,
+    "accessesTaken": 497081,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "frame-600",
+    "frame": 599,
+    "settle": 1000323,
+    "at": 1002238,
+    "problems": [],
+    "rasterFrame": 88516,
+    "pixelsDiffering": 0,
+    "accessesTaken": 1002238,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 73.551,
+  "bus": {
+   "writes": 4293,
+   "reads": 1063487,
+   "staleData": 0,
+   "staleStatus": 108,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 0,
+   "isrMax": 273,
+   "intLevel": 1
+  }
+ },
+ {
+  "fixture": "vdp-modes",
+  "timing": "6502-1mhz",
+  "operations": 393122,
+  "reads": 385262,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "text",
+    "frame": 35,
+    "settle": 60144,
+    "at": 62171,
+    "problems": [],
+    "rasterFrame": 88965,
+    "pixelsDiffering": 0,
+    "accessesTaken": 62171,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "compact",
+    "frame": 98,
+    "settle": 169284,
+    "at": 171311,
+    "problems": [],
+    "rasterFrame": 89447,
+    "pixelsDiffering": 0,
+    "accessesTaken": 171311,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "graphics",
+    "frame": 162,
+    "settle": 279882,
+    "at": 281909,
+    "problems": [],
+    "rasterFrame": 89937,
+    "pixelsDiffering": 0,
+    "accessesTaken": 281909,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "full",
+    "frame": 226,
+    "settle": 391095,
+    "at": 393122,
+    "problems": [],
+    "rasterFrame": 90427,
+    "pixelsDiffering": 0,
+    "accessesTaken": 393122,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [
+   {
+    "at": 1057,
+    "font": 0,
+    "written": 36,
+    "landed": true,
+    "rasterFrame": 88706
+   }
+  ],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 31.992,
+  "bus": {
+   "writes": 7866,
+   "reads": 450798,
+   "staleData": 0,
+   "staleStatus": 37,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 0,
+   "isrMax": 273,
+   "intLevel": 0
+  }
+ },
+ {
+  "fixture": "vdp-modes",
+  "timing": "6502-2mhz",
+  "operations": 393122,
+  "reads": 385262,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "text",
+    "frame": 35,
+    "settle": 60144,
+    "at": 62171,
+    "problems": [],
+    "rasterFrame": 90879,
+    "pixelsDiffering": 0,
+    "accessesTaken": 62171,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "compact",
+    "frame": 98,
+    "settle": 169284,
+    "at": 171311,
+    "problems": [],
+    "rasterFrame": 91359,
+    "pixelsDiffering": 0,
+    "accessesTaken": 171311,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "graphics",
+    "frame": 162,
+    "settle": 279882,
+    "at": 281909,
+    "problems": [],
+    "rasterFrame": 91846,
+    "pixelsDiffering": 0,
+    "accessesTaken": 281909,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "full",
+    "frame": 226,
+    "settle": 391095,
+    "at": 393122,
+    "problems": [],
+    "rasterFrame": 92338,
+    "pixelsDiffering": 0,
+    "accessesTaken": 393122,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [
+   {
+    "at": 1057,
+    "font": 0,
+    "written": 36,
+    "landed": true,
+    "rasterFrame": 90624
+   }
+  ],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 31.673,
+  "bus": {
+   "writes": 7866,
+   "reads": 450798,
+   "staleData": 0,
+   "staleStatus": 22,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 0,
+   "isrMax": 273,
+   "intLevel": 0
+  }
+ },
+ {
+  "fixture": "vdp-modes",
+  "timing": "fastest",
+  "operations": 393122,
+  "reads": 385262,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "text",
+    "frame": 35,
+    "settle": 60144,
+    "at": 62171,
+    "problems": [],
+    "rasterFrame": 92779,
+    "pixelsDiffering": 0,
+    "accessesTaken": 62171,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "compact",
+    "frame": 98,
+    "settle": 169284,
+    "at": 171311,
+    "problems": [],
+    "rasterFrame": 93258,
+    "pixelsDiffering": 0,
+    "accessesTaken": 171311,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "graphics",
+    "frame": 162,
+    "settle": 279882,
+    "at": 281909,
+    "problems": [],
+    "rasterFrame": 93740,
+    "pixelsDiffering": 0,
+    "accessesTaken": 281909,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "full",
+    "frame": 226,
+    "settle": 391095,
+    "at": 393122,
+    "problems": [],
+    "rasterFrame": 94227,
+    "pixelsDiffering": 0,
+    "accessesTaken": 393122,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [
+   {
+    "at": 1057,
+    "font": 0,
+    "written": 36,
+    "landed": true,
+    "rasterFrame": 92523
+   }
+  ],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 31.389,
+  "bus": {
+   "writes": 7866,
+   "reads": 450798,
+   "staleData": 0,
+   "staleStatus": 48,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 0,
+   "isrMax": 274,
+   "intLevel": 0
+  }
+ },
+ {
+  "fixture": "vdp-layers",
+  "timing": "6502-1mhz",
+  "operations": 509139,
+  "reads": 501231,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "parallax",
+    "frame": 89,
+    "settle": 121635,
+    "at": 123648,
+    "problems": [],
+    "rasterFrame": 94930,
+    "pixelsDiffering": 0,
+    "accessesTaken": 123648,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "scroll-bit8-l1",
+    "frame": 179,
+    "settle": 286842,
+    "at": 288854,
+    "problems": [],
+    "rasterFrame": 95651,
+    "pixelsDiffering": 0,
+    "accessesTaken": 288854,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "occluded",
+    "frame": 239,
+    "settle": 396991,
+    "at": 399002,
+    "problems": [],
+    "rasterFrame": 96140,
+    "pixelsDiffering": 0,
+    "accessesTaken": 399002,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "scroll-bit8-l0",
+    "frame": 299,
+    "settle": 507127,
+    "at": 509139,
+    "problems": [],
+    "rasterFrame": 96628,
+    "pixelsDiffering": 0,
+    "accessesTaken": 509139,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 40.148,
+  "bus": {
+   "writes": 7914,
+   "reads": 566767,
+   "staleData": 0,
+   "staleStatus": 67,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 0,
+   "isrMax": 276,
+   "intLevel": 0
+  }
+ },
+ {
+  "fixture": "vdp-layers",
+  "timing": "6502-2mhz",
+  "operations": 509139,
+  "reads": 501231,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "parallax",
+    "frame": 89,
+    "settle": 121635,
+    "at": 123648,
+    "problems": [],
+    "rasterFrame": 97331,
+    "pixelsDiffering": 0,
+    "accessesTaken": 123648,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "scroll-bit8-l1",
+    "frame": 179,
+    "settle": 286842,
+    "at": 288854,
+    "problems": [],
+    "rasterFrame": 98044,
+    "pixelsDiffering": 0,
+    "accessesTaken": 288854,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "occluded",
+    "frame": 239,
+    "settle": 396991,
+    "at": 399002,
+    "problems": [],
+    "rasterFrame": 98529,
+    "pixelsDiffering": 0,
+    "accessesTaken": 399002,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "scroll-bit8-l0",
+    "frame": 299,
+    "settle": 507127,
+    "at": 509139,
+    "problems": [],
+    "rasterFrame": 99018,
+    "pixelsDiffering": 0,
+    "accessesTaken": 509139,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 39.678,
+  "bus": {
+   "writes": 7914,
+   "reads": 566767,
+   "staleData": 0,
+   "staleStatus": 45,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 0,
+   "isrMax": 272,
+   "intLevel": 0
+  }
+ },
+ {
+  "fixture": "vdp-layers",
+  "timing": "fastest",
+  "operations": 509139,
+  "reads": 501231,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "parallax",
+    "frame": 89,
+    "settle": 121635,
+    "at": 123648,
+    "problems": [],
+    "rasterFrame": 99708,
+    "pixelsDiffering": 0,
+    "accessesTaken": 123648,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "scroll-bit8-l1",
+    "frame": 179,
+    "settle": 286842,
+    "at": 288854,
+    "problems": [],
+    "rasterFrame": 100418,
+    "pixelsDiffering": 0,
+    "accessesTaken": 288854,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "occluded",
+    "frame": 239,
+    "settle": 396991,
+    "at": 399002,
+    "problems": [],
+    "rasterFrame": 100900,
+    "pixelsDiffering": 0,
+    "accessesTaken": 399002,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "scroll-bit8-l0",
+    "frame": 299,
+    "settle": 507127,
+    "at": 509139,
+    "problems": [],
+    "rasterFrame": 101383,
+    "pixelsDiffering": 0,
+    "accessesTaken": 509139,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 39.313,
+  "bus": {
+   "writes": 7914,
+   "reads": 566767,
+   "staleData": 0,
+   "staleStatus": 45,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 0,
+   "isrMax": 272,
+   "intLevel": 0
+  }
+ },
+ {
+  "fixture": "vdp-font",
+  "timing": "6502-1mhz",
+  "operations": 229219,
+  "reads": 219305,
+  "compared": {
+   "data": 0,
+   "stat4": 0,
+   "stat5": 0,
+   "stat6": 0
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "reset",
+    "frame": 32,
+    "settle": 53590,
+    "at": 55617,
+    "problems": [],
+    "rasterFrame": 101792,
+    "pixelsDiffering": 0,
+    "accessesTaken": 55617,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "loaded",
+    "frame": 96,
+    "settle": 166566,
+    "at": 168592,
+    "problems": [],
+    "rasterFrame": 102303,
+    "pixelsDiffering": 0,
+    "accessesTaken": 168592,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "relocated",
+    "frame": 160,
+    "settle": 229219,
+    "at": 229219,
+    "problems": [],
+    "rasterFrame": 102598,
+    "pixelsDiffering": 0,
+    "accessesTaken": 229219,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 128
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [
+   {
+    "at": 114317,
+    "font": 0,
+    "written": 112681,
+    "landed": true,
+    "rasterFrame": 102072
+   },
+   {
+    "at": 227292,
+    "font": 0,
+    "written": 225659,
+    "landed": true,
+    "rasterFrame": 102581
+   }
+  ],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 20.31,
+  "bus": {
+   "writes": 9920,
+   "reads": 284841,
+   "staleData": 0,
+   "staleStatus": 20,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 0,
+   "isrMax": 273,
+   "intLevel": 0
+  }
+ },
+ {
+  "fixture": "vdp-font",
+  "timing": "6502-2mhz",
+  "operations": 229219,
+  "reads": 219305,
+  "compared": {
+   "data": 0,
+   "stat4": 0,
+   "stat5": 0,
+   "stat6": 0
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "reset",
+    "frame": 32,
+    "settle": 53590,
+    "at": 55617,
+    "problems": [],
+    "rasterFrame": 103007,
+    "pixelsDiffering": 0,
+    "accessesTaken": 55617,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "loaded",
+    "frame": 96,
+    "settle": 166566,
+    "at": 168592,
+    "problems": [],
+    "rasterFrame": 103511,
+    "pixelsDiffering": 0,
+    "accessesTaken": 168592,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "relocated",
+    "frame": 160,
+    "settle": 229219,
+    "at": 229219,
+    "problems": [],
+    "rasterFrame": 103805,
+    "pixelsDiffering": 0,
+    "accessesTaken": 229219,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 128
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [
+   {
+    "at": 114317,
+    "font": 0,
+    "written": 112681,
+    "landed": true,
+    "rasterFrame": 103284
+   },
+   {
+    "at": 227292,
+    "font": 0,
+    "written": 225659,
+    "landed": true,
+    "rasterFrame": 103788
+   }
+  ],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 19.957,
+  "bus": {
+   "writes": 9920,
+   "reads": 284841,
+   "staleData": 0,
+   "staleStatus": 11,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 0,
+   "isrMax": 272,
+   "intLevel": 0
+  }
+ },
+ {
+  "fixture": "vdp-font",
+  "timing": "fastest",
+  "operations": 229219,
+  "reads": 219305,
+  "compared": {
+   "data": 0,
+   "stat4": 0,
+   "stat5": 0,
+   "stat6": 0
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "reset",
+    "frame": 32,
+    "settle": 53590,
+    "at": 55617,
+    "problems": [],
+    "rasterFrame": 104202,
+    "pixelsDiffering": 0,
+    "accessesTaken": 55617,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "loaded",
+    "frame": 96,
+    "settle": 166566,
+    "at": 168592,
+    "problems": [],
+    "rasterFrame": 104704,
+    "pixelsDiffering": 0,
+    "accessesTaken": 168592,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 0
+    }
+   },
+   {
+    "name": "relocated",
+    "frame": 160,
+    "settle": 229219,
+    "at": 229219,
+    "problems": [],
+    "rasterFrame": 104997,
+    "pixelsDiffering": 0,
+    "accessesTaken": 229219,
+    "vramDiffering": 0,
+    "registersDiffering": 0,
+    "stat0": {
+     "card": 128,
+     "golden": 128
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [
+   {
+    "at": 114317,
+    "font": 0,
+    "written": 112681,
+    "landed": true,
+    "rasterFrame": 104477
+   },
+   {
+    "at": 227292,
+    "font": 0,
+    "written": 225659,
+    "landed": true,
+    "rasterFrame": 104980
+   }
+  ],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 19.724,
+  "bus": {
+   "writes": 9920,
+   "reads": 284841,
+   "staleData": 0,
+   "staleStatus": 25,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 0,
+   "isrMax": 273,
+   "intLevel": 0
+  }
+ }
+]

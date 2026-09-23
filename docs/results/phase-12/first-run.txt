@@ -1,0 +1,21 @@
+Phase 12's first full run, 2026-09-23, pro-debug build 71a2245:
+`vdpctl replay all --timing all`, before lost answers were recovered.
+53 of 54 checkpoint replays exact; the one that differed, and its fixture's
+counts at each profile:
+
+  DIFFERS bios/scroll (6502-1mhz): frame from operation 6,055, raster frame 37997; VRAM and registers at operation 6,055, and VRAM read back through the bus
+          VRAM read through the bus: 938 bytes differ, the first at $fb14: $02, the golden $00
+  bios, 6502-1mhz: 6,055 operations, 1,837 of them reads; compared 0 data, 1 STAT4, 1 STAT5, 1 STAT6: 0 wrong; 1 FONT holds; 8.4 s
+    card: 4224 writes, 67613 reads, 0 stale data reads, 0 stale status reads, 0 coincident, FIFO overruns 0/0, interrupt max 346 cycles
+  bios, 6502-2mhz: 6,055 operations, 1,837 of them reads; compared 0 data, 1 STAT4, 1 STAT5, 1 STAT6: 0 wrong; 1 FONT holds; 4.1 s
+    card: 4224 writes, 67373 reads, 0 stale data reads, 0 stale status reads, 0 coincident, FIFO overruns 0/0, interrupt max 345 cycles
+  bios, fastest: 6,055 operations, 1,837 of them reads; compared 0 data, 1 STAT4, 1 STAT5, 1 STAT6: 0 wrong; 1 FONT holds; 3.9 s
+    card: 4224 writes, 67373 reads, 0 stale data reads, 0 stale status reads, 0 coincident, FIFO overruns 0/0, interrupt max 345 cycles
+1 of 54 checkpoint replays differ, or a read was wrong
+
+VRAM over the debug link was exact at the same checkpoint. The card took
+67,613 reads where the other profiles took 67,373: 1,837 of the program's,
+65,536 of the readback, and 240 more -- one READ_BLOCK read twice. The run was
+4 s longer than the others, Nano.request's timeout: an answer was lost, and
+request() retried the block, which read the next 240 bytes and left every
+byte after it 240 places late.

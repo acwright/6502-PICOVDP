@@ -18,7 +18,12 @@ package).
   and `vdpctl`.
 - `docs/results/` — what each phase measured and checked.
 
-Status: Phase 11 (the bus) done. All four ports work through the PRO's pins,
+Status: Phase 12 (traces through the bus) done. Every golden checkpoint the
+emulator holds, all eighteen, reproduces exactly with its fixture's trace
+played through the PRO's pins by the Nano, untimed, at each of three timing
+profiles: each index frame from its settle point, and VRAM and registers at the
+checkpoint. See `docs/results/phase-12.md`. Phase 11 (the bus) before it: all
+four ports work through the PRO's pins,
 driven by an Arduino Nano: 10⁷ random accesses at each of three timing profiles
 with no read wrong against the emulator's `Video.ts`, back-to-back reads 4 µs
 apart always right, RST performing §15, and no FIFO overrun. See
@@ -186,6 +191,14 @@ node tools/card.mjs --check                        # the cards still replay to t
 
 ```sh
 cd bench/nano && pio run              # pio run -t upload to flash
+```
+
+With the Nano wired to the PRO (`docs/BENCH.md`), and the board on `pro-debug`:
+
+```sh
+node tools/vdpctl.mjs bus                          # the wiring check
+node tools/vdpctl.mjs conformance --timing all     # all four ports, against Video.ts
+node tools/vdpctl.mjs replay all --timing all      # every golden checkpoint through the pins
 ```
 
 Licence

@@ -12,7 +12,7 @@ PRO running this firmware; every golden checkpoint the emulator holds reproduces
 byte for byte on the PRO; and the per-line budget, interrupt timing and status
 freshness are measured on the PRO and written back into SPEC.md.
 
-**Status:** Phases 0–11 done ([results](docs/results/)). Phase 1 measured
+**Status:** Phases 0–12 done ([results](docs/results/)). Phase 1 measured
 the line at 2.5–4× §18's estimates, and settled SPEC.md draft 0.4 from it: the
 sprites are built on core 0 (section 3), the clock is 352 MHz, `SPRLIMIT` resets
 to 16, and a late line is specified. Phase 2 exported the oracle: the fixtures'
@@ -54,7 +54,13 @@ profiles — every command form, both pairs — with no read wrong against
 `Video.ts` and the whole card exact at every check; reads 4 µs apart back to
 back always right; RST leaving §15's state 50 times in 50; no FIFO overrun.
 Reads 2 µs apart are stale about once in 170, behind core 1's latch interrupt;
-the AC6502's 2 MHz bus is to work, and fixing that is now a goal of Phase 13. **Phase 12, the traces through the bus, is next.**
+the AC6502's 2 MHz bus is to work, and fixing that is now a goal of Phase 13.
+Phase 12 played the oracle through the pins: every fixture's trace, untimed,
+through the Nano at each of its three profiles, and all eighteen checkpoints
+reproduce exactly — each index frame from its settle point, VRAM and registers
+at the checkpoint, and VRAM read back through the bus — with every compared
+read right and every access the Nano made taken once. **Phase 13, raster timing,
+interrupts and load, is next.**
 
 ---
 
