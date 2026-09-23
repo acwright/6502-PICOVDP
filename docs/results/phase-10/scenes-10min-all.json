@@ -1,0 +1,1622 @@
+[
+ {
+  "name": "graphics-1bpp-16",
+  "seconds": 16.752,
+  "stats": {
+   "uptimeUs": 268627227,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 240989,
+   "linesTaken": 263077,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 14295,
+    "p999": 14207,
+    "mean": 6797
+   },
+   "build": {
+    "max": 11747,
+    "p999": 0,
+    "mean": 4806
+   },
+   "catchUpMax": 8295,
+   "halfMax": 9506,
+   "expandMax": 1287,
+   "waitMax": 1181,
+   "publishMax": 831,
+   "core0HalfMax": 10336,
+   "splitMean": 133,
+   "splitRows": 240989,
+   "latchIsrMax": 4205,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "graphics-1bpp-16-det",
+  "seconds": 16.764,
+  "stats": {
+   "uptimeUs": 286895019,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241145,
+   "linesTaken": 263255,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 16117,
+    "p999": 15999,
+    "mean": 6940
+   },
+   "build": {
+    "max": 13578,
+    "p999": 0,
+    "mean": 4950
+   },
+   "catchUpMax": 8294,
+   "halfMax": 11256,
+   "expandMax": 1294,
+   "waitMax": 1449,
+   "publishMax": 826,
+   "core0HalfMax": 12148,
+   "splitMean": 135,
+   "splitRows": 241145,
+   "latchIsrMax": 4202,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "graphics-1bpp-32",
+  "seconds": 16.758,
+  "stats": {
+   "uptimeUs": 305157212,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241048,
+   "linesTaken": 263158,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 15902,
+    "p999": 15487,
+    "mean": 7349
+   },
+   "build": {
+    "max": 13413,
+    "p999": 0,
+    "mean": 5321
+   },
+   "catchUpMax": 8299,
+   "halfMax": 10579,
+   "expandMax": 1276,
+   "waitMax": 1525,
+   "publishMax": 823,
+   "core0HalfMax": 11930,
+   "splitMean": 128,
+   "splitRows": 241048,
+   "latchIsrMax": 4203,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "graphics-1bpp-32-det",
+  "seconds": 16.839,
+  "stats": {
+   "uptimeUs": 323500883,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 242244,
+   "linesTaken": 264442,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 17774,
+    "p999": 17663,
+    "mean": 7645
+   },
+   "build": {
+    "max": 15259,
+    "p999": 0,
+    "mean": 5617
+   },
+   "catchUpMax": 8297,
+   "halfMax": 12299,
+   "expandMax": 1263,
+   "waitMax": 1643,
+   "publishMax": 826,
+   "core0HalfMax": 13778,
+   "splitMean": 131,
+   "splitRows": 242244,
+   "latchIsrMax": 4202,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "graphics-2bpp-16",
+  "seconds": 16.816,
+  "stats": {
+   "uptimeUs": 341821996,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241898,
+   "linesTaken": 264074,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 15999,
+    "p999": 15871,
+    "mean": 8192
+   },
+   "build": {
+    "max": 13479,
+    "p999": 0,
+    "mean": 6202
+   },
+   "catchUpMax": 8293,
+   "halfMax": 11181,
+   "expandMax": 1278,
+   "waitMax": 1391,
+   "publishMax": 806,
+   "core0HalfMax": 12008,
+   "splitMean": 127,
+   "splitRows": 241898,
+   "latchIsrMax": 4202,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "graphics-2bpp-16-det",
+  "seconds": 16.828,
+  "stats": {
+   "uptimeUs": 360154930,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 242070,
+   "linesTaken": 264257,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 17901,
+    "p999": 17791,
+    "mean": 8319
+   },
+   "build": {
+    "max": 15357,
+    "p999": 0,
+    "mean": 6329
+   },
+   "catchUpMax": 8293,
+   "halfMax": 13000,
+   "expandMax": 1260,
+   "waitMax": 1693,
+   "publishMax": 807,
+   "core0HalfMax": 13919,
+   "splitMean": 127,
+   "splitRows": 242070,
+   "latchIsrMax": 4203,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "graphics-2bpp-32",
+  "seconds": 16.829,
+  "stats": {
+   "uptimeUs": 378490010,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 242108,
+   "linesTaken": 264306,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 17729,
+    "p999": 17663,
+    "mean": 8888
+   },
+   "build": {
+    "max": 15162,
+    "p999": 0,
+    "mean": 6861
+   },
+   "catchUpMax": 8293,
+   "halfMax": 12310,
+   "expandMax": 1254,
+   "waitMax": 1712,
+   "publishMax": 805,
+   "core0HalfMax": 13721,
+   "splitMean": 128,
+   "splitRows": 242108,
+   "latchIsrMax": 4203,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "graphics-2bpp-32-det",
+  "seconds": 16.813,
+  "stats": {
+   "uptimeUs": 396806845,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241835,
+   "linesTaken": 264011,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 19597,
+    "p999": 19583,
+    "mean": 9143
+   },
+   "build": {
+    "max": 17048,
+    "p999": 0,
+    "mean": 7115
+   },
+   "catchUpMax": 8280,
+   "halfMax": 14110,
+   "expandMax": 1249,
+   "waitMax": 1826,
+   "publishMax": 803,
+   "core0HalfMax": 15631,
+   "splitMean": 128,
+   "splitRows": 241835,
+   "latchIsrMax": 4203,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "graphics-4bpp-16",
+  "seconds": 16.798,
+  "stats": {
+   "uptimeUs": 415108562,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241629,
+   "linesTaken": 263783,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 15959,
+    "p999": 15871,
+    "mean": 8095
+   },
+   "build": {
+    "max": 13416,
+    "p999": 0,
+    "mean": 6104
+   },
+   "catchUpMax": 8293,
+   "halfMax": 11162,
+   "expandMax": 1264,
+   "waitMax": 1393,
+   "publishMax": 817,
+   "core0HalfMax": 11971,
+   "splitMean": 127,
+   "splitRows": 241629,
+   "latchIsrMax": 4205,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "graphics-4bpp-16-det",
+  "seconds": 16.784,
+  "stats": {
+   "uptimeUs": 433395819,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241437,
+   "linesTaken": 263569,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 17871,
+    "p999": 17791,
+    "mean": 8221
+   },
+   "build": {
+    "max": 15347,
+    "p999": 0,
+    "mean": 6230
+   },
+   "catchUpMax": 8299,
+   "halfMax": 12933,
+   "expandMax": 1270,
+   "waitMax": 1682,
+   "publishMax": 832,
+   "core0HalfMax": 13908,
+   "splitMean": 127,
+   "splitRows": 241437,
+   "latchIsrMax": 4202,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "graphics-4bpp-32",
+  "seconds": 16.828,
+  "stats": {
+   "uptimeUs": 451727789,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 242068,
+   "linesTaken": 264266,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 17701,
+    "p999": 17663,
+    "mean": 8800
+   },
+   "build": {
+    "max": 15157,
+    "p999": 0,
+    "mean": 6772
+   },
+   "catchUpMax": 8288,
+   "halfMax": 12297,
+   "expandMax": 1254,
+   "waitMax": 1715,
+   "publishMax": 826,
+   "core0HalfMax": 13707,
+   "splitMean": 128,
+   "splitRows": 242068,
+   "latchIsrMax": 4202,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "graphics-4bpp-32-det",
+  "seconds": 16.817,
+  "stats": {
+   "uptimeUs": 470047562,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241899,
+   "linesTaken": 264075,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 19588,
+    "p999": 19455,
+    "mean": 9053
+   },
+   "build": {
+    "max": 17038,
+    "p999": 0,
+    "mean": 7025
+   },
+   "catchUpMax": 8303,
+   "halfMax": 14140,
+   "expandMax": 1248,
+   "waitMax": 1771,
+   "publishMax": 821,
+   "core0HalfMax": 15587,
+   "splitMean": 128,
+   "splitRows": 241899,
+   "latchIsrMax": 4203,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "graphics-8bpp-16",
+  "seconds": 16.76,
+  "stats": {
+   "uptimeUs": 488312669,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241094,
+   "linesTaken": 263204,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 14869,
+    "p999": 14847,
+    "mean": 7469
+   },
+   "build": {
+    "max": 12349,
+    "p999": 0,
+    "mean": 5478
+   },
+   "catchUpMax": 8295,
+   "halfMax": 10033,
+   "expandMax": 1262,
+   "waitMax": 1302,
+   "publishMax": 813,
+   "core0HalfMax": 10914,
+   "splitMean": 127,
+   "splitRows": 241094,
+   "latchIsrMax": 4205,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 113,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "graphics-8bpp-16-det",
+  "seconds": 16.834,
+  "stats": {
+   "uptimeUs": 506650276,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 242161,
+   "linesTaken": 264359,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 16948,
+    "p999": 16767,
+    "mean": 7636
+   },
+   "build": {
+    "max": 14382,
+    "p999": 0,
+    "mean": 5644
+   },
+   "catchUpMax": 8293,
+   "halfMax": 11959,
+   "expandMax": 1261,
+   "waitMax": 1667,
+   "publishMax": 812,
+   "core0HalfMax": 12923,
+   "splitMean": 129,
+   "splitRows": 242161,
+   "latchIsrMax": 4203,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 113,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "graphics-8bpp-32",
+  "seconds": 16.711,
+  "stats": {
+   "uptimeUs": 524864115,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 240384,
+   "linesTaken": 262428,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 16632,
+    "p999": 16511,
+    "mean": 8197
+   },
+   "build": {
+    "max": 14110,
+    "p999": 0,
+    "mean": 6169
+   },
+   "catchUpMax": 8291,
+   "halfMax": 11297,
+   "expandMax": 1248,
+   "waitMax": 1621,
+   "publishMax": 814,
+   "core0HalfMax": 12665,
+   "splitMean": 130,
+   "splitRows": 240384,
+   "latchIsrMax": 4205,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "graphics-8bpp-32-det",
+  "seconds": 16.783,
+  "stats": {
+   "uptimeUs": 543151060,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241430,
+   "linesTaken": 263562,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 18608,
+    "p999": 18559,
+    "mean": 8480
+   },
+   "build": {
+    "max": 16087,
+    "p999": 0,
+    "mean": 6451
+   },
+   "catchUpMax": 8293,
+   "halfMax": 13155,
+   "expandMax": 1248,
+   "waitMax": 1736,
+   "publishMax": 813,
+   "core0HalfMax": 14669,
+   "splitMean": 131,
+   "splitRows": 241430,
+   "latchIsrMax": 4203,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-1bpp-16",
+  "seconds": 16.822,
+  "stats": {
+   "uptimeUs": 561476263,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241988,
+   "linesTaken": 264164,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 15334,
+    "p999": 15231,
+    "mean": 7308
+   },
+   "build": {
+    "max": 12802,
+    "p999": 0,
+    "mean": 5318
+   },
+   "catchUpMax": 8295,
+   "halfMax": 10424,
+   "expandMax": 1278,
+   "waitMax": 1124,
+   "publishMax": 828,
+   "core0HalfMax": 11363,
+   "splitMean": 167,
+   "splitRows": 241988,
+   "latchIsrMax": 4202,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-1bpp-16-det",
+  "seconds": 16.815,
+  "stats": {
+   "uptimeUs": 579793984,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241872,
+   "linesTaken": 264048,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 17165,
+    "p999": 17023,
+    "mean": 7430
+   },
+   "build": {
+    "max": 14627,
+    "p999": 0,
+    "mean": 5440
+   },
+   "catchUpMax": 8296,
+   "halfMax": 12163,
+   "expandMax": 1275,
+   "waitMax": 1347,
+   "publishMax": 826,
+   "core0HalfMax": 13173,
+   "splitMean": 167,
+   "splitRows": 241872,
+   "latchIsrMax": 4203,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-1bpp-32",
+  "seconds": 16.816,
+  "stats": {
+   "uptimeUs": 598112127,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241875,
+   "linesTaken": 264051,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 16384,
+    "p999": 16383,
+    "mean": 7844
+   },
+   "build": {
+    "max": 13850,
+    "p999": 0,
+    "mean": 5817
+   },
+   "catchUpMax": 8296,
+   "halfMax": 11451,
+   "expandMax": 1275,
+   "waitMax": 1457,
+   "publishMax": 828,
+   "core0HalfMax": 12409,
+   "splitMean": 160,
+   "splitRows": 241875,
+   "latchIsrMax": 4202,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-1bpp-32-det",
+  "seconds": 16.814,
+  "stats": {
+   "uptimeUs": 616429653,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241857,
+   "linesTaken": 264033,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 18716,
+    "p999": 18047,
+    "mean": 8086
+   },
+   "build": {
+    "max": 16211,
+    "p999": 0,
+    "mean": 6059
+   },
+   "catchUpMax": 8296,
+   "halfMax": 13220,
+   "expandMax": 1270,
+   "waitMax": 1819,
+   "publishMax": 828,
+   "core0HalfMax": 14723,
+   "splitMean": 160,
+   "splitRows": 241857,
+   "latchIsrMax": 4205,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-2bpp-16",
+  "seconds": 16.831,
+  "stats": {
+   "uptimeUs": 634765181,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 242115,
+   "linesTaken": 264313,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 17067,
+    "p999": 17023,
+    "mean": 8997
+   },
+   "build": {
+    "max": 14536,
+    "p999": 0,
+    "mean": 7007
+   },
+   "catchUpMax": 8296,
+   "halfMax": 12208,
+   "expandMax": 1290,
+   "waitMax": 1196,
+   "publishMax": 809,
+   "core0HalfMax": 13074,
+   "splitMean": 159,
+   "splitRows": 242115,
+   "latchIsrMax": 4205,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-2bpp-16-det",
+  "seconds": 16.814,
+  "stats": {
+   "uptimeUs": 653083068,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241866,
+   "linesTaken": 264042,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 19005,
+    "p999": 18943,
+    "mean": 9124
+   },
+   "build": {
+    "max": 16487,
+    "p999": 0,
+    "mean": 7134
+   },
+   "catchUpMax": 8295,
+   "halfMax": 13960,
+   "expandMax": 1261,
+   "waitMax": 1478,
+   "publishMax": 805,
+   "core0HalfMax": 15011,
+   "splitMean": 159,
+   "splitRows": 241866,
+   "latchIsrMax": 4205,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-2bpp-32",
+  "seconds": 16.816,
+  "stats": {
+   "uptimeUs": 671402964,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241904,
+   "linesTaken": 264080,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 18618,
+    "p999": 18175,
+    "mean": 9673
+   },
+   "build": {
+    "max": 16137,
+    "p999": 0,
+    "mean": 7646
+   },
+   "catchUpMax": 8291,
+   "halfMax": 13276,
+   "expandMax": 1262,
+   "waitMax": 1836,
+   "publishMax": 812,
+   "core0HalfMax": 14713,
+   "splitMean": 160,
+   "splitRows": 241904,
+   "latchIsrMax": 4205,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-2bpp-32-det",
+  "seconds": 16.816,
+  "stats": {
+   "uptimeUs": 689722020,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241883,
+   "linesTaken": 264059,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 20594,
+    "p999": 20095,
+    "mean": 9921
+   },
+   "build": {
+    "max": 18082,
+    "p999": 0,
+    "mean": 7894
+   },
+   "catchUpMax": 8296,
+   "halfMax": 15080,
+   "expandMax": 1259,
+   "waitMax": 1976,
+   "publishMax": 814,
+   "core0HalfMax": 16624,
+   "splitMean": 160,
+   "splitRows": 241883,
+   "latchIsrMax": 4205,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-4bpp-16",
+  "seconds": 16.81,
+  "stats": {
+   "uptimeUs": 708036255,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241801,
+   "linesTaken": 263977,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 17081,
+    "p999": 16895,
+    "mean": 8859
+   },
+   "build": {
+    "max": 14554,
+    "p999": 0,
+    "mean": 6869
+   },
+   "catchUpMax": 8296,
+   "halfMax": 12171,
+   "expandMax": 1266,
+   "waitMax": 1236,
+   "publishMax": 829,
+   "core0HalfMax": 13084,
+   "splitMean": 159,
+   "splitRows": 241801,
+   "latchIsrMax": 4202,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-4bpp-16-det",
+  "seconds": 16.817,
+  "stats": {
+   "uptimeUs": 726356015,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241904,
+   "linesTaken": 264080,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 18972,
+    "p999": 18815,
+    "mean": 8989
+   },
+   "build": {
+    "max": 16462,
+    "p999": 0,
+    "mean": 6998
+   },
+   "catchUpMax": 8283,
+   "halfMax": 13917,
+   "expandMax": 1255,
+   "waitMax": 1509,
+   "publishMax": 826,
+   "core0HalfMax": 14999,
+   "splitMean": 159,
+   "splitRows": 241904,
+   "latchIsrMax": 4203,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-4bpp-32",
+  "seconds": 16.814,
+  "stats": {
+   "uptimeUs": 744674066,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241873,
+   "linesTaken": 264049,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 18302,
+    "p999": 18175,
+    "mean": 9549
+   },
+   "build": {
+    "max": 15744,
+    "p999": 0,
+    "mean": 7521
+   },
+   "catchUpMax": 8295,
+   "halfMax": 13286,
+   "expandMax": 1255,
+   "waitMax": 1727,
+   "publishMax": 828,
+   "core0HalfMax": 14673,
+   "splitMean": 160,
+   "splitRows": 241873,
+   "latchIsrMax": 4202,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-4bpp-32-det",
+  "seconds": 16.817,
+  "stats": {
+   "uptimeUs": 762993334,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241907,
+   "linesTaken": 264083,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 20404,
+    "p999": 19967,
+    "mean": 9795
+   },
+   "build": {
+    "max": 17882,
+    "p999": 0,
+    "mean": 7767
+   },
+   "catchUpMax": 8295,
+   "halfMax": 15086,
+   "expandMax": 1256,
+   "waitMax": 1948,
+   "publishMax": 820,
+   "core0HalfMax": 16636,
+   "splitMean": 160,
+   "splitRows": 241907,
+   "latchIsrMax": 4202,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-8bpp-16",
+  "seconds": 16.794,
+  "stats": {
+   "uptimeUs": 781291120,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241574,
+   "linesTaken": 263728,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 15922,
+    "p999": 15743,
+    "mean": 8201
+   },
+   "build": {
+    "max": 13382,
+    "p999": 0,
+    "mean": 6210
+   },
+   "catchUpMax": 8288,
+   "halfMax": 10970,
+   "expandMax": 1262,
+   "waitMax": 1197,
+   "publishMax": 809,
+   "core0HalfMax": 11916,
+   "splitMean": 163,
+   "splitRows": 241574,
+   "latchIsrMax": 4202,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-8bpp-16-det",
+  "seconds": 16.798,
+  "stats": {
+   "uptimeUs": 799592521,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241644,
+   "linesTaken": 263789,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 17913,
+    "p999": 17791,
+    "mean": 8280
+   },
+   "build": {
+    "max": 15415,
+    "p999": 0,
+    "mean": 6290
+   },
+   "catchUpMax": 8277,
+   "halfMax": 12779,
+   "expandMax": 1251,
+   "waitMax": 1486,
+   "publishMax": 806,
+   "core0HalfMax": 13941,
+   "splitMean": 160,
+   "splitRows": 241644,
+   "latchIsrMax": 4202,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-8bpp-32",
+  "seconds": 16.8,
+  "stats": {
+   "uptimeUs": 817895589,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241677,
+   "linesTaken": 263831,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 17349,
+    "p999": 17023,
+    "mean": 8783
+   },
+   "build": {
+    "max": 14867,
+    "p999": 0,
+    "mean": 6755
+   },
+   "catchUpMax": 8295,
+   "halfMax": 12158,
+   "expandMax": 1251,
+   "waitMax": 1674,
+   "publishMax": 810,
+   "core0HalfMax": 13487,
+   "splitMean": 160,
+   "splitRows": 241677,
+   "latchIsrMax": 4202,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-8bpp-32-det",
+  "seconds": 16.817,
+  "stats": {
+   "uptimeUs": 836215396,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241921,
+   "linesTaken": 264097,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 19167,
+    "p999": 18943,
+    "mean": 9042
+   },
+   "build": {
+    "max": 16647,
+    "p999": 0,
+    "mean": 7014
+   },
+   "catchUpMax": 8289,
+   "halfMax": 14012,
+   "expandMax": 1250,
+   "waitMax": 1804,
+   "publishMax": 816,
+   "core0HalfMax": 15544,
+   "splitMean": 160,
+   "splitRows": 241921,
+   "latchIsrMax": 4202,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-4bpp-16-lim16",
+  "seconds": 16.816,
+  "stats": {
+   "uptimeUs": 854534633,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241904,
+   "linesTaken": 264080,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 13372,
+    "p999": 12927,
+    "mean": 8601
+   },
+   "build": {
+    "max": 11734,
+    "p999": 0,
+    "mean": 6667
+   },
+   "catchUpMax": 8283,
+   "halfMax": 9056,
+   "expandMax": 1272,
+   "waitMax": 1401,
+   "publishMax": 826,
+   "core0HalfMax": 10475,
+   "splitMean": 158,
+   "splitRows": 241904,
+   "latchIsrMax": 4202,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-4bpp-16-det-lim16",
+  "seconds": 16.816,
+  "stats": {
+   "uptimeUs": 872852925,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241892,
+   "linesTaken": 264068,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 14189,
+    "p999": 14079,
+    "mean": 8687
+   },
+   "build": {
+    "max": 12525,
+    "p999": 0,
+    "mean": 6753
+   },
+   "catchUpMax": 8295,
+   "halfMax": 9955,
+   "expandMax": 1275,
+   "waitMax": 1994,
+   "publishMax": 829,
+   "core0HalfMax": 11644,
+   "splitMean": 158,
+   "splitRows": 241892,
+   "latchIsrMax": 4202,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-4bpp-32-lim16",
+  "seconds": 16.815,
+  "stats": {
+   "uptimeUs": 891171638,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241886,
+   "linesTaken": 264062,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 14209,
+    "p999": 14079,
+    "mean": 8991
+   },
+   "build": {
+    "max": 12527,
+    "p999": 0,
+    "mean": 7076
+   },
+   "catchUpMax": 8293,
+   "halfMax": 10112,
+   "expandMax": 1256,
+   "waitMax": 1308,
+   "publishMax": 830,
+   "core0HalfMax": 11280,
+   "splitMean": 160,
+   "splitRows": 241886,
+   "latchIsrMax": 4202,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ },
+ {
+  "name": "full-4bpp-32-det-lim16",
+  "seconds": 16.816,
+  "stats": {
+   "uptimeUs": 909490913,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 241892,
+   "linesTaken": 264068,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 15383,
+    "p999": 15231,
+    "mean": 9156
+   },
+   "build": {
+    "max": 13667,
+    "p999": 0,
+    "mean": 7240
+   },
+   "catchUpMax": 8293,
+   "halfMax": 11205,
+   "expandMax": 1256,
+   "waitMax": 1382,
+   "publishMax": 826,
+   "core0HalfMax": 12421,
+   "splitMean": 160,
+   "splitRows": 241892,
+   "latchIsrMax": 4205,
+   "lineIsrMax": 471,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 112,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": null
+ }
+]

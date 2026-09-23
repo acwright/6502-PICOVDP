@@ -1,0 +1,4 @@
+full-4bpp-16-lim16, rows 100-131 every 4 padded to 30000 cycles, 22372 a line:
+  stats: late rows 10849 of 217072, latches merged 0, latency max 33717
+  112 snapshots: 1344 late rows, 0 rows not the row they should show; late rows seen: 100 101 104 105 108 109 112 113 116 120 124 128
+  status read by the scene's program, frames 101-1004: 904 frames compared with the host, 0 differ

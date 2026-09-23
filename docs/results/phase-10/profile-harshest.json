@@ -1,0 +1,85 @@
+[
+ {
+  "name": "full-4bpp-32-det",
+  "seconds": 3.004,
+  "stats": {
+   "uptimeUs": 1561901110,
+   "clockHz": 352000000,
+   "budget": 22372,
+   "rowsBuilt": 43208,
+   "linesTaken": 47168,
+   "lateRows": 0,
+   "latchesMerged": 0,
+   "missedBells": 0,
+   "journalOverflows": 0,
+   "rasterSlips": 0,
+   "latency": {
+    "max": 19521,
+    "p999": 19583,
+    "mean": 9723
+   },
+   "build": {
+    "max": 17007,
+    "p999": 0,
+    "mean": 7713
+   },
+   "catchUpMax": 2493,
+   "halfMax": 15036,
+   "expandMax": 1245,
+   "waitMax": 1893,
+   "publishMax": 419,
+   "core0HalfMax": 15962,
+   "splitMean": 160,
+   "splitRows": 43208,
+   "latchIsrMax": 373,
+   "lineIsrMax": 65,
+   "busStandins": 0,
+   "histogramShift": 7
+  },
+  "snapshots": {
+   "taken": 0,
+   "wrong": 0,
+   "late": 0,
+   "stale": 0
+  },
+  "profile": {
+   "row": 101,
+   "sprites": 32,
+   "probe": 1,
+   "stages": {
+    "evaluate": {
+     "min": 1818,
+     "max": 1852
+    },
+    "layer0": {
+     "min": 3125,
+     "max": 3196
+    },
+    "layer1": {
+     "min": 4532,
+     "max": 4626
+    },
+    "row": {
+     "min": 24574,
+     "max": 24806
+    },
+    "left": {
+     "min": 13870,
+     "max": 14018
+    },
+    "right": {
+     "min": 13585,
+     "max": 13715
+    },
+    "expand": {
+     "min": 1882,
+     "max": 1962
+    },
+    "splitChoose": {
+     "min": 510,
+     "max": 548
+    }
+   }
+  }
+ }
+]

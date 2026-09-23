@@ -8,8 +8,14 @@
 //   vdpctl stats [--reset] [--json]      renderer statistics
 //   vdpctl snapshot [--frame N] [--out DIR]   the next frame as it went to VGA, and the state
 //   vdpctl vram [--out FILE]             the bus copy of VRAM
-//   vdpctl inject <fixture|trace> [checkpoint ...] [--out DIR]
-//                                        replay checkpoints on the board, each against its golden
+//   vdpctl card <name> [--out FILE.json] [--device N] [--pictures DIR]
+//                                        a bench card (bench/cards, tools/card.mjs): inject it,
+//                                        capture it, and record what each palette entry became
+//   vdpctl inject <fixture|trace> [checkpoint ...] [--out FILE.json]
+//                [--capture [--device N] [--pictures DIR]]
+//                                        replay checkpoints on the board, each against its golden;
+//                                        --capture also compares the picture the capture card sees
+//                                        (tools/lib/screen.mjs), and --pictures saves what it saw
 //   vdpctl reset [--power-on]            §15
 //   vdpctl reboot [--bootsel]
 //   vdpctl fault <core0|core1|hang|panic>
@@ -42,7 +48,9 @@
 //                                        --stream every snapshot checked against vdp-scene; --fonts
 //                                        adds FONT loads for both layers every frame (§7)
 //
-// The port is PICOVDP_PORT or the first /dev/cu.usbmodem*.
+// The port is PICOVDP_PORT or the first /dev/cu.usbmodem*; the image `flash`
+// sends with no path is build/$PICOVDP_PRESET/firmware/picovdp.uf2, the pico2
+// preset's by default.
 
 import { execFileSync, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -62,6 +70,7 @@ import {
   u8,
 } from './lib/link.mjs'
 import { injectCheckpoints } from './lib/inject.mjs'
+import { CARDS } from './lib/cards.mjs'
 import { Nano, PORT, PROFILES, sampleNs, strobeNs } from './lib/nano.mjs'
 import {
   readVram, renderText, setRegister, status, testScreen, textMode, writeVram, TEXT, VRAM_SIZE,
@@ -69,7 +78,10 @@ import {
 import { grab as grabFrame, inkBounds, toBits, DEFAULT_DEVICE } from './lib/capture.mjs'
 import { bitmapToRgba, encodePng } from './lib/png.mjs'
 
-const DEFAULT_UF2 = join(REPO, 'build', 'pico2', 'firmware', 'picovdp.uf2')
+// PICOVDP_PRESET picks which build `flash` sends with no path, and whose ELF a
+// fault record is symbolised against: the Pico 2's through Phase 9, the PRO's
+// from Phase 10.
+const DEFAULT_UF2 = join(REPO, 'build', process.env.PICOVDP_PRESET ?? 'pico2', 'firmware', 'picovdp.uf2')
 const FAULTS = { core0: 0, core1: 1, hang: 2, panic: 3 }
 
 const byte = (v) => `$${v.toString(16).padStart(2, '0')}`
@@ -88,7 +100,7 @@ const reverseBits = (v) => {
 
 function usage(message) {
   if (message) console.error(`vdpctl: ${message}`)
-  console.error('usage: vdpctl flash|info|stats|snapshot|vram|inject|reset|reboot|fault|scene|load|scene-log|bus|soak|reopen|irq-timing|sweep|text|grab|compare-capture ... (see the header of tools/vdpctl.mjs)')
+  console.error('usage: vdpctl flash|info|stats|snapshot|vram|inject|card|reset|reboot|fault|scene|load|scene-log|profile|scenes|late|bus|soak|reopen|irq-timing|sweep|text|grab|compare-capture ... (see the header of tools/vdpctl.mjs)')
   process.exit(2)
 }
 
@@ -99,7 +111,7 @@ function options(args) {
     if (args[i].startsWith('--')) {
       const name = args[i].slice(2)
       const next = args[i + 1]
-      if (next !== undefined && !next.startsWith('--') && !['reset', 'json', 'power-on', 'bootsel', 'classes', 'stream', 'profile', 'fonts'].includes(name)) {
+      if (next !== undefined && !next.startsWith('--') && !['reset', 'json', 'power-on', 'bootsel', 'classes', 'stream', 'profile', 'fonts', 'capture'].includes(name)) {
         flags.set(name, next)
         i++
       } else {
@@ -142,7 +154,7 @@ function hex(v, width = 8) {
 }
 
 function symbolise(addresses) {
-  const elf = join(REPO, 'build', 'pico2', 'firmware', 'picovdp.elf')
+  const elf = join(REPO, 'build', process.env.PICOVDP_PRESET ?? 'pico2', 'firmware', 'picovdp.elf')
   if (!existsSync(elf)) return new Map()
   const result = spawnSync('arm-none-eabi-addr2line', ['-f', '-C', '-p', '-e', elf, ...addresses.map((a) => hex(a))], {
     encoding: 'utf8',
@@ -245,7 +257,26 @@ async function main() {
       break
     case 'inject': {
       if (!positional.length) usage('inject <fixture|trace> [checkpoint ...]')
-      const failures = await injectCheckpoints(positional[0], positional.slice(1), { out: flags.get('out') })
+      const failures = await injectCheckpoints(positional[0], positional.slice(1), {
+        out: flags.get('out'),
+        capture: flags.has('capture'),
+        device: flags.get('device') ?? DEFAULT_DEVICE,
+        pictures: flags.get('pictures'),
+      })
+      process.exit(failures ? 1 : 0)
+    }
+    case 'card': {
+      const name = positional[0]
+      const trace = join(REPO, 'bench', 'cards', `${name}.vdpt.gz`)
+      if (!name || !existsSync(trace)) usage(`card <name> — no bench card at bench/cards/${name}.vdpt.gz`)
+      const failures = await injectCheckpoints(trace, [], {
+        out: flags.get('out'),
+        capture: true,
+        device: flags.get('device') ?? DEFAULT_DEVICE,
+        pictures: flags.get('pictures'),
+        entries: true,
+        response: Boolean(CARDS[name]?.response),
+      })
       process.exit(failures ? 1 : 0)
     }
     case 'reset':

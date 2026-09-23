@@ -1,0 +1,4 @@
+1 scenes, 600 s each, FONT loads for both layers every frame
+ok    full-4bpp-32-det       rows 8631137, late 0, merged 0; latency max 20052 (10% spare), 99.9% 19583, mean 9721; core 1 half 15067, core 0 16517, split 160; latch isr max 4099
+wrote docs/results/phase-10/scenes-10min-harshest.json
+no late rows

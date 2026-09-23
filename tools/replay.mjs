@@ -31,6 +31,7 @@
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, join, relative, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { REPO, loadAdapter, loadVideo } from './lib/emulator.mjs'
 import { FIRST_ROW_LATCH, LAST_ROW_LATCH, TraceRecorder, checkpointsOf, readTrace } from './lib/trace.mjs'
 
@@ -113,7 +114,7 @@ function main() {
   process.exit(failures === 0 ? 0 : 1)
 }
 
-class Divergence extends Error {}
+export class Divergence extends Error {}
 
 /** The text of an event line, less the annotations a C line carries. */
 function bare(line) {
@@ -130,7 +131,7 @@ function bare(line) {
  * more applied until the frame is presented, and returns that frame as
  * `frozen`.
  */
-function replay(Video, trace, freeze) {
+export function replay(Video, trace, freeze) {
   const { fixture, frequency } = trace.header
   const lines = trace.lines
   const video = new Video()
@@ -235,7 +236,7 @@ function replay(Video, trace, freeze) {
 }
 
 /** What a golden holds, read off the card without disturbing it — the emulator's captureState. */
-function capture(video, cycles) {
+export function capture(video, cycles) {
   const vram = new Uint8Array(video.vramSize)
   for (let address = 0; address < vram.length; address++) vram[address] = video.readVRAM(address)
   const registers = []
@@ -279,7 +280,7 @@ function compare(fixture, checkpoint) {
 }
 
 /** Where two byte arrays of one length differ: null, or the count and the first index. */
-function differs(actual, expected) {
+export function differs(actual, expected) {
   if (actual.length !== expected.length) return { count: Math.abs(actual.length - expected.length), first: 0 }
   let count = 0
   let first = -1
@@ -304,4 +305,6 @@ function fail(message) {
   process.exit(2)
 }
 
-main()
+// A tool when run, a library when imported: tools/card.mjs replays a card it
+// has just drawn through the core, exactly as this replays a fixture.
+if (import.meta.url === pathToFileURL(process.argv[1]).href) main()

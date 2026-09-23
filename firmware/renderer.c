@@ -681,8 +681,7 @@ static void pad_build(uint16_t row, uint32_t t0) {
     }
 }
 
-// The scene's program, at screen line 250.
-static void scene_line(void) {
+static void scene_program(void) {
     if (scene_pending) {
         scene_pending = false;
         uint32_t irq = save_and_disable_interrupts();
@@ -699,6 +698,22 @@ static void scene_line(void) {
     if (scene_log_head - scene_log_tail < 64) scene_log_head++;
     scene_frame(scene_at((unsigned)scene), ++scene_frame_count, &card_port);
     if (load.fonts) scene_fonts(scene_at((unsigned)scene), &card_port);
+}
+
+// The scene's program, at screen line 250.
+//
+// The bus stand-in writes through this same card from an interrupt above this
+// thread on this core, so the two are both producers on the journal the render
+// side consumes. The thread's writes must not be preempted by it: one lost
+// register write sets the scene up wrong and it runs that way for as long as it
+// runs (docs/results/phase-10.md). The stand-in is held off for the program,
+// which is a few hundred microseconds at a scene change and a handful of writes
+// a frame after that — nothing the per-line cost it stands in for depends on.
+static void scene_line(void) {
+    const bool standin = load.bus_rate_hz != 0;
+    if (standin) irq_set_enabled(PWM_IRQ_WRAP_0, false);
+    scene_program();
+    if (standin) irq_set_enabled(PWM_IRQ_WRAP_0, true);
 }
 
 static void apply_request(void) {

@@ -47,3 +47,10 @@ foreach(fixture bios wizardslab vdp-modes vdp-layers vdp-font)
     set_tests_properties(replay_${fixture} PROPERTIES
         ENVIRONMENT "PICOVDP_NODE_BINARY=$<TARGET_FILE:picovdp_node>")
 endforeach()
+
+# bench/cards is written by tools/card.mjs from the reference (Phase 10); this
+# holds the cards that are there to the core, and needs no emulator.
+add_test(NAME cards_pinned
+    COMMAND ${PICOVDP_NODE} ${CMAKE_SOURCE_DIR}/tools/card.mjs --check)
+set_tests_properties(cards_pinned PROPERTIES
+    ENVIRONMENT "PICOVDP_NODE_BINARY=$<TARGET_FILE:picovdp_node>")

@@ -1,0 +1,37 @@
+  exact   bios/ok — frame 59, 5027 operations (1837 reads, 1 of STAT5 not compared), 15512 bytes, 2.5 s
+          picture at 3,-1, MAE 2.4, 243679 settled px 100.00% within 8 (worst 3), best wrong mapping 4.5
+  exact   bios/screenful — frame 278, 5555 operations (1837 reads, 1 of STAT5 not compared), 17540 bytes, 6.2 s
+          picture at 3,-1, MAE 2.9, 217748 settled px 100.00% within 8 (worst 2), best wrong mapping 5.2
+  exact   bios/scroll — frame 479, 6055 operations (1837 reads, 1 of STAT5 not compared), 19152 bytes, 9.6 s
+          picture at 3,-1, MAE 2.1, 222591 settled px 100.00% within 8 (worst 4), best wrong mapping 2.4
+  exact   wizardslab/frame-60 — frame 59, 93133 operations (89044 reads, 1 of STAT5 not compared), 268284 bytes, 2.8 s
+          picture at 3,-1, MAE 15.7, 119647 settled px 100.00% within 8 (worst 8), best wrong mapping 15.7
+  exact   wizardslab/frame-180 — frame 179, 295200 operations (291075 reads, 1 of STAT5 not compared), 844792 bytes, 4.9 s
+          picture at 3,-1, MAE 15.7, 119647 settled px 100.00% within 8 (worst 8), best wrong mapping 15.7
+  exact   wizardslab/frame-300 — frame 299, 497081 operations (492902 reads, 1 of STAT5 not compared), 1420802 bytes, 7.0 s
+          picture at 3,-1, MAE 15.6, 119647 settled px 100.00% within 8 (worst 8), best wrong mapping 15.7
+  exact   wizardslab/frame-600 — frame 599, 1002238 operations (997951 reads, 1 of STAT5 not compared), 2862054 bytes, 12.1 s
+          picture at 3,-1, MAE 15.6, 119647 settled px 100.00% within 8 (worst 8), best wrong mapping 15.7
+  exact   vdp-modes/text — frame 35, 62171 operations (60205 reads, 1 of STAT5 not compared), 180710 bytes, 2.5 s
+          picture at 3,-1, MAE 21.9, 89061 settled px 99.98% within 8 (worst 12), best wrong mapping 29.1
+  exact   vdp-modes/compact — frame 98, 171311 operations (167727 reads, 1 of STAT5 not compared), 498014 bytes, 3.4 s
+          picture at 3,-1, MAE 17.9, 74308 settled px 99.99% within 8 (worst 10), best wrong mapping 39.0
+  exact   vdp-modes/graphics — frame 162, 281909 operations (276289 reads, 1 of STAT5 not compared), 819752 bytes, 4.5 s
+          picture at 3,-1, MAE 22.2, 42504 settled px 100.00% within 8 (worst 3), best wrong mapping 48.8
+  exact   vdp-modes/full — frame 226, 393122 operations (385262 reads, 1 of STAT5 not compared), 1142750 bytes, 5.6 s
+          picture at 4,-1, MAE 30.9, no settled pixels, best wrong mapping 61.8
+  exact   vdp-layers/parallax — frame 89, 123648 operations (117840 reads, 1 of STAT5 not compared), 378106 bytes, 3.1 s
+          picture at 1,-1, MAE 13.6, 101347 settled px 99.85% within 8 (worst 17), best wrong mapping 23.6
+  exact   vdp-layers/scroll-bit8-l1 — frame 179, 288854 operations (282146 reads, 1 of STAT5 not compared), 849998 bytes, 4.7 s
+          picture at 1,-1, MAE 13.4, 93552 settled px 99.95% within 8 (worst 17), best wrong mapping 23.7
+  exact   vdp-layers/occluded — frame 239, 399002 operations (391694 reads, 1 of STAT5 not compared), 1164608 bytes, 5.7 s
+          picture at 1,-3, MAE 14.5, 92686 settled px 99.94% within 8 (worst 12), best wrong mapping 24.6
+  exact   vdp-layers/scroll-bit8-l0 — frame 299, 509139 operations (501231 reads, 1 of STAT5 not compared), 1479202 bytes, 6.8 s
+          picture at 1,-1, MAE 13.7, 99967 settled px 99.98% within 8 (worst 12), best wrong mapping 24.0
+  exact   vdp-font/reset — frame 32, 55617 operations (53665 reads, 0 of STAT5 not compared), 162988 bytes, 2.3 s
+          picture at 3,-1, MAE 7.2, 167532 settled px 100.00% within 8 (worst 10), best wrong mapping 10.7
+  exact   vdp-font/loaded — frame 96, 168592 operations (162660 reads, 0 of STAT5 not compared), 489438 bytes, 3.4 s
+          picture at 3,-1, MAE 7.2, 167532 settled px 100.00% within 8 (worst 10), best wrong mapping 10.7
+  exact   vdp-font/relocated — frame 160, 229219 operations (219305 reads, 0 of STAT5 not compared), 666684 bytes, 4.4 s
+          picture at 3,-1, MAE 7.2, 167532 settled px 100.00% within 8 (worst 10), best wrong mapping 10.8
+every checkpoint reproduces exactly on the board

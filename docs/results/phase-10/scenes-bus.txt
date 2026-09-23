@@ -1,0 +1,39 @@
+36 scenes, 5 s each, bus stand-in at 500000 Hz
+ok    graphics-1bpp-16       rows 71992, late 0, merged 0; latency max 18153 (19% spare), 99.9% 18175, mean 10129; core 1 half 10165, core 0 11278, split 149; latch isr max 372
+ok    graphics-1bpp-16-det   rows 71997, late 0, merged 0; latency max 20172 (10% spare), 99.9% 20095, mean 10259; core 1 half 11910, core 0 13253, split 149; latch isr max 372
+ok    graphics-1bpp-32       rows 71968, late 0, merged 0; latency max 19836 (11% spare), 99.9% 19711, mean 10834; core 1 half 11643, core 0 12924, split 149; latch isr max 371
+ok    graphics-1bpp-32-det   rows 71985, late 0, merged 0; latency max 21867 (2% spare), 99.9% 21759, mean 11109; core 1 half 14243, core 0 14964, split 149; latch isr max 372
+ok    graphics-2bpp-16       rows 71980, late 0, merged 0; latency max 20071 (10% spare), 99.9% 19967, mean 11741; core 1 half 11815, core 0 13176, split 143; latch isr max 372
+ok    graphics-2bpp-16-det   rows 71964, late 0, merged 0; latency max 21740 (3% spare), 99.9% 21631, mean 11874; core 1 half 13700, core 0 14890, split 143; latch isr max 371
+ok    graphics-2bpp-32       rows 71959, late 0, merged 0; latency max 21354 (5% spare), 99.9% 21247, mean 12482; core 1 half 14027, core 0 14360, split 143; latch isr max 372
+LATE  graphics-2bpp-32-det   rows 71960, late 9750, merged 0; latency max 40447 (-81% spare), 99.9% 38911, mean 13574; core 1 half 16449, core 0 16538, split 143; latch isr max 372
+ok    graphics-4bpp-16       rows 71976, late 0, merged 0; latency max 19987 (11% spare), 99.9% 19967, mean 11617; core 1 half 11800, core 0 13085, split 143; latch isr max 371
+ok    graphics-4bpp-16-det   rows 71967, late 0, merged 0; latency max 21755 (3% spare), 99.9% 21631, mean 11752; core 1 half 13681, core 0 14903, split 143; latch isr max 371
+ok    graphics-4bpp-32       rows 71971, late 0, merged 0; latency max 21280 (5% spare), 99.9% 21247, mean 12365; core 1 half 14009, core 0 14367, split 143; latch isr max 372
+LATE  graphics-4bpp-32-det   rows 71987, late 9750, merged 0; latency max 40022 (-79% spare), 99.9% 38783, mean 13406; core 1 half 16528, core 0 16546, split 143; latch isr max 372
+ok    graphics-8bpp-16       rows 71985, late 0, merged 0; latency max 18799 (16% spare), 99.9% 18687, mean 10933; core 1 half 10598, core 0 11950, split 143; latch isr max 371
+ok    graphics-8bpp-16-det   rows 71986, late 0, merged 0; latency max 21008 (6% spare), 99.9% 20479, mean 11078; core 1 half 12562, core 0 14163, split 143; latch isr max 372
+ok    graphics-8bpp-32       rows 71986, late 0, merged 0; latency max 20158 (10% spare), 99.9% 20095, mean 11657; core 1 half 12848, core 0 13214, split 143; latch isr max 372
+LATE  graphics-8bpp-32-det   rows 71972, late 8, merged 0; latency max 22933 (-3% spare), 99.9% 22271, mean 11954; core 1 half 15172, core 0 15352, split 143; latch isr max 371
+ok    full-1bpp-16           rows 71975, late 0, merged 0; latency max 19289 (14% spare), 99.9% 19199, mean 10689; core 1 half 11660, core 0 12338, split 181; latch isr max 373
+ok    full-1bpp-16-det       rows 71974, late 0, merged 0; latency max 21248 (5% spare), 99.9% 21119, mean 10830; core 1 half 13575, core 0 14347, split 182; latch isr max 373
+ok    full-1bpp-32           rows 71975, late 0, merged 0; latency max 20751 (7% spare), 99.9% 20607, mean 11401; core 1 half 12553, core 0 13899, split 180; latch isr max 373
+LATE  full-1bpp-32-det       rows 71979, late 297, merged 0; latency max 23306 (-4% spare), 99.9% 23167, mean 11685; core 1 half 14466, core 0 16101, split 181; latch isr max 372
+ok    full-2bpp-16           rows 71975, late 0, merged 0; latency max 21206 (5% spare), 99.9% 21119, mean 12577; core 1 half 13616, core 0 14314, split 175; latch isr max 372
+LATE  full-2bpp-16-det       rows 71972, late 4607, merged 0; latency max 31889 (-43% spare), 99.9% 31231, mean 12918; core 1 half 16033, core 0 16639, split 175; latch isr max 375
+LATE  full-2bpp-32           rows 71979, late 14, merged 0; latency max 23387 (-5% spare), 99.9% 22399, mean 13323; core 1 half 14428, core 0 16181, split 176; latch isr max 372
+LATE  full-2bpp-32-det       rows 71966, late 10937, merged 0; latency max 84776 (-279% spare), 99.9% 65535, mean 17717; core 1 half 17474, core 0 18306, split 176; latch isr max 374
+ok    full-4bpp-16           rows 71981, late 0, merged 0; latency max 21234 (5% spare), 99.9% 21119, mean 12433; core 1 half 13570, core 0 14254, split 176; latch isr max 372
+LATE  full-4bpp-16-det       rows 71999, late 4507, merged 0; latency max 31147 (-39% spare), 99.9% 30463, mean 12736; core 1 half 15918, core 0 16561, split 176; latch isr max 374
+LATE  full-4bpp-32           rows 71987, late 11, merged 0; latency max 23191 (-4% spare), 99.9% 22271, mean 13181; core 1 half 14466, core 0 15937, split 176; latch isr max 372
+LATE  full-4bpp-32-det       rows 71964, late 10898, merged 0; latency max 85160 (-281% spare), 99.9% 65535, mean 17501; core 1 half 17354, core 0 18300, split 176; latch isr max 371
+ok    full-8bpp-16           rows 71973, late 0, merged 0; latency max 19857 (11% spare), 99.9% 19839, mean 11608; core 1 half 12224, core 0 12955, split 176; latch isr max 373
+ok    full-8bpp-16-det       rows 72006, late 0, merged 0; latency max 22102 (1% spare), 99.9% 22015, mean 11754; core 1 half 14387, core 0 15266, split 176; latch isr max 373
+ok    full-8bpp-32           rows 71978, late 0, merged 0; latency max 21646 (3% spare), 99.9% 21375, mean 12326; core 1 half 13209, core 0 14743, split 176; latch isr max 372
+LATE  full-8bpp-32-det       rows 71981, late 9802, merged 0; latency max 48303 (-116% spare), 99.9% 46207, mean 13557; core 1 half 15776, core 0 17118, split 176; latch isr max 387
+ok    full-4bpp-16-lim16     rows 71997, late 0, merged 0; latency max 16951 (24% spare), 99.9% 16511, mean 12132; core 1 half 9830, core 0 11379, split 175; latch isr max 373
+ok    full-4bpp-16-det-lim16 rows 71987, late 0, merged 0; latency max 17855 (20% spare), 99.9% 17791, mean 12225; core 1 half 11082, core 0 12231, split 175; latch isr max 372
+ok    full-4bpp-32-lim16     rows 71982, late 0, merged 0; latency max 17798 (20% spare), 99.9% 17791, mean 12550; core 1 half 11064, core 0 12144, split 176; latch isr max 373
+ok    full-4bpp-32-det-lim16 rows 72003, late 0, merged 0; latency max 19018 (15% spare), 99.9% 18943, mean 12720; core 1 half 12284, core 0 13353, split 176; latch isr max 372
+wrote docs/results/phase-10/scenes-bus.json
+11 scene(s) with late rows or wrong snapshots

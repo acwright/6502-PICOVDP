@@ -1,0 +1,4 @@
+  256 palette entries have settled pixels of their own
+  exact   palette/palette — frame 11, 19710 operations (0 reads, 0 of STAT5 not compared), 54304 bytes, 1.9 s
+          picture at 3,-1, MAE 9.0, 69789 settled px 100.00% within 32 (worst 4), best wrong mapping 47.3
+every checkpoint reproduces exactly on the board

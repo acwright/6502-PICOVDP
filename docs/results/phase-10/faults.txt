@@ -1,0 +1,92 @@
+=== FAULT core0 ===
+raised core0; waiting for the board
+pico9918pro 53F484FEBE7C6D3B, build 46fb19b-dirty, SAFE MODE
+  clock 352000000 Hz, uptime 1.5 s, reset: fault, STAT5 $00
+  fault record: hardfault on core 0, at 1595.114 s, build 46fb19b-dirty
+    pc 0x20000e92  fault_raise at /Users/acwright/Developer/C/6502-PICOVDP/firmware/fault.c:223
+    lr 0x20001cab  dispatch at /Users/acwright/Developer/C/6502-PICOVDP/firmware/link.c:365
+    xpsr 0x89100000 sp 0x20081eb0 exc_return 0xffffffe9
+    cfsr 0x00010000 hfsr 0x40000000 mmfar 0xe000ed34 bfar 0xe000ed38 sfsr 0x00000000 sfar 0xe000ede8
+    r0-r3 0x00000000 0x00000000 0x5f138129 0xffffffff r12 0x00000000
+    stack+0: 0x00000000 0x00000000 0x5f138129 0xffffffff 0x00000000 0x20001cab 0x20000e92 0x89100000
+    stack+32: 0x2000475c 0x29100000 0x00000000 0x00000000 0x40e00000 0x40e00000 0x47446db7 0x42400000
+    stack+64: 0x3f000000 0x00000060 0x20000010 0x2000447f 0x20003ebd 0x00000000 0x0000000c 0x0000000d
+    stack+96: 0x20055d7d 0x00000001 0xffffffff 0x20001cab 0x00000000 0x00000000 0x00000000 0x20081f90
+    heartbeats: core 0 699833, core 1 24988041
+pico9918pro 53F484FEBE7C6D3B, build 46fb19b-dirty, SAFE MODE
+  clock 352000000 Hz, uptime 3.6 s, reset: fault, STAT5 $00
+  fault record: hardfault on core 0, at 1595.114 s, build 46fb19b-dirty
+    pc 0x20000e92  fault_raise at /Users/acwright/Developer/C/6502-PICOVDP/firmware/fault.c:223
+    lr 0x20001cab  dispatch at /Users/acwright/Developer/C/6502-PICOVDP/firmware/link.c:365
+    xpsr 0x89100000 sp 0x20081eb0 exc_return 0xffffffe9
+    cfsr 0x00010000 hfsr 0x40000000 mmfar 0xe000ed34 bfar 0xe000ed38 sfsr 0x00000000 sfar 0xe000ede8
+    r0-r3 0x00000000 0x00000000 0x5f138129 0xffffffff r12 0x00000000
+    stack+0: 0x00000000 0x00000000 0x5f138129 0xffffffff 0x00000000 0x20001cab 0x20000e92 0x89100000
+    stack+32: 0x2000475c 0x29100000 0x00000000 0x00000000 0x40e00000 0x40e00000 0x47446db7 0x42400000
+    stack+64: 0x3f000000 0x00000060 0x20000010 0x2000447f 0x20003ebd 0x00000000 0x0000000c 0x0000000d
+    stack+96: 0x20055d7d 0x00000001 0xffffffff 0x20001cab 0x00000000 0x00000000 0x00000000 0x20081f90
+    heartbeats: core 0 699833, core 1 24988041
+pico9918pro 53F484FEBE7C6D3B, build 46fb19b-dirty, running
+  clock 352000000 Hz, uptime 1.0 s, reset: power-on, STAT5 $00
+  no fault record
+=== FAULT core1 ===
+raised core1; waiting for the board
+pico9918pro 53F484FEBE7C6D3B, build 46fb19b-dirty, SAFE MODE
+  clock 352000000 Hz, uptime 1.5 s, reset: fault, STAT5 $00
+  fault record: hardfault on core 1, at 1.176 s, build 46fb19b-dirty
+    pc 0x20000e92  fault_raise at /Users/acwright/Developer/C/6502-PICOVDP/firmware/fault.c:223
+    lr 0x2000a7d3  apply_request at /Users/acwright/Developer/C/6502-PICOVDP/firmware/renderer.c:746
+    xpsr 0x89000200 sp 0x20057f38 exc_return 0xfffffff9
+    cfsr 0x00010000 hfsr 0x40000000 mmfar 0xe000ed34 bfar 0xe000ed38 sfsr 0x00000000 sfar 0xe000ede8
+    r0-r3 0x00000001 0x00000041 0x00000001 0x2005d780 r12 0x181a7937
+    stack+0: 0x00000001 0x00000041 0x00000001 0x2005d780 0x181a7937 0x2000a7d3 0x20000e92 0x89000200
+    stack+32: 0x20077580 0x2005d780 0x2000a7d3 0x00000000 0x200594b4 0x00000000 0x00000000 0xe38a1a00
+    stack+64: 0x20004cf7 0x2001ad84 0xd0000000 0x0000022f 0x20008e59 0xe000ed08 0x20081ff1 0x10000005
+    stack+96: 0x00004785 0x00007fc1 0x00000243 0x00000000 0x04090304 0x00730065 0x00740065 0x00430020
+    heartbeats: core 0 551, core 1 18025
+pico9918pro 53F484FEBE7C6D3B, build 46fb19b-dirty, SAFE MODE
+  clock 352000000 Hz, uptime 3.6 s, reset: fault, STAT5 $00
+  fault record: hardfault on core 1, at 1.176 s, build 46fb19b-dirty
+    pc 0x20000e92  fault_raise at /Users/acwright/Developer/C/6502-PICOVDP/firmware/fault.c:223
+    lr 0x2000a7d3  apply_request at /Users/acwright/Developer/C/6502-PICOVDP/firmware/renderer.c:746
+    xpsr 0x89000200 sp 0x20057f38 exc_return 0xfffffff9
+    cfsr 0x00010000 hfsr 0x40000000 mmfar 0xe000ed34 bfar 0xe000ed38 sfsr 0x00000000 sfar 0xe000ede8
+    r0-r3 0x00000001 0x00000041 0x00000001 0x2005d780 r12 0x181a7937
+    stack+0: 0x00000001 0x00000041 0x00000001 0x2005d780 0x181a7937 0x2000a7d3 0x20000e92 0x89000200
+    stack+32: 0x20077580 0x2005d780 0x2000a7d3 0x00000000 0x200594b4 0x00000000 0x00000000 0xe38a1a00
+    stack+64: 0x20004cf7 0x2001ad84 0xd0000000 0x0000022f 0x20008e59 0xe000ed08 0x20081ff1 0x10000005
+    stack+96: 0x00004785 0x00007fc1 0x00000243 0x00000000 0x04090304 0x00730065 0x00740065 0x00430020
+    heartbeats: core 0 551, core 1 18025
+pico9918pro 53F484FEBE7C6D3B, build 46fb19b-dirty, running
+  clock 352000000 Hz, uptime 1.0 s, reset: power-on, STAT5 $00
+  no fault record
+=== FAULT hang ===
+raised hang; waiting for the board
+pico9918pro 53F484FEBE7C6D3B, build 46fb19b-dirty, SAFE MODE
+  clock 352000000 Hz, uptime 1.2 s, reset: watchdog, STAT5 $00
+  fault record: watchdog, at 1.381 s, build 46fb19b-dirty
+    watchdog: core 1's renderer stalled
+    heartbeats: core 0 651, core 1 17865
+pico9918pro 53F484FEBE7C6D3B, build 46fb19b-dirty, SAFE MODE
+  clock 352000000 Hz, uptime 3.3 s, reset: watchdog, STAT5 $00
+  fault record: watchdog, at 1.381 s, build 46fb19b-dirty
+    watchdog: core 1's renderer stalled
+    heartbeats: core 0 651, core 1 17865
+pico9918pro 53F484FEBE7C6D3B, build 46fb19b-dirty, running
+  clock 352000000 Hz, uptime 1.0 s, reset: power-on, STAT5 $00
+  no fault record
+=== FAULT panic ===
+raised panic; waiting for the board
+pico9918pro 53F484FEBE7C6D3B, build 46fb19b-dirty, SAFE MODE
+  clock 352000000 Hz, uptime 1.5 s, reset: fault, STAT5 $00
+  fault record: panic on core 0, at 1.176 s, build 46fb19b-dirty
+    FAULT raised a panic on core 0
+    heartbeats: core 0 548, core 1 17952
+pico9918pro 53F484FEBE7C6D3B, build 46fb19b-dirty, SAFE MODE
+  clock 352000000 Hz, uptime 3.6 s, reset: fault, STAT5 $00
+  fault record: panic on core 0, at 1.176 s, build 46fb19b-dirty
+    FAULT raised a panic on core 0
+    heartbeats: core 0 548, core 1 17952
+pico9918pro 53F484FEBE7C6D3B, build 46fb19b-dirty, running
+  clock 352000000 Hz, uptime 1.0 s, reset: power-on, STAT5 $00
+  no fault record

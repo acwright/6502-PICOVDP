@@ -365,6 +365,40 @@ compresses, so an exact match is not available. What capture proves is what a
 snapshot cannot see: sync lock, DAC bit order, line doubling, and a picture that
 stays stable under load. It is used in Phases 9, 10, 13 and 14.
 
+### A capture against a golden
+
+From Phase 10, `vdpctl inject --capture` grabs the picture each checkpoint
+leaves on the monitor and scores it against that checkpoint's golden frame,
+expanded through §11's palette. `tools/lib/screen.mjs` holds the method and the
+tolerance; the short version is that the path is allowed a place, a black level
+and a gain, and is then judged on the pixels far enough from a colour change to
+have settled. What the path was measured to do, on this bench:
+
+| | |
+|---|---|
+| Where the picture sits | 1 to 4 pixels right, 1 to 3 lines up |
+| How far a colour change reaches | about 8 capture pixels, which is 4 card pixels. A change of brightness alone costs nothing down the screen: the path carries chroma at half resolution both ways |
+| A settled pixel, after one gain and one black level per channel | within 8 levels of the golden, 99.85% of the time or better; worst seen 17 |
+| A whole picture, edges and all | 2 to 31 levels of mean error, worst where the detail is two pixels wide everywhere |
+| Two grabs of one picture | 0.24 levels apart |
+
+### The bench cards
+
+`bench/cards/` holds pictures this repository draws itself, for the things a
+capture is good at: flat colour, and a lot of it (`tools/card.mjs`,
+`tools/lib/cards.mjs`). Each is a trace and a golden of the oracle's shape, so
+`vdpctl card <name>` injects it like any checkpoint and then measures what each
+palette entry became, and PLAN.md's Phase 10 is what they were built for.
+
+- **`palette`** — all 256 entries of §11 as swatches, with the family down the
+  side and the step across the top. This is the picture PLAN.md's Still Open 3
+  is judged on.
+- **`dac`** — each channel's sixteen levels on its own, over a palette the card
+  writes, and bands of one-pixel stripes. Each channel's ramp is measured with
+  the other two dark, so a swapped channel or a reversed nibble is arithmetic
+  rather than opinion, and the stripes show the ×2 across and the two VGA lines
+  a card line is sent as.
+
 ---
 
 7. Bring-Up Order
@@ -388,6 +422,19 @@ flashed yet.
 7. `vdpctl text` loads the font and puts the test screen up.
 8. `vdpctl compare-capture` grabs a frame and scores it.
 9. `vdpctl irq-timing`, `vdpctl sweep`, `vdpctl soak`, `vdpctl reopen`.
+
+Phase 10 then replaces the stock firmware, and the Nano has nothing to do with
+it: everything goes over the debug link, and the picture over the capture card.
+The board must be in BOOTSEL for the first flash of this repo's firmware and
+never again.
+
+10. `cmake --build --preset pro-debug`, then
+    `PICOVDP_PRESET=pro-debug vdpctl flash` with the board in BOOTSEL.
+    `PICOVDP_PRESET` also picks the ELF a fault record is symbolised against.
+11. `vdpctl inject all --capture` — every checkpoint, digitally and on the
+    monitor.
+12. `vdpctl card dac` and `vdpctl card palette`.
+13. `vdpctl scenes`, `vdpctl late`, `vdpctl fault`.
 
 ---
 

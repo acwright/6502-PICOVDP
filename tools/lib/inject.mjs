@@ -8,11 +8,14 @@
 // goes to VGA, and at the checkpoint records its registers and status. Then the
 // frame, VRAM, the registers and STAT0 are compared with the golden.
 
-import { readFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { REPO } from './emulator.mjs'
 import { CMD, Link, decodeInjectStatus, decodeSnapshot, packSnapshot } from './link.mjs'
 import { checkpointsOf, events, readTrace } from './trace.mjs'
+import { grab, DEFAULT_DEVICE, WIDTH, HEIGHT } from './capture.mjs'
+import { CARD_TOLERANCE, ENTRY_REACH, TOLERANCE, compareCapture, dacResponse, describeCapture, entryColours, settled } from './screen.mjs'
+import { encodePng } from './png.mjs'
 
 const ORACLE = join(REPO, 'tests', 'oracle')
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -115,7 +118,39 @@ function differences(a, b) {
   return { count, first }
 }
 
-export async function injectCheckpoints(target, names, { out } = {}) {
+/** The capture, the golden as it should look, and the difference, to look at later. */
+function writePictures(directory, name, capture, result) {
+  mkdirSync(directory, { recursive: true })
+  const rgba = (pick) => {
+    const out = new Uint8Array(WIDTH * HEIGHT * 4)
+    for (let i = 0; i < WIDTH * HEIGHT; i++) {
+      const [r, g, b] = pick(i)
+      out[i * 4] = r
+      out[i * 4 + 1] = g
+      out[i * 4 + 2] = b
+      out[i * 4 + 3] = 0xff
+    }
+    return out
+  }
+  const at = (x, y) => {
+    const sx = x + result.offset.dx
+    const sy = y + result.offset.dy
+    return sx < 0 || sy < 0 || sx >= WIDTH || sy >= HEIGHT ? -1 : (sy * WIDTH + sx) * 3
+  }
+  writeFileSync(join(directory, `${name}-capture.png`), encodePng(WIDTH, HEIGHT, rgba((i) => [capture.rgb[i * 3], capture.rgb[i * 3 + 1], capture.rgb[i * 3 + 2]])))
+  writeFileSync(join(directory, `${name}-golden.png`), encodePng(WIDTH, HEIGHT, rgba((i) => [result.expected[i * 3], result.expected[i * 3 + 1], result.expected[i * 3 + 2]])))
+  writeFileSync(join(directory, `${name}-difference.png`), encodePng(WIDTH, HEIGHT, rgba((i) => {
+    const x = i % WIDTH
+    const y = (i - x) / WIDTH
+    const source = at(x, y)
+    if (source < 0) return [0, 0, 0]
+    let d = 0
+    for (let c = 0; c < 3; c++) d = Math.max(d, Math.abs(result.expected[i * 3 + c] - capture.rgb[source + c]))
+    return [d, d, d]
+  })))
+}
+
+export async function injectCheckpoints(target, names, { out, capture: wantCapture, device = DEFAULT_DEVICE, pictures, entries, response } = {}) {
   const manifest = JSON.parse(readFileSync(join(ORACLE, 'manifest.json'), 'utf8'))
   const fixtures = target === 'all' ? manifest.fixtures.map((f) => f.name) : [target]
   const link = await Link.open()
@@ -130,6 +165,8 @@ export async function injectCheckpoints(target, names, { out } = {}) {
       const checkpoints = checkpointsOf(trace).filter((c) => !names.length || names.includes(c.name))
       for (const checkpoint of checkpoints) {
         const started = Date.now()
+        let captured = null
+        let note = null
         const data = encode(trace, checkpoint.name)
         await link.request(CMD.INJECT, Buffer.from([3])).catch(() => {}) // ABORT anything before
         await sleep(100)
@@ -178,15 +215,59 @@ export async function injectCheckpoints(target, names, { out } = {}) {
             if (registers[i] !== json.registers[i]) problems.push(`register $${i.toString(16)}: $${registers[i].toString(16)}, the golden $${json.registers[i].toString(16)}`)
           }
           if (status.endState.stat0 !== json.status) problems.push(`STAT0 $${status.endState.stat0.toString(16)}, the golden $${json.status.toString(16)}`)
+
+          // The rest of the way: the DAC, the dongle and the capture card
+          // (tools/lib/screen.mjs). The card holds the checkpoint's picture
+          // until the next injection, so there is no hurry.
+          if (wantCapture) {
+            const frame = grab({ device })
+            // A bench card is allowed the path's own S-curve; an oracle
+            // checkpoint is not (tools/lib/screen.mjs).
+            const reference = { indices: golden, vram: goldenVram, registers: json.registers }
+            const seen = compareCapture(reference, frame, { tolerance: known ? TOLERANCE : CARD_TOLERANCE })
+            captured = {
+              offset: seen.offset,
+              mae: seen.picture.mae,
+              worst: seen.picture.worst,
+              settled: seen.settled && { count: seen.settled.count, levels: seen.settled.levels, rate: seen.settled.rate, rates: seen.settled.rates, mae: seen.settled.mae, worst: seen.settled.worst, gain: seen.settled.fit.gain, black: seen.settled.fit.black },
+              rates: seen.picture.rates,
+              mappings: seen.mappings,
+            }
+            note = describeCapture(seen)
+            for (const problem of seen.problems) problems.push(`capture: ${problem}`)
+            if (pictures) writePictures(pictures, `${trace.header.fixture}-${checkpoint.name}`, frame, seen)
+            // What each palette entry reached the monitor as, where its swatch
+            // is big enough to have settled pixels in it.
+            const measured = entries || response
+              ? entryColours(reference, frame, seen.offset, settled(seen.expected, seen.offset, ENTRY_REACH).mask)
+              : null
+            if (entries) {
+              captured.entries = measured
+              console.log(`  ${measured.length} palette entries have settled pixels of their own`)
+            }
+            if (response) {
+              const dac = dacResponse(measured)
+              captured.ramps = dac.ramps
+              for (const problem of dac.problems) problems.push(`DAC: ${problem}`)
+              console.log('')
+              console.log('  what each channel\'s sixteen levels reached the monitor as:')
+              for (const ramp of dac.ramps) {
+                const own = ramp.channel === 3 ? 0 : ramp.channel
+                console.log(`    ${ramp.name.padEnd(5)} ${ramp.levels.map((l) => (l ? Math.round(Math.max(...(ramp.channel === 3 ? l : [l[own]]))) : '—')).map((v) => String(v).padStart(4)).join('')}`)
+                if (ramp.leak !== undefined) console.log(`          the other channels never rise above ${ramp.leak.toFixed(1)}`)
+              }
+            }
+          }
         }
         await link.request(CMD.INJECT, Buffer.from([3]))
 
         const seconds = ((Date.now() - started) / 1000).toFixed(1)
         if (problems.length) failures++
-        results.push({ fixture: trace.header.fixture, checkpoint: checkpoint.name, frame: checkpoint.frame, ops: status.ops, reads: status.reads, stat5: status.stat5Reads, bytes: data.length, seconds: Number(seconds), problems })
+        results.push({ fixture: trace.header.fixture, checkpoint: checkpoint.name, frame: checkpoint.frame, ops: status.ops, reads: status.reads, stat5: status.stat5Reads, bytes: data.length, seconds: Number(seconds), captured, problems })
         console.log(
           `  ${problems.length ? 'DIFFERS' : 'exact  '} ${trace.header.fixture}/${checkpoint.name} — frame ${checkpoint.frame}, ` +
             `${status.ops} operations (${status.reads} reads, ${status.stat5Reads} of STAT5 not compared), ${data.length} bytes, ${seconds} s` +
+            (note ? `\n          ${note}` : '') +
             (problems.length ? `\n          ${problems.slice(0, 12).join('\n          ')}` : '')
         )
       }

@@ -1,0 +1,7 @@
+1512.4 s up, clock 352000000 Hz, budget 22372 cycles a display line
+  rows built 3260590, lines taken 3559463, LATE ROWS 0, latches merged 0
+  missed bells 0, journal overflows 0, raster slips 0, bus stand-ins 0
+  latency (latch to buffer): max 20652 (spare 8%), 99.9% 19967, mean 9792
+  build (catch-up to buffer): max 18086, mean 7765
+  stage maxima: core 1 catch-up 8297, half 15092, expand 1256, wait 1994, publish 828; core 0 half and expand 16636
+  split mean 160 over 3260590 divided rows; latch interrupt max 4206, line-start interrupt max 471

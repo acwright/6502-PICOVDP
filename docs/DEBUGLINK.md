@@ -355,6 +355,8 @@ node tools/vdpctl.mjs stats [--reset] [--json]
 node tools/vdpctl.mjs snapshot [--frame N] [--out DIR]
 node tools/vdpctl.mjs vram [--out FILE]
 node tools/vdpctl.mjs inject <fixture|all|trace> [checkpoint ...] [--out FILE]
+                                                   [--capture [--device N] [--pictures DIR]]
+node tools/vdpctl.mjs card <name> [--out FILE] [--device N] [--pictures DIR]
 node tools/vdpctl.mjs reset [--power-on]
 node tools/vdpctl.mjs reboot [--bootsel]
 node tools/vdpctl.mjs fault <core0|core1|hang|panic>
@@ -369,3 +371,12 @@ node tools/vdpctl.mjs late [--scene NAME] [--handicap FIRST,LAST,EVERY,CYCLES] [
 `scenes` and `late` check each snapshot against the same scene frame drawn by
 the core on the host (`build/host/host/scene/vdp-scene`), and `late` compares what
 the scene's program read with the host's reads.
+
+`inject --capture` and `card` also grab the picture off the capture card and
+score it against the golden — the DAC, the dongle and everything else the link
+cannot see (`tools/lib/screen.mjs`, `docs/BENCH.md` section 6). `card` runs one
+of the bench cards in `bench/cards/` and records what each palette entry became.
+
+`PICOVDP_PORT` selects the board's port; `PICOVDP_PRESET` selects the build
+`flash` sends and the ELF a fault record is symbolised against (`pico2` by
+default, `pro-debug` for the PRO).

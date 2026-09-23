@@ -1,0 +1,13 @@
+  64 palette entries have settled pixels of their own
+  what each channel's sixteen levels reached the monitor as:
+    red      0  12  27  46  69  89 109 130 139 159 183 204 226 232 238 243
+          the other channels never rise above 0.2
+    green    0   9  28  48  65  84 108 125 132 153 173 193 211 230 251 255
+          the other channels never rise above 0.0
+    blue     0  15  34  51  72  89 111 136 141 161 185 206 225 236 239 242
+          the other channels never rise above 0.0
+    grey     0   5  25  42  60  79  97 116 126 140 164 179 196 215 235 252
+          the other channels never rise above 0.0
+  exact   dac/dac — frame 6, 7979 operations (0 reads, 0 of STAT5 not compared), 21992 bytes, 1.9 s
+          picture at 3,-1, MAE 9.2, 106664 settled px 100.00% within 32 (worst 22), best wrong mapping 21.6
+every checkpoint reproduces exactly on the board

@@ -18,14 +18,15 @@ package).
   and `vdpctl`.
 - `docs/results/` — what each phase measured and checked.
 
-Status: Phase 8 (firmware on the Pico 2) done: everything but the bus runs on
-a Raspberry Pi Pico 2, the PRO's silicon. All fifteen golden checkpoints
-reproduce exactly on the board by injection; Phase 1's 36 worst-case scenes run
-with no late line while snapshots stream, every snapshot matching the host's
-drawing of the same frame; a deliberately late line shows the line before it
-and leaves status untouched; and a fault or hang is recorded, recovered from and
-reflashed over USB. See `docs/results/phase-08.md`. The bus (Phases 9–11) waits
-for the PRO.
+Status: Phase 10 (the firmware on the PRO, no bus) done. Everything but the bus
+runs on the card itself: all eighteen golden checkpoints reproduce exactly on
+the PRO by injection, and each one's picture is captured off the monitor and
+scored against its golden; Phase 1's 36 worst-case scenes run with no late line
+while snapshots stream; a deliberately late line shows the line before it and
+leaves status untouched; and a fault or hang is recorded, recovered from and
+reflashed over USB with no hands on the board. The PRO's RP2354A matches the
+Pico 2 to 0.4% of a line. See `docs/results/phase-10.md`, and
+`docs/results/phase-09.md` for the bench itself. The bus is Phase 11.
 
 Layout
 ------
@@ -41,8 +42,10 @@ Layout
 | `fonts/` | `cp437-6x8.bin`, the card's built-in font (§7), from 6502-BIOS v1.6. Checked by `tools/font.mjs` |
 | `tests/unit/` | C unit tests, run by CTest |
 | `tests/oracle/` | the emulator's goldens and traces, pinned. Written by `tools/sync-oracle.mjs` only |
-| `tools/` | Node ESM host tools: `vdpctl`, `sync-oracle`, `replay`, `fuzz`, `font`, `check-spec` |
+| `tools/` | Node ESM host tools: `vdpctl`, `sync-oracle`, `replay`, `card`, `fuzz`, `font`, `check-spec` |
 | `bench/nano/` | Arduino Nano bus harness (PlatformIO) |
+| `bench/hardware/` | the bench's schematic |
+| `bench/cards/` | the bench cards: pictures this repo draws itself, for the capture card to judge. Written by `tools/card.mjs` |
 | `external/pico-sdk` | pico-sdk 2.1.1, submodule |
 
 Getting started
@@ -140,11 +143,16 @@ trace.
 ```sh
 cmake --preset pico2 && cmake --build --preset pico2
 node tools/vdpctl.mjs flash                       # picotool load -x -f, then INFO
+
+cmake --preset pro-debug && cmake --build --preset pro-debug
+PICOVDP_PRESET=pro-debug node tools/vdpctl.mjs flash
 ```
 
-The first flash needs the board in BOOTSEL (hold BOOT while plugging in USB).
-After that a debug build is reflashed while it runs. The Pico 2 drives VGA on
-GPIO 0–13 with nothing attached.
+The first flash of a board needs it in BOOTSEL (hold BOOT while plugging in
+USB). After that a debug build is reflashed while it runs. `PICOVDP_PRESET`
+says which build `flash` sends and which ELF a fault record is symbolised
+against; it defaults to `pico2`. The Pico 2 drives VGA on GPIO 0–13 with
+nothing attached; on the PRO the same pins reach the DAC.
 
 Driving it (all of `docs/DEBUGLINK.md` section 8):
 
@@ -158,6 +166,16 @@ node tools/vdpctl.mjs fault core1                  # a HardFault; the record, fr
 ```
 
 `scenes` and `late` need the `host` preset built, for `vdp-scene`.
+
+With the capture card of `docs/BENCH.md` attached, the picture is scored too:
+
+```sh
+node tools/vdpctl.mjs inject all --capture         # each checkpoint's picture, against its golden
+node tools/vdpctl.mjs card dac                     # each channel's sixteen levels, measured
+node tools/vdpctl.mjs card palette                 # §11's 256 entries, to look at
+node tools/card.mjs all --png                      # redraw the bench cards from the reference
+node tools/card.mjs --check                        # the cards still replay to their goldens (CTest cards_pinned)
+```
 
 ### Nano harness
 

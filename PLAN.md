@@ -12,7 +12,7 @@ PRO running this firmware; every golden checkpoint the emulator holds reproduces
 byte for byte on the PRO; and the per-line budget, interrupt timing and status
 freshness are measured on the PRO and written back into SPEC.md.
 
-**Status:** Phases 0–8 done ([results](docs/results/)). Phase 1 measured
+**Status:** Phases 0–10 done ([results](docs/results/)). Phase 1 measured
 the line at 2.5–4× §18's estimates, and settled SPEC.md draft 0.4 from it: the
 sprites are built on core 0 (section 3), the clock is 352 MHz, `SPRLIMIT` resets
 to 16, and a late line is specified. Phase 2 exported the oracle: the fixtures'
@@ -37,9 +37,18 @@ each row in two halves, one a core: all fifteen checkpoints reproduce on the
 board by injection, Phase 1's worst cases run ten minutes with no late line while
 snapshots stream, a late line on purpose repeats its predecessor with status
 untouched, and faults are recovered over USB. Under Phase 1's bus stand-in,
-`SPRLIMIT` 16 keeps 16–24% of the line, not 25%. Phase 9 is next. The PRO is on
-order. Part A of this plan needs no PRO: it runs on the host, in the emulator
-and on a Raspberry Pi Pico 2.
+`SPRLIMIT` 16 keeps 16–24% of the line, not 25%. Phase 9 built the bench and
+proved it on the PRO's stock firmware: the wiring is right, a captured screen
+matches a reference rendered from VRAM read back over the bus in all 46,080
+pixels, 10⁶ random VRAM bytes round-trip with no error at either profile, and
+the `/INT` period is 16.6838 ms — the PRO is a 59.94 Hz part. Phase 10 put this
+firmware on the PRO: all eighteen checkpoints reproduce there by injection, each
+one's picture is captured off the monitor and scored against its golden, the
+DAC card measures every channel's sixteen levels with no cross-talk and the
+palette card carries all 256 of §11's entries with every ramp still a ramp,
+and the worst-case scenes, the late line and the faults all behave as they did
+on the Pico 2 — whose budget the PRO matches to 0.4% of a line. **Phase 11, the
+bus, is next**: the only part of SPEC.md that has never run on hardware.
 
 ---
 
@@ -1071,7 +1080,7 @@ listed, with its Phase 10 injection result standing for it.
 |---|---|
 | 1. Time Full mode first | Resolved in draft 0.4 by Phase 1. Phase 8 re-measured it with the firmware, recorded in §18; Phase 13 measures under bus load on the PRO |
 | 2. Does the 4bpp table earn its 8 KB | Resolved in draft 0.4 by Phase 1: yes |
-| 3. Are the hue ramps usable | Phase 10: the palette test card, judged by the owner on a real monitor |
+| 3. Are the hue ramps usable | Phase 10 drew the palette test card, put it on the PRO and captured it (`docs/results/phase-10/shots/`): all 256 entries reach the monitor, and not one step of the sixteen families fails to brighten. The judgement is the owner's, on a real monitor |
 | 4. How fresh the status byte can be | Phase 13 |
 
 ### Found while planning — settled in draft 0.3
