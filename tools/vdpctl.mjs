@@ -16,6 +16,24 @@
 //   vdpctl scene <name>                  a worst-case scene (firmware/scenes.h)
 //   vdpctl load [--bus HZ] [--handicap FIRST,LAST,EVERY,CYCLES] [--fonts]
 //   vdpctl scene-log                     what the scene's program read, frame by frame
+//
+// Through the Nano bus harness (docs/BENCH.md), not the debug link:
+//   vdpctl text [--nano PATH]            load the font and put the Phase 9 test screen up
+//   vdpctl grab [--device N] [--out FILE]   one frame from the capture card, as a PNG
+//   vdpctl compare-capture [--device N] [--out DIR]
+//                                        grab, render what VRAM says should be on screen,
+//                                        and report the match rate
+//   vdpctl irq-timing [--frames N] [--nano PATH]
+//                                        enable the vblank interrupt and measure the /INT period
+//   vdpctl sweep [--nano PATH]           how far the strobes can be squeezed before readback fails
+//   vdpctl soak [--bytes N] [--timing NAME] [--nano PATH]
+//                                        random bytes through all 16 KB of VRAM and back
+//   vdpctl reopen [--times N] [--nano PATH]
+//                                        reset the Nano N times over; VRAM must not move
+//   vdpctl bus [--timing NAME] [--nano PATH]
+//                                        the wiring check: ping, status, and a VRAM readback
+//                                        that would show a reversed data bus at once.
+//                                        NAME is 6502-1mhz (default), 6502-2mhz or fastest
 //   vdpctl profile [--row N] [--iterations N] [--json]   one row's stages, interrupts off
 //   vdpctl late [--scene NAME] [--handicap FIRST,LAST,EVERY,CYCLES] [--seconds N]
 //                                        §18's late line on purpose, checked against the host
@@ -27,7 +45,7 @@
 // The port is PICOVDP_PORT or the first /dev/cu.usbmodem*.
 
 import { execFileSync, spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { REPO } from './lib/emulator.mjs'
 import {
@@ -44,13 +62,33 @@ import {
   u8,
 } from './lib/link.mjs'
 import { injectCheckpoints } from './lib/inject.mjs'
+import { Nano, PORT, PROFILES, sampleNs, strobeNs } from './lib/nano.mjs'
+import {
+  readVram, renderText, setRegister, status, testScreen, textMode, writeVram, TEXT, VRAM_SIZE,
+} from './lib/tms.mjs'
+import { grab as grabFrame, inkBounds, toBits, DEFAULT_DEVICE } from './lib/capture.mjs'
+import { bitmapToRgba, encodePng } from './lib/png.mjs'
 
 const DEFAULT_UF2 = join(REPO, 'build', 'pico2', 'firmware', 'picovdp.uf2')
 const FAULTS = { core0: 0, core1: 1, hang: 2, panic: 3 }
 
+const byte = (v) => `$${v.toString(16).padStart(2, '0')}`
+function timingOf(flags) {
+  const name = flags.get('timing') ?? '6502-1mhz'
+  if (typeof name !== 'string' || !PROFILES[name]) {
+    usage(`--timing must be one of ${Object.keys(PROFILES).join(', ')}`)
+  }
+  return name
+}
+const reverseBits = (v) => {
+  let out = 0
+  for (let i = 0; i < 8; i++) out |= ((v >> i) & 1) << (7 - i)
+  return out
+}
+
 function usage(message) {
   if (message) console.error(`vdpctl: ${message}`)
-  console.error('usage: vdpctl flash|info|stats|snapshot|vram|inject|reset|reboot|fault|scene|load|scene-log ... (see the header of tools/vdpctl.mjs)')
+  console.error('usage: vdpctl flash|info|stats|snapshot|vram|inject|reset|reboot|fault|scene|load|scene-log|bus|soak|reopen|irq-timing|sweep|text|grab|compare-capture ... (see the header of tools/vdpctl.mjs)')
   process.exit(2)
 }
 
@@ -284,6 +322,290 @@ async function main() {
         }
       })
       break
+    case 'text': {
+      const nano = await Nano.open(flags.get('nano') ?? null)
+      try {
+        await nano.profile(timingOf(flags))
+        const font = readFileSync(join(REPO, 'fonts', 'cp437-6x8.bin'))
+        console.log(`loading ${font.length} bytes of font to $${TEXT.pattern.toString(16)}`)
+        await writeVram(nano, TEXT.pattern, font)
+        await writeVram(nano, TEXT.name, Buffer.from(testScreen()))
+        await textMode(nano)
+        console.log(`text mode up: ${TEXT.columns} x ${TEXT.rows}, white on black`)
+        await nano.idle()
+      } finally {
+        await nano.close()
+      }
+      break
+    }
+    case 'grab': {
+      const out = flags.get('out') ?? 'grab.png'
+      const frame = grabFrame({ device: flags.get('device') ?? DEFAULT_DEVICE })
+      const rgba = new Uint8Array(frame.width * frame.height * 4)
+      for (let i = 0; i < frame.width * frame.height; i++) {
+        rgba[i * 4] = frame.rgb[i * 3]
+        rgba[i * 4 + 1] = frame.rgb[i * 3 + 1]
+        rgba[i * 4 + 2] = frame.rgb[i * 3 + 2]
+        rgba[i * 4 + 3] = 0xff
+      }
+      writeFileSync(out, encodePng(frame.width, frame.height, rgba))
+      console.log(`${frame.width} x ${frame.height} -> ${out}`)
+      break
+    }
+    case 'compare-capture': {
+      const dir = flags.get('out') ?? '.'
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+
+      // What should be on screen, taken from the card itself rather than from a
+      // golden file: read the name and pattern tables back over the bus.
+      const nano = await Nano.open(flags.get('nano') ?? null)
+      let reference
+      try {
+        await nano.profile(timingOf(flags))
+        const cells = await readVram(nano, TEXT.name, TEXT.columns * TEXT.rows)
+        const pattern = await readVram(nano, TEXT.pattern, 2048)
+        reference = renderText(cells, pattern)
+        await nano.idle()
+      } finally {
+        await nano.close()
+      }
+
+      const frame = grabFrame({ device: flags.get('device') ?? DEFAULT_DEVICE })
+      const captured = toBits(frame)
+      const box = inkBounds(frame.width, frame.height, captured)
+      if (!box) {
+        console.log('the captured frame is blank: is the dongle connected, and is anything else holding the capture card?')
+        process.exit(1)
+      }
+      console.log(`picture found at ${box.x0},${box.y0} ${box.width} x ${box.height} in ${frame.width} x ${frame.height}`)
+
+      // The border puts ink in the outermost cells, so the box is the text area.
+      const diff = new Uint8Array(reference.width * reference.height)
+      let agree = 0
+      for (let y = 0; y < reference.height; y++) {
+        const cy = box.y0 + Math.floor(((y + 0.5) * box.height) / reference.height)
+        for (let x = 0; x < reference.width; x++) {
+          const cx = box.x0 + Math.floor(((x + 0.5) * box.width) / reference.width)
+          const want = reference.bits[y * reference.width + x]
+          const got = captured[cy * frame.width + cx]
+          if (want === got) agree++
+          else diff[y * reference.width + x] = 1
+        }
+      }
+      const total = reference.width * reference.height
+      const rate = (agree / total) * 100
+
+      writeFileSync(join(dir, 'capture-reference.png'),
+        encodePng(reference.width, reference.height, bitmapToRgba(reference.width, reference.height, reference.bits)))
+      writeFileSync(join(dir, 'capture-difference.png'),
+        encodePng(reference.width, reference.height, bitmapToRgba(reference.width, reference.height, diff, [0xff, 0x30, 0x30])))
+      const rgba = new Uint8Array(frame.width * frame.height * 4)
+      for (let i = 0; i < frame.width * frame.height; i++) {
+        rgba[i * 4] = frame.rgb[i * 3]
+        rgba[i * 4 + 1] = frame.rgb[i * 3 + 1]
+        rgba[i * 4 + 2] = frame.rgb[i * 3 + 2]
+        rgba[i * 4 + 3] = 0xff
+      }
+      writeFileSync(join(dir, 'capture.png'), encodePng(frame.width, frame.height, rgba))
+
+      console.log(`${agree.toLocaleString()}/${total.toLocaleString()} pixels agree: ${rate.toFixed(2)}%`)
+      console.log(`wrote capture.png, capture-reference.png and capture-difference.png to ${dir}`)
+      // A converter resamples and a card compresses; SPEC's capture tolerance is
+      // why this is never the pass/fail oracle. 98% is a clean picture.
+      process.exit(rate >= 98 ? 0 : 1)
+    }
+    case 'irq-timing': {
+      const frames = Number(flags.get('frames') ?? 120)
+      const nano = await Nano.open(flags.get('nano') ?? null)
+      try {
+        await nano.profile(timingOf(flags))
+        await textMode(nano, { interrupts: true })
+        const before = await nano.int()
+        console.log(`/INT ${before.level ? 'high' : 'low'} before the run`)
+        const r = await nano.intPeriod(frames, 10)
+        if (r.edges < 2) {
+          console.log(`only ${r.edges} edge(s) in 10 s: the vblank interrupt is not reaching D8`)
+          await setRegister(nano, 1, 0xd0)
+          process.exit(1)
+        }
+        const hz = 1000 / r.milliseconds
+        console.log(`${r.edges} edges, ${r.milliseconds.toFixed(4)} ms apart (${hz.toFixed(3)} Hz)`)
+        // 262 lines at 59.94 Hz is 16.6833 ms (SPEC section 18); the emulator's
+        // 60 Hz would be 16.6667 ms.
+        const off = ((r.milliseconds - 16.6833) / 16.6833) * 100
+        console.log(`against 16.6833 ms (59.94 Hz): ${off >= 0 ? '+' : ''}${off.toFixed(3)}%`)
+        await setRegister(nano, 1, 0xd0)       // interrupts off again
+        await nano.idle()
+        process.exit(Math.abs(off) < 0.5 ? 0 : 1)
+      } finally {
+        await nano.close()
+      }
+    }
+    case 'sweep': {
+      const nano = await Nano.open(flags.get('nano') ?? null)
+      try {
+        const probe = Buffer.alloc(1024)
+        for (let i = 0; i < probe.length; i++) probe[i] = (i * 13 + 7) & 0xff
+        const works = async (timing) => {
+          await nano.profile(timing)
+          await writeVram(nano, 0x0000, probe)
+          const back = await readVram(nano, 0x0000, probe.length)
+          return back.equals(probe)
+        }
+        const base = { ...PROFILES['6502-1mhz'] }
+        console.log('each step writes and reads 1 KB of VRAM, the other three axes held at 6502-1mhz')
+        const label = {
+          width: (n) => `${strobeNs(n)} ns strobe`,
+          hold: (n) => `${3 * n * 62.5} ns hold`,
+          setup: (n) => `${3 * n * 62.5} ns setup`,
+          gap: (n) => `${n} us apart`,
+        }
+        for (const axis of ['width', 'hold', 'setup', 'gap']) {
+          const results = []
+          for (let n = 0; n <= 4; n++) {
+            results.push([n, await works({ ...base, [axis]: n })])
+          }
+          const least = results.find(([, ok]) => ok)
+          console.log(
+            `  ${axis.padEnd(6)} ${results.map(([n, ok]) => `${n}:${ok ? 'ok' : 'FAIL'}`).join('  ')}` +
+            `   least that works: ${least ? label[axis](least[0]) : 'none'}`,
+          )
+        }
+        await nano.profile('6502-1mhz')
+        await nano.idle()
+        process.exit(0)
+      } finally {
+        await nano.close()
+      }
+    }
+    case 'soak': {
+      const name = timingOf(flags)
+      const target = Number(flags.get('bytes') ?? 1_000_000)
+      const nano = await Nano.open(flags.get('nano') ?? null)
+      try {
+        await nano.ping()
+        await nano.profile(name)
+        console.log(`soaking ${target.toLocaleString()} bytes at ${name}, ${VRAM_SIZE} bytes a pass`)
+        const started = Date.now()
+        let done = 0
+        let wrong = 0
+        let pass = 0
+        while (done < target) {
+          const written = Buffer.alloc(VRAM_SIZE)
+          for (let i = 0; i < VRAM_SIZE; i++) written[i] = (Math.random() * 256) | 0
+          await writeVram(nano, 0x0000, written)
+          const back = await readVram(nano, 0x0000, VRAM_SIZE)
+          for (let i = 0; i < VRAM_SIZE; i++) {
+            if (back[i] === written[i]) continue
+            if (wrong < 8) {
+              console.log(`  $${i.toString(16).padStart(4, '0')}: wrote ${byte(written[i])}, read ${byte(back[i])}`)
+            }
+            wrong++
+          }
+          done += VRAM_SIZE
+          pass++
+          if (pass % 8 === 0) process.stdout.write(`\r  ${done.toLocaleString()} bytes, ${wrong} wrong   `)
+        }
+        const seconds = (Date.now() - started) / 1000
+        process.stdout.write('\r')
+        console.log(`${done.toLocaleString()} bytes in ${pass} passes, ${seconds.toFixed(1)} s (${Math.round(done / seconds).toLocaleString()} B/s)`)
+        console.log(wrong ? `FAILED: ${wrong} bytes wrong` : 'no errors')
+        await nano.idle()
+        process.exit(wrong ? 1 : 0)
+      } finally {
+        await nano.close()
+      }
+    }
+    case 'reopen': {
+      const times = Number(flags.get('times') ?? 100)
+      const path = flags.get('nano') ?? null
+      // A known pattern, laid down once.
+      const pattern = Buffer.alloc(VRAM_SIZE)
+      for (let i = 0; i < VRAM_SIZE; i++) pattern[i] = (i * 7 + (i >> 8) * 31) & 0xff
+      let nano = await Nano.open(path)
+      try {
+        await nano.profile(timingOf(flags))
+        await writeVram(nano, 0x0000, pattern)
+        console.log(`wrote ${VRAM_SIZE} bytes; now opening and closing the port ${times} times`)
+      } finally {
+        await nano.close()
+      }
+      // Each open pulses DTR, which resets the Nano. While it is in reset every
+      // pin floats, and only the 10 k pull-ups hold the strobes high.
+      for (let i = 1; i <= times; i++) {
+        const round = await Nano.open(path, { settle: 250 })
+        await round.close()
+        if (i % 10 === 0) process.stdout.write(`\r  ${i}/${times}   `)
+      }
+      process.stdout.write('\r')
+      nano = await Nano.open(path)
+      try {
+        await nano.profile(timingOf(flags))
+        const back = await readVram(nano, 0x0000, VRAM_SIZE)
+        let wrong = 0
+        for (let i = 0; i < VRAM_SIZE; i++) {
+          if (back[i] === pattern[i]) continue
+          if (wrong < 8) console.log(`  $${i.toString(16).padStart(4, '0')}: expected ${byte(pattern[i])}, read ${byte(back[i])}`)
+          wrong++
+        }
+        console.log(`after ${times} resets: ${VRAM_SIZE - wrong}/${VRAM_SIZE} bytes unchanged, status ${byte(await status(nano))}`)
+        console.log(wrong ? `FAILED: ${wrong} bytes moved` : 'no stray access')
+        await nano.idle()
+        process.exit(wrong ? 1 : 0)
+      } finally {
+        await nano.close()
+      }
+    }
+    case 'bus': {
+      const name = timingOf(flags)
+      const nano = await Nano.open(flags.get('nano') ?? null)
+      try {
+        const { firmware, protocol } = await nano.ping()
+        console.log(`harness on ${nano.path}: firmware ${firmware}, protocol ${protocol}`)
+        const timing = await nano.profile(name)
+        console.log(`timing ${name}: /CSW low ${strobeNs(timing.width)} ns, data sampled ${sampleNs(timing.width)} ns after /CSR falls, gap ${timing.gap} us`)
+
+        // The first status read clears whatever vblank left set behind it.
+        const first = await status(nano)
+        const second = await status(nano)
+        console.log(`status ${byte(first)} then ${byte(second)}`)
+        if (first === 0xff || first === 0x00 && second === 0x00) {
+          console.log('  note: a status stuck at $ff or $00 usually means /CSR or MODE is not reaching the card')
+        }
+
+        // A walking one and its complements through VRAM. A reversed data bus
+        // shows up as $01 coming back $80 -- the mistake PLAN.md section 5 warns
+        // about, and the whole reason this test exists.
+        const pattern = Buffer.from([0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80,
+                                     0xff, 0x00, 0xaa, 0x55, 0x5a, 0xa5])
+        await writeVram(nano, 0x0000, pattern)
+        const back = await readVram(nano, 0x0000, pattern.length)
+
+        let wrong = 0
+        let reversed = 0
+        for (let i = 0; i < pattern.length; i++) {
+          const w = pattern[i], r = back[i]
+          if (w === r) continue
+          wrong++
+          if (r === reverseBits(w)) reversed++
+          console.log(`  ${byte(w)} read back as ${byte(r)}${r === reverseBits(w) ? '  (bit-reversed)' : ''}`)
+        }
+        if (!wrong) {
+          console.log(`VRAM readback ${pattern.length}/${pattern.length}: the data bus is right way round`)
+        } else if (reversed === wrong) {
+          console.log(`VRAM readback ${pattern.length - wrong}/${pattern.length}: the data bus is REVERSED -- CD0 is the MSB (PLAN.md section 5)`)
+        } else {
+          console.log(`VRAM readback ${pattern.length - wrong}/${pattern.length}: ${wrong} wrong`)
+        }
+
+        const int = await nano.int()
+        console.log(`/INT ${int.level ? 'high (idle)' : 'LOW (asserted)'}, ${int.edges} edge${int.edges === 1 ? '' : 's'} seen`)
+        await nano.idle()
+        process.exit(wrong ? 1 : 0)
+      } finally {
+        await nano.close()
+      }
+    }
     default:
       usage(command ? `unknown command ${command}` : undefined)
   }

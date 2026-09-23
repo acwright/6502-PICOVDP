@@ -14,5 +14,8 @@
     "check-font": "node font.mjs --check",
     "check-spec": "node check-spec.mjs",
     "fuzz": "node fuzz.mjs"
+  },
+  "dependencies": {
+    "serialport": "^13.0.0"
   }
 }
