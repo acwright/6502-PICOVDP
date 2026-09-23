@@ -323,9 +323,11 @@ What the card says about §11 itself, which is what it is for:
   are moves a little from capture to capture.
 
 `docs/results/phase-10/shots/palette-palette-capture.png` is the picture
-PLAN.md's **Still Open 3** — are the hue ramps usable — is to be judged on. The
+PLAN.md's **Still Open 3** — are the hue ramps usable — was judged on. The
 arithmetic above says the ramps survive the path; whether they are *usable* is a
-judgement about the palette, and it is the owner's to make on a real monitor.
+judgement about the palette, and the owner made it on 2026-09-23: **yes**,
+nothing specific wrong with them. §11's generated table stays as it is, and
+SPEC.md's third measurement item is struck through.
 
 ### The stray sprite
 
@@ -613,9 +615,13 @@ Differences from the plan
    the bus stand-in off while the scene's own program writes, because the two
    were both producing into the journal from different priorities on core 1. It
    is behind `PICOVDP_DEBUG` and the card cannot reach it.
-6. **No SPEC.md change.** Everything this phase measured either confirms SPEC.md
+6. **One informative SPEC.md change.** Its third measurement item — are the hue
+   ramps usable — is struck through, as draft 0.4 struck the first two, with
+   the emulator's copy and the published HTML changed alongside it (ground
+   rule 2). Nothing normative moved and no golden changed. Otherwise everything
+   this phase measured confirms SPEC.md
    (§2's DAC, §3's line doubling, §11's palette, §18's budget) or is a property
-   of the bench. Nothing normative moved and no golden changed.
+   of the bench.
 
 ---
 
@@ -646,8 +652,9 @@ For later phases
   time, and over a ten-minute stream it does
   ([above](#the-link-under-a-long-stream)). Phase 13 streams for thirty minutes;
   this is on its path.
-- **The owner.** `shots/palette-palette-capture.png` is waiting on the hue-ramp
-  judgement (Still Open 3).
+- **Still Open 3 is closed.** The owner judged the ramps good from this
+  capture, so §11's table stays as it is and SPEC.md's measurement list is down
+  to one item: how fresh the status byte can be, which is Phase 13's.
 
 ---
 

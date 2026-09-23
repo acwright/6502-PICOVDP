@@ -1080,7 +1080,7 @@ listed, with its Phase 10 injection result standing for it.
 |---|---|
 | 1. Time Full mode first | Resolved in draft 0.4 by Phase 1. Phase 8 re-measured it with the firmware, recorded in §18; Phase 13 measures under bus load on the PRO |
 | 2. Does the 4bpp table earn its 8 KB | Resolved in draft 0.4 by Phase 1: yes |
-| 3. Are the hue ramps usable | Phase 10 drew the palette test card, put it on the PRO and captured it (`docs/results/phase-10/shots/`): all 256 entries reach the monitor, and not one step of the sixteen families fails to brighten. The judgement is the owner's, on a real monitor |
+| 3. Are the hue ramps usable | **Resolved in Phase 10: yes.** The palette test card went on the PRO and was captured off its DAC (`docs/results/phase-10/shots/`) — all 256 entries reach the monitor and not one step of the sixteen families fails to brighten — and the owner judged the ramps good as they stand on 2026-09-23. SPEC.md's measurement item 3 is struck through with it |
 | 4. How fresh the status byte can be | Phase 13 |
 
 ### Found while planning — settled in draft 0.3
