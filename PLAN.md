@@ -53,8 +53,8 @@ answers in one word, and 10⁷ random accesses at each of the Nano's three
 profiles — every command form, both pairs — with no read wrong against
 `Video.ts` and the whole card exact at every check; reads 4 µs apart back to
 back always right; RST leaving §15's state 50 times in 50; no FIFO overrun.
-Reads 2 µs apart are stale about once in 170, behind core 1's latch interrupt,
-which Phase 13 inherits. **Phase 12, the traces through the bus, is next.**
+Reads 2 µs apart are stale about once in 170, behind core 1's latch interrupt;
+the AC6502's 2 MHz bus is to work, and fixing that is now a goal of Phase 13. **Phase 12, the traces through the bus, is next.**
 
 ---
 
@@ -968,11 +968,26 @@ listed, with its Phase 10 injection result standing for it.
   the latch interrupt from about 350 to about 3,200 cycles
   (docs/results/draft-0.5.md), and back-to-back accesses at `fastest` across
   vertical blank show whether a bus interrupt can wait that long.
+- **2 MHz.** The AC6502 can run its bus at 1 or 2 MHz, and both are to work.
+  Phase 11 found reads 2 µs apart — a 2 MHz 6502's back-to-back `lda`, or an
+  `lda VC_DATA` straight after the address command's last `sta` — stale about
+  once in 170, because the restage behind a read waits for core 1's latch
+  interrupt, up to 1.6 µs (docs/results/phase-11.md, "Back to back"). The fix is
+  this phase's to choose: a bus interrupt allowed to preempt the latch with the
+  latch's writes to status and the journal made safe for it, a shorter latch,
+  or a read program that serves the next data byte itself. `READ_RUN` measures
+  it; the Nano gains write runs at 2 µs, and a read straight after an address
+  command, which Phase 11 did not measure.
 - **Release parity.** `pro-release` repeats Phases 11 and 12 through the bus,
   using VRAM readback and capture in place of the snapshot.
 
 **Done when:**
 - the latch holds on all trials
+- 2 MHz: back-to-back data reads 2 µs apart, and a data read 2 µs after the
+  address command that sets it, return the right byte on every one of 10⁶ trials
+  each, on both pairs, under the load run's traffic; writes 2 µs apart land, all
+  of 10⁶; Phase 11's conformance stream passes again with its accesses at 2 µs
+  where the Nano can pace them; and the card's stale-data count stays 0
 - the load run shows zero late lines, zero FIFO overruns and a stable capture
 - the release build matches
 - the measurements are in `docs/results/phase-13.md` and in SPEC.md §3, §14, §18
@@ -1048,7 +1063,8 @@ listed, with its Phase 10 injection result standing for it.
    debounce and drives the bus 43–48 ns after `/CSR` falls. Back-to-back data
    reads 4 µs apart are always right; 2 µs apart, about 1 in 170 is stale,
    because a read landing in core 1's latch interrupt (up to 1.6 µs) waits for
-   it before its restage. The plan requires 4 µs; 2 µs is Phase 13's to weigh
+   it before its restage. The AC6502 runs its bus at 1 or 2 MHz and both are to
+   work, so making 2 µs safe is a goal of Phase 13, with criteria of its own
    (docs/results/phase-11.md, "Back to back").
 
 6. **Status is stale.** The status byte is staged before the read arrives (§6).

@@ -223,8 +223,9 @@ PLAN.md puts both at one priority on purpose: `vdp_latch` and the bus handler
 both write status and the journal, and a bus access that preempted a latch half
 way through a read-modify-write of `STAT0`, or between a `FONT` load's bulk
 write and its place in the journal, would split the bus and render copies. So
-this phase does not change it. What would make 2 µs safe is for Phase 13 to
-weigh: a shorter latch, a bus interrupt allowed to preempt the latch with the
+this phase does not change it. The AC6502 runs its bus at 1 or 2 MHz and both
+are to work, so PLAN.md makes 2 µs a goal of Phase 13, with criteria of its
+own. The candidates: a shorter latch, a bus interrupt allowed to preempt the latch with the
 latch's writes made safe for it, or a read program that can serve a second data
 read on its own from a byte staged ahead.
 
