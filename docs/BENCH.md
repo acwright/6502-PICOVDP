@@ -376,7 +376,7 @@ have settled. What the path was measured to do, on this bench:
 
 | | |
 |---|---|
-| Where the picture sits | 1 to 4 pixels right, 1 to 3 lines up |
+| Where the picture sits | −1 to 4 pixels across, 0 to 3 lines up, and it moves when the board is reset: the dongle locks sync where it likes |
 | How far a colour change reaches | about 8 capture pixels, which is 4 card pixels. A change of brightness alone costs nothing down the screen: the path carries chroma at half resolution both ways |
 | A settled pixel, after one gain and one black level per channel | within 8 levels of the golden, 99.85% of the time or better; worst seen 17 |
 | A whole picture, edges and all | 2 to 31 levels of mean error, worst where the detail is two pixels wide everywhere |

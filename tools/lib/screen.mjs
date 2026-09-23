@@ -244,12 +244,13 @@ export function measure(expected, capture, offset, mask, fit) {
  * The capture tolerance: what this bench was measured to deliver in Phase 10,
  * with margin. A level is 1/255 and a step of the DAC is 17 of them.
  *
- * - **Where the picture sits.** 1 to 4 pixels right and 1 to 3 lines up, over
- *   the twenty pictures of Phase 10. The offset is an integer search against a
- *   picture the dongle resamples at some fraction of a pixel, so the answer
- *   moves with what the picture is made of; it never moved by half a card
- *   pixel. A picture put in the wrong place by the firmware would be out by
- *   tens.
+ * - **Where the picture sits.** −1 to 4 pixels across and 0 to 3 lines up, over
+ *   the twenty pictures of Phase 10. Two things move it, neither of them the
+ *   firmware: the dongle resamples at some fraction of a pixel, so an integer
+ *   search lands differently depending on what the picture is made of, and
+ *   where it locks sync changes when the board is reset or reflashed — the
+ *   whole set shifted by a pixel and a line after one reflash. A picture the
+ *   firmware put in the wrong place would be out by tens.
  * - **Settled pixels.** Every oracle checkpoint: 99.9% or better within 8
  *   levels, the worst pixel 15. The gate is 99% within 8. A settled pixel is
  *   one at least `SETTLES` from any colour change in the golden.
@@ -261,7 +262,7 @@ export function measure(expected, capture, offset, mask, fit) {
  *   say. The DAC card settles it outright (`dacResponse`).
  */
 export const TOLERANCE = {
-  offset: { dx: 2.5, dy: -2, slack: 3 },  // where the dongle puts the picture
+  offset: { dx: 1.5, dy: -1.5, slack: 5 },  // where the dongle puts the picture
   settledLevels: 8,                        // half a DAC step
   settledRate: 0.99,
   pictureMae: 32,                          // 2 steps, the edges' ringing included

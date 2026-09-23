@@ -158,7 +158,7 @@ Measured here, and now the tolerance in `screen.mjs`:
 
 | | |
 |---|---|
-| Where the picture sits | 1 to 4 pixels right, 1 to 3 lines up. The integer answer moves with what the picture is made of, because the dongle resamples at some fraction of a pixel; it never moved by half a card pixel |
+| Where the picture sits | −1 to 4 pixels across, 0 to 3 lines up. Two things move it, neither the firmware's: the dongle resamples at a fraction of a pixel, so the integer answer depends on what the picture is made of, and where it locks sync changes when the board is reset — the whole set moved a pixel across and a line down after a reflash, and moved together |
 | Two grabs of one picture | 0.24 levels apart, worst pixel 76: the capture is repeatable |
 | How far a colour change reaches | 8 capture pixels across — 4 card pixels, about 300 ns — and about 6 down |
 | How far a change of brightness alone reaches | nothing at all, down: one-pixel black and white stripes come back two exact rows at a time (below). The path carries chroma at half resolution both ways, so it is colour that spreads, not light |
@@ -191,7 +191,7 @@ Offset, mean error over the whole picture, and the settled pixels:
 | `vdp-font/loaded` | 3,−1 | 7.2 | 167,532 | 100.00% | 10 | 10.7 |
 | `vdp-font/relocated` | 3,−1 | 7.2 | 167,532 | 100.00% | 10 | 10.8 |
 
-Three things in that table are worth saying out loud.
+Four things in that table are worth saying out loud.
 
 **`vdp-modes/full` has no settled pixels at all.** Its picture changes colour
 every two card pixels over the whole frame, so nothing in it is ever eight
@@ -205,6 +205,12 @@ the firmware's — the frame itself was compared index for index and was exact.
 under half a percent — so their statistics coincide. The captures are not the
 same picture: `vdp-font`'s three differ from one another in 2,910 and 4,655
 capture pixels by more than 16 levels.
+
+**The offsets in this table are one sync lock's.** Reflashing the board and
+running the same checkpoints again put every picture at −1,0 instead, with the
+same errors: `bios/ok` 1.9 against 2.4, 100.00% of its settled pixels within 8.
+Where the dongle decides the picture starts is not something the card is being
+judged on, which is why the tolerance allows five pixels either way.
 
 **Most of the oracle's settled area is one colour.** Where a picture's settled
 pixels are all the same colour there is no gain to fit, and the comparison is
