@@ -58,9 +58,14 @@ fallback.
 2. Preparing the PRO
 --------------------
 
-**Back up the stock flash first.** Hold BOOTSEL, plug in the USB-C, and
-`picotool save` the whole image. Keep it outside the repo. Everything in Phase 9
-runs on that stock firmware, and Phase 10 overwrites it.
+**Back up the stock flash first.** Hold the button down while plugging the USB-C
+in, then `picotool save -a`. The stock firmware does not enumerate on USB, so
+BOOTSEL is the only way in and the button is the only way to BOOTSEL. Keep the
+image outside the repo. Everything in Phase 9 runs on that stock firmware, and
+Phase 10 overwrites it.
+
+This bench's copy is in `~/Developer/Backups/pico9918-pro/`, with a SHA-256 and
+the `picotool info -a` output beside it (`docs/results/phase-09.md`).
 
 **Fit the `MDE1` pin.** The `MDE1` pad — the TMS9918's pin 11 position — ships
 bare, because MODE1 is not a TMS9918 signal. Solder one 0.1″ male header pin

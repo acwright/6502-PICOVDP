@@ -205,8 +205,47 @@ bytes.
 
 ---
 
-The stock flash
----------------
+The stock flash, saved
+----------------------
 
-Still not backed up. Phase 9 does not overwrite it; **Phase 10 does**.
-`picotool save` in BOOTSEL, kept outside the repo, before Phase 10 starts.
+Saved on 2026-09-23, before Phase 10 overwrites it, to
+`~/Developer/Backups/pico9918-pro/` -- outside the repo, with a SHA-256
+alongside:
+
+```
+stock-2026-09-23.uf2   4,194,304 bytes (8192 UF2 blocks, 2 MB of flash)
+4fbb4656b3b211962caeed55aed7448f9d535c499606d09f124f95015ad44607
+```
+
+Valid UF2 both ends, based at `0x10000000`, family `0xe48bff59` -- RP2350, ARM
+Secure. The stock firmware is **pico9918 1.2.0**; its image runs `0x10000000` to
+`0x100122c0`, so 74,432 bytes of the 2 MB.
+
+The board has to be in BOOTSEL for this. The stock firmware does not enumerate
+on USB at all, so there is no software path in: hold the button while plugging
+the USB-C back in.
+
+### What `picotool info -a` confirmed
+
+The stock firmware reports its own pin map, and it matches what Phases 11 and
+13 assume:
+
+| GPIO | Signal |
+|---|---|
+| 0-1 | Sync |
+| 2-5 | Red, LSB to MSB |
+| 6-9 | Green, LSB to MSB |
+| 10-13 | Blue, LSB to MSB |
+| 14-21 | CPU data, **CD7 to CD0** |
+| 22 | Interrupt |
+| 23 | Host reset |
+| 24 | CPU clock |
+| 25 | GROM clock |
+
+GPIO 14 is CD7, which is the bus's bit 0 -- the reversal section 3's readback
+test exists to catch, stated by the firmware itself. `/INT` on GPIO 22 and RST
+on GPIO 23 are exactly what PLAN.md's Phase 11 plans to drive, and the VGA DAC
+on GPIO 2-13 is what Phase 10 checks the bit order of. None of this needed
+changing; it is now confirmed rather than assumed.
+
+The saved copy is `device-info-2026-09-23.txt` beside the image.
