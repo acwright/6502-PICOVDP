@@ -35,7 +35,8 @@ board enumerates as `/dev/cu.usbmodem*` on macOS; `vdpctl` takes the first, or
   into BOOTSEL when the host selects it. `vdpctl` sets 115200.
 - **The host must hold DTR**, which opening the port does. The board writes
   nothing while no host is connected, and discards what it cannot write within
-  500 ms.
+  5 s. The SDK's default is 500 ms, which a host busy for a second — Phase 13's
+  captures — turned into half a SNAPSHOT and a request that never completed.
 - **Flashing** is `picotool load -x -f`: `pico_stdio_usb`'s reset interface lets
   picotool reboot a running board into BOOTSEL, load, and start the new image.
   Only the first flash of a board needs the BOOT button.
@@ -134,6 +135,23 @@ core named.
 | resets | 4 | falling edges of RST (§15) |
 | bus interrupt max | 4 | cycles, core 1 |
 | `/INT` | 4 | 1 while the card drives it asserted |
+| masked kinds | 1 | Phase 13 on: 4 |
+| masked maxima | 4 × kinds | cycles, core 1, the longest its interrupts — and so the bus's — were held off by each: the latch's moment (`vdp_latch_take`), a FONT copy step, a row's publication, the thread's own card accesses (scenes, requests) |
+| bell max, mean | 8 | core 0's line start to core 1's latch interrupt, on the shared timer (below) |
+| flag rows | 4 | rows whose publication set `OVF` or `COL` (§6) |
+| flag max, mean | 8 | their latch's line start to the flag set, on the shared timer |
+| frame min, max, mean | 12 | screen line 0 to screen line 0, on the shared timer: the raster's frame (§3) by the card's own clock |
+| lag count | 4 | line starts whose status was restaged |
+| lag max, mean | 8 | a line start to the bus interrupt's restage for it — status staged and `/INT` driven to match — on the shared timer |
+| lag bins | 2 | 64 |
+| lag bin | 2 | 64 cycles a bin |
+| lag histogram | 2 × lag bins | saturating at 65,535; the last bin holds the rest |
+| stale kept | 1 | 4: the last stale data reads, oldest overwritten |
+| stale records | 15 × kept | each: the port (1), the byte served (1) and the prefetch the card held (1); the word last staged (4); cycles from that staging, and from the bus interrupt's entry, to the read's being taken (4 each). Zeroed until used |
+
+The **shared timer** is SIO's 64-bit RISC-V machine timer, which both cores
+read, set by the firmware to count at the system clock: an interval from a
+moment on core 0 to one on core 1, in cycles (Phase 13).
 
 ### SNAPSHOT `$03`
 
@@ -204,7 +222,8 @@ scene's index (1) and name (32).
 ### LOAD `$0A`
 
 Payload: bus rate in Hz (4), handicap first row (2), last row (2), every (2),
-cycles (4), and optionally fonts (1). Zero turns each off.
+cycles (4), and optionally a flags byte (1): bit 0 fonts, bit 1 the scene's
+program on port B. Zero turns each off.
 
 - **The bus stand-in** is Phase 1's: a PWM interrupt on core 1 at the highest
   priority, doing a data write through port B into the palette window, of the
@@ -214,9 +233,13 @@ cycles (4), and optionally fonts (1). Zero turns each off.
   purpose.
 - **Fonts**, bit 0: a scene's program writes `FONT` for both layers every frame,
   at screen line 250, each with its pattern table pointed at VRAM the scene does
-  not use and put back (`scene_fonts`). Both loads land in the latch interrupt at
-  the next vertical blank, and the picture does not change, so snapshots still
-  compare with `vdp-scene`.
+  not use and put back (`scene_fonts`). Both loads land at the next vertical
+  blank's latch, and the picture does not change, so snapshots still compare
+  with `vdp-scene`.
+- **The scene's program on port B**, bit 1 (Phase 13): every access the program
+  makes goes through `$9C02`/`$9C03` instead of `$9C00`/`$9C01`, and its
+  `STATSEL_A` writes become `STATSEL_B`'s, as an interrupt handler's would, so
+  the bus harness can have port A to itself. Set it before SCENE.
 
 ### SCENE LOG `$0B`
 

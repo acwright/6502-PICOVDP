@@ -1,0 +1,681 @@
+{
+ "scene": "full-4bpp-32-det-lim16",
+ "minutes": 30,
+ "nanoPair": "A",
+ "snapshots": {
+  "taken": 12003,
+  "wrong": 0,
+  "late": 0,
+  "stale": 0
+ },
+ "captures": [
+  {
+   "at": 6.094,
+   "between": [
+    390,
+    476
+   ],
+   "frame": 450,
+   "candidates": 87,
+   "mae": 51.39214012041598,
+   "others": 80.55793103448276,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 67.183,
+   "between": [
+    4050,
+    4135
+   ],
+   "frame": 4113,
+   "candidates": 86,
+   "mae": 51.216858237547896,
+   "others": 80.7192337164751,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 128.245,
+   "between": [
+    7708,
+    7794
+   ],
+   "frame": 7773,
+   "candidates": 87,
+   "mae": 51.65894909688013,
+   "others": 80.73918992884511,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 189.326,
+   "between": [
+    11375,
+    11453
+   ],
+   "frame": 11434,
+   "candidates": 79,
+   "mae": 51.69623426382047,
+   "others": 80.56898741105638,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 250.394,
+   "between": [
+    15030,
+    15116
+   ],
+   "frame": 15094,
+   "candidates": 87,
+   "mae": 51.57455938697318,
+   "others": 80.65476737821565,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 311.456,
+   "between": [
+    18689,
+    18777
+   ],
+   "frame": 18754,
+   "candidates": 89,
+   "mae": 51.43926655719759,
+   "others": 80.84918445539135,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 372.529,
+   "between": [
+    22350,
+    22436
+   ],
+   "frame": 22415,
+   "candidates": 87,
+   "mae": 51.575347564313084,
+   "others": 80.86168582375478,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 433.606,
+   "between": [
+    26018,
+    26094
+   ],
+   "frame": 26075,
+   "candidates": 77,
+   "mae": 51.46921729611385,
+   "others": 80.63388067870827,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 494.672,
+   "between": [
+    29676,
+    29752
+   ],
+   "frame": 29736,
+   "candidates": 77,
+   "mae": 51.74041598248495,
+   "others": 80.72463054187192,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 555.731,
+   "between": [
+    33335,
+    33421
+   ],
+   "frame": 33395,
+   "candidates": 87,
+   "mae": 51.51423097974822,
+   "others": 80.58129173508483,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 616.807,
+   "between": [
+    36994,
+    37079
+   ],
+   "frame": 37056,
+   "candidates": 86,
+   "mae": 51.5487684729064,
+   "others": 80.69865353037767,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 677.883,
+   "between": [
+    40651,
+    40737
+   ],
+   "frame": 40717,
+   "candidates": 87,
+   "mae": 51.46329501915709,
+   "others": 80.78158730158731,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 738.941,
+   "between": [
+    44319,
+    44395
+   ],
+   "frame": 44377,
+   "candidates": 77,
+   "mae": 51.44389709906951,
+   "others": 80.64522167487685,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 800.021,
+   "between": [
+    47976,
+    48062
+   ],
+   "frame": 48038,
+   "candidates": 87,
+   "mae": 51.50952380952381,
+   "others": 80.65869731800767,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 861.084,
+   "between": [
+    51635,
+    51720
+   ],
+   "frame": 51698,
+   "candidates": 86,
+   "mae": 51.43576354679803,
+   "others": 80.68490421455938,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 922.142,
+   "between": [
+    55293,
+    55379
+   ],
+   "frame": 55358,
+   "candidates": 87,
+   "mae": 51.341237000547345,
+   "others": 80.60789272030651,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 983.206,
+   "between": [
+    58961,
+    59036
+   ],
+   "frame": 59017,
+   "candidates": 76,
+   "mae": 51.77351943076081,
+   "others": 80.62403940886699,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 1044.272,
+   "between": [
+    62617,
+    62701
+   ],
+   "frame": 62677,
+   "candidates": 85,
+   "mae": 51.47019157088123,
+   "others": 80.47216201423097,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 1105.337,
+   "between": [
+    66274,
+    66358
+   ],
+   "frame": 66338,
+   "candidates": 85,
+   "mae": 51.495960591133006,
+   "others": 80.83790914066776,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 1166.392,
+   "between": [
+    69940,
+    70017
+   ],
+   "frame": 69997,
+   "candidates": 78,
+   "mae": 51.60968801313629,
+   "others": 80.53343185550082,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 1227.451,
+   "between": [
+    73599,
+    73675
+   ],
+   "frame": 73657,
+   "candidates": 77,
+   "mae": 51.50378762999453,
+   "others": 80.55862068965517,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 1288.519,
+   "between": [
+    77257,
+    77341
+   ],
+   "frame": 77317,
+   "candidates": 85,
+   "mae": 51.07182266009852,
+   "others": 80.48525451559934,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 1349.583,
+   "between": [
+    80914,
+    80999
+   ],
+   "frame": 80977,
+   "candidates": 86,
+   "mae": 51.49191023535851,
+   "others": 80.74596606458675,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 1410.631,
+   "between": [
+    84581,
+    84658
+   ],
+   "frame": 84637,
+   "candidates": 78,
+   "mae": 51.73272030651341,
+   "others": 80.81989053092501,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 1471.685,
+   "between": [
+    88240,
+    88317
+   ],
+   "frame": 88296,
+   "candidates": 78,
+   "mae": 51.65065134099617,
+   "others": 80.57493158182814,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 1532.746,
+   "between": [
+    91899,
+    91977
+   ],
+   "frame": 91956,
+   "candidates": 79,
+   "mae": 51.679802955665025,
+   "others": 80.84181718664478,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 1593.822,
+   "between": [
+    95559,
+    95635
+   ],
+   "frame": 95616,
+   "candidates": 77,
+   "mae": 51.535971538040506,
+   "others": 80.55292829775588,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 1654.891,
+   "between": [
+    99217,
+    99295
+   ],
+   "frame": 99277,
+   "candidates": 79,
+   "mae": 51.40731253420908,
+   "others": 80.58424740010948,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 1715.962,
+   "between": [
+    102877,
+    102962
+   ],
+   "frame": 102937,
+   "candidates": 86,
+   "mae": 51.448965517241376,
+   "others": 80.56993979200875,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  },
+  {
+   "at": 1777.031,
+   "between": [
+    106535,
+    106623
+   ],
+   "frame": 106598,
+   "candidates": 89,
+   "mae": 51.54065681444992,
+   "others": 80.5832183908046,
+   "offset": {
+    "dx": 3,
+    "dy": -1
+   },
+   "problems": []
+  }
+ ],
+ "trials": {
+  "backToBack": 7156272,
+  "afterAddress": 2508351,
+  "writes": 7230048
+ },
+ "wrong": {
+  "write": 0,
+  "read": 0,
+  "address": 0
+ },
+ "batches": 221327,
+ "handlers": 3350822,
+ "handlerWaitMaxNs": 1004562.5,
+ "relinked": [],
+ "stats": {
+  "uptimeUs": 4315402552,
+  "clockHz": 352000000,
+  "budget": 22372,
+  "rowsBuilt": 29141994,
+  "linesTaken": 31813344,
+  "lateRows": 0,
+  "latchesMerged": 0,
+  "missedBells": 0,
+  "journalOverflows": 0,
+  "rasterSlips": 0,
+  "latency": {
+   "max": 21550,
+   "p999": 20479,
+   "mean": 9676
+  },
+  "build": {
+   "max": 18521,
+   "p999": 0,
+   "mean": 7476
+  },
+  "catchUpMax": 7522,
+  "halfMax": 15878,
+  "expandMax": 1884,
+  "waitMax": 4442,
+  "publishMax": 1386,
+  "core0HalfMax": 13851,
+  "splitMean": 168,
+  "splitRows": 29141994,
+  "latchIsrMax": 1246,
+  "lineIsrMax": 538,
+  "busStandins": 0,
+  "histogramShift": 7,
+  "bus": {
+   "writes": 19962280,
+   "reads": 13448612,
+   "staleData": 0,
+   "staleStatus": 135,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 0,
+   "isrMax": 316,
+   "intLevel": 0,
+   "isrMean": 151
+  },
+  "masked": {
+   "latch": 244,
+   "copy": 163,
+   "publish": 134,
+   "thread": 155
+  },
+  "bell": {
+   "max": 451,
+   "mean": 80
+  },
+  "flags": {
+   "rows": 121425,
+   "max": 20996,
+   "mean": 14514
+  },
+  "frame": {
+   "min": 5872512,
+   "max": 5872786,
+   "mean": 5872650
+  },
+  "lag": {
+   "count": 31813345,
+   "max": 1139,
+   "mean": 475,
+   "bin": 64,
+   "histogram": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    65535,
+    65535,
+    65535,
+    65535,
+    15647,
+    4497,
+    10165,
+    36,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "staleKept": [
+   {
+    "port": 0,
+    "served": 0,
+    "held": 0,
+    "staged": 0,
+    "sinceStage": 0,
+    "sinceEntry": 0
+   },
+   {
+    "port": 0,
+    "served": 0,
+    "held": 0,
+    "staged": 0,
+    "sinceStage": 0,
+    "sinceEntry": 0
+   },
+   {
+    "port": 0,
+    "served": 0,
+    "held": 0,
+    "staged": 0,
+    "sinceStage": 0,
+    "sinceEntry": 0
+   },
+   {
+    "port": 0,
+    "served": 0,
+    "held": 0,
+    "staged": 0,
+    "sinceStage": 0,
+    "sinceEntry": 0
+   }
+  ]
+ }
+}

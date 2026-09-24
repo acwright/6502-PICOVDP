@@ -1,0 +1,50 @@
+[
+ {
+  "line": 100,
+  "m": 231,
+  "snapshots": 10,
+  "trials": 20,
+  "wrongRows": 10,
+  "lateRows": 0,
+  "examples": [
+   "frame 345612 row 126: old, expected new",
+   "frame 345620 row 126: old, expected new",
+   "frame 345628 row 126: old, expected new",
+   "frame 345636 row 126: old, expected new"
+  ],
+  "edges": 400,
+  "timedOut": false
+ },
+ {
+  "line": 200,
+  "m": 69,
+  "snapshots": 10,
+  "trials": 20,
+  "wrongRows": 20,
+  "lateRows": 0,
+  "examples": [
+   "frame 345819 row 95: new, expected old",
+   "frame 345819 row 226: old, expected new",
+   "frame 345827 row 95: new, expected old",
+   "frame 345827 row 226: old, expected new"
+  ],
+  "edges": 400,
+  "timedOut": false
+ },
+ {
+  "line": 250,
+  "m": 119,
+  "snapshots": 10,
+  "trials": 20,
+  "wrongRows": 20,
+  "lateRows": 0,
+  "examples": [
+   "frame 346027 row 14: old, expected new",
+   "frame 346027 row 145: new, expected old",
+   "frame 346035 row 14: old, expected new",
+   "frame 346035 row 145: new, expected old"
+  ],
+  "edges": 400,
+  "timedOut": false
+ }
+]

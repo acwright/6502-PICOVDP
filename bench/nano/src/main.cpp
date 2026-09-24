@@ -14,8 +14,8 @@
 #include <Arduino.h>
 #include <util/delay_basic.h>
 
-static const uint8_t FIRMWARE_VERSION = 2;
-static const uint8_t PROTOCOL_VERSION = 2;
+static const uint8_t FIRMWARE_VERSION = 3;
+static const uint8_t PROTOCOL_VERSION = 3;
 
 // ---------------------------------------------------------------- the bus
 
@@ -391,6 +391,232 @@ static uint32_t readRun(uint8_t port, uint8_t count, uint8_t extra, uint8_t *raw
   return spent;
 }
 
+// ---------------------------------------------------------------- paced runs
+//
+// Phase 13: accesses at an exact spacing, whatever their mix — a data read
+// straight after the address command that sets it, writes back to back, a
+// scanline handler's writes — as a CPU's instruction timing spaces them. Each
+// access is precomputed into the six port values it needs, so the loop below
+// does the same instructions for a read as for a write: 32 cycles an access,
+// 2 us, with `extra` 0, and 31 + 3 x extra cycles otherwise (4 us at 11). The
+// strobe is READ_RUN's: low for 6 cycles, the data sampled 3 cycles after it
+// falls, so a read's /CSR rises 1.625 us before the next access's strobe
+// falls. Interrupts are off while it runs, so nothing stretches a gap.
+
+static const uint8_t PACED_MAX = 100;
+
+struct Entry {
+  uint8_t pd, pb, dd, db, ch, cl;  // PORTD, PORTB, DDRD, DDRB, PORTC idle and strobed
+};
+
+static Entry entries[PACED_MAX];
+// READ_RUN's samples, BLOCK_MAX + 4 bytes; a paced run's, two a access, and
+// the scanline handler's after them.
+static uint8_t scratch[244];
+
+// PACED's, INT_RUN's and TRAFFIC's answers, built here rather than on a stack
+// the RAM has little room for.
+static uint8_t answer[255];
+
+// An op as SCRIPT has it: b7:6 0 write, 1 read and compare, 2 read and
+// ignore; b3:2 the port.
+static void prepare(Entry &e, uint8_t op, uint8_t value) {
+  const uint8_t c = (uint8_t)((op & 0x0C) | IDLE_C);
+  const uint8_t d = (uint8_t)(PORTD & ~DATA_D), b = (uint8_t)(PORTB & ~DATA_B);
+  e.ch = c;
+  if (!(op & 0xC0)) {
+    e.pd = (uint8_t)(d | ((uint8_t)(value << 2) & DATA_D));
+    e.pb = (uint8_t)(b | ((uint8_t)(__builtin_avr_swap(value) >> 1) & DATA_B));
+    e.dd = (uint8_t)(DDRD | DATA_D);
+    e.db = (uint8_t)(DDRB | DATA_B);
+    e.cl = (uint8_t)(c & ~CSW);
+  } else {
+    e.pd = d;                                          // no pull-ups on the bus
+    e.pb = b;
+    e.dd = (uint8_t)(DDRD & ~DATA_D);
+    e.db = (uint8_t)(DDRB & ~DATA_B);
+    e.cl = (uint8_t)(c & ~CSR);
+  }
+}
+
+static inline uint8_t sampled(const uint8_t *raw) {
+  return (uint8_t)((raw[0] & DATA_D) >> 2) | (uint8_t)(__builtin_avr_swap((uint8_t)(raw[1] & DATA_B)) << 1);
+}
+
+// `count` entries at the spacing above, PIND and PINB for each into `raw`.
+// Interrupts must be off.
+static void pacedRun(const Entry *e, uint8_t count, uint8_t extra, uint8_t *raw) {
+  uint8_t pd, pb, dd, db, ch, cl, d, b, k;
+  const Entry *x = e;
+  uint8_t *z = raw;
+  uint8_t n = count;
+  if (!extra) {
+    asm volatile(
+      "1: ld %[pd], X+\n\t"
+      "ld %[pb], X+\n\t"
+      "ld %[dd], X+\n\t"
+      "ld %[db], X+\n\t"
+      "ld %[ch], X+\n\t"
+      "ld %[cl], X+\n\t"
+      "out %[portd], %[pd]\n\t"
+      "out %[portb], %[pb]\n\t"
+      "out %[ddrd], %[dd]\n\t"
+      "out %[ddrb], %[db]\n\t"
+      "out %[portc], %[ch]\n\t"
+      "out %[portc], %[cl]\n\t"
+      "rjmp .+0\n\t"
+      "nop\n\t"
+      "in %[d], %[pind]\n\t"
+      "in %[b], %[pinb]\n\t"
+      "out %[portc], %[ch]\n\t"
+      "st Z+, %[d]\n\t"
+      "st Z+, %[b]\n\t"
+      "nop\n\t"
+      "dec %[n]\n\t"
+      "brne 1b\n\t"
+      : [x] "+x"(x), [z] "+z"(z), [n] "+r"(n), [pd] "=&r"(pd), [pb] "=&r"(pb), [dd] "=&r"(dd), [db] "=&r"(db),
+        [ch] "=&r"(ch), [cl] "=&r"(cl), [d] "=&r"(d), [b] "=&r"(b)
+      : [portd] "I"(_SFR_IO_ADDR(PORTD)), [portb] "I"(_SFR_IO_ADDR(PORTB)), [ddrd] "I"(_SFR_IO_ADDR(DDRD)),
+        [ddrb] "I"(_SFR_IO_ADDR(DDRB)), [portc] "I"(_SFR_IO_ADDR(PORTC)), [pind] "I"(_SFR_IO_ADDR(PIND)),
+        [pinb] "I"(_SFR_IO_ADDR(PINB))
+      : "memory");
+  } else {
+    asm volatile(
+      "1: ld %[pd], X+\n\t"
+      "ld %[pb], X+\n\t"
+      "ld %[dd], X+\n\t"
+      "ld %[db], X+\n\t"
+      "ld %[ch], X+\n\t"
+      "ld %[cl], X+\n\t"
+      "out %[portd], %[pd]\n\t"
+      "out %[portb], %[pb]\n\t"
+      "out %[ddrd], %[dd]\n\t"
+      "out %[ddrb], %[db]\n\t"
+      "out %[portc], %[ch]\n\t"
+      "out %[portc], %[cl]\n\t"
+      "rjmp .+0\n\t"
+      "nop\n\t"
+      "in %[d], %[pind]\n\t"
+      "in %[b], %[pinb]\n\t"
+      "out %[portc], %[ch]\n\t"
+      "st Z+, %[d]\n\t"
+      "st Z+, %[b]\n\t"
+      "mov %[k], %[extra]\n\t"
+      "2: dec %[k]\n\t"
+      "brne 2b\n\t"
+      "dec %[n]\n\t"
+      "brne 1b\n\t"
+      : [x] "+x"(x), [z] "+z"(z), [n] "+r"(n), [pd] "=&r"(pd), [pb] "=&r"(pb), [dd] "=&r"(dd), [db] "=&r"(db),
+        [ch] "=&r"(ch), [cl] "=&r"(cl), [d] "=&r"(d), [b] "=&r"(b), [k] "=&r"(k)
+      : [extra] "r"(extra), [portd] "I"(_SFR_IO_ADDR(PORTD)), [portb] "I"(_SFR_IO_ADDR(PORTB)),
+        [ddrd] "I"(_SFR_IO_ADDR(DDRD)), [ddrb] "I"(_SFR_IO_ADDR(DDRB)), [portc] "I"(_SFR_IO_ADDR(PORTC)),
+        [pind] "I"(_SFR_IO_ADDR(PIND)), [pinb] "I"(_SFR_IO_ADDR(PINB))
+      : "memory");
+  }
+  dataRelease();
+  PORTC = IDLE_C;
+}
+
+// Timer 1's overflows, counted by hand while interrupts are off; t1High when
+// they are back on. Call at least every 4 ms.
+static uint16_t heldHigh;
+
+static void holdBegin() {
+  cli();
+  heldHigh = t1High;
+  if (TIFR1 & _BV(TOV1)) { TIFR1 = _BV(TOV1); heldHigh++; }
+}
+
+static void holdEnd() {
+  if (TIFR1 & _BV(TOV1)) { TIFR1 = _BV(TOV1); heldHigh++; }
+  t1High = heldHigh;
+  TIFR1 = _BV(ICF1);                                   // the capture interrupt has nothing to add
+  sei();
+}
+
+static uint32_t heldNow() {
+  const uint16_t low = TCNT1;
+  uint16_t high = heldHigh;
+  if ((TIFR1 & _BV(TOV1)) && low < 0x8000) high++;
+  return ((uint32_t)high << 16) | low;
+}
+
+// The next falling edge of /INT, from Timer 1's input capture, with interrupts
+// off: its time in `edge`, or false after `timeout` overflows (4.096 ms each).
+static bool heldEdge(uint8_t timeout, uint32_t &edge) {
+  uint8_t overflows = 0;
+  for (;;) {
+    const uint8_t f = TIFR1;
+    if (f & _BV(TOV1)) {
+      // A capture flagged beside an overflow came first if its count is high.
+      if ((f & _BV(ICF1)) && ICR1 >= 0x8000) break;
+      TIFR1 = _BV(TOV1);
+      heldHigh++;
+      if (++overflows > timeout) return false;
+      continue;
+    }
+    if (f & _BV(ICF1)) break;
+  }
+  edge = ((uint32_t)heldHigh << 16) | ICR1;
+  TIFR1 = _BV(ICF1);
+  return true;
+}
+
+static void serveWhileIdle();
+
+// Reads that differed, as SCRIPT logs them, from a run's samples. TRAFFIC's
+// handler is served meanwhile, when armed.
+static uint8_t compareRun(const uint8_t *pairs, uint8_t count, const uint8_t *raw, uint8_t *log, uint8_t differed) {
+  for (uint8_t i = 0; i < count; i++) {
+    if (!(i & 15)) serveWhileIdle();
+    const uint8_t op = pairs[2 * i];
+    if ((op & 0xC0) != 0x40) continue;
+    const uint8_t got = sampled(raw + 2 * i);
+    if (got == pairs[2 * i + 1]) continue;
+    if (differed < SCRIPT_LOG) {
+      log[3 * differed] = i;
+      log[3 * differed + 1] = pairs[2 * i + 1];
+      log[3 * differed + 2] = got;
+    }
+    if (differed < 255) differed++;
+  }
+  return differed;
+}
+
+// TRAFFIC's scanline handler (Phase 13's load): IRQLINE moved on by `step`,
+// then STAT1 read to acknowledge, on one pair.
+static uint8_t irqLine, irqStep, irqWrap, irqPair;
+static uint32_t irqServiced;
+static uint16_t irqLatencyMax;
+static Entry handler[3];
+
+// The handler as the Nano waits for the host, too: a round trip is
+// milliseconds, dozens of lines, and TRAFFIC's handler has to keep up with an
+// interrupt every eight. IDLE disarms it.
+static void serviceScanline();
+
+static void serveWhileIdle() {
+  if (irqStep && !(PINB & _BV(PB0))) serviceScanline();
+}
+
+static void serviceScanline() {
+  const uint16_t latency = (uint16_t)(TCNT1 - ICR1);
+  irqLine = (uint8_t)(irqLine + irqStep);                // wrap 0 is 256
+  if (irqWrap && irqLine >= irqWrap) irqLine = (uint8_t)(irqLine - irqWrap);
+  const uint8_t command = (uint8_t)((irqPair ? 3 : 1) << 2);
+  prepare(handler[0], command, irqLine);
+  prepare(handler[1], command, 0x8B);                  // IRQLINE
+  prepare(handler[2], (uint8_t)(0x80 | command), 0);   // STAT1, the pair's STATSEL
+  // Interrupts off for the three accesses alone, 8 us: they keep PACED's
+  // spacing, and serial loses no byte meanwhile.
+  const uint8_t sreg = SREG;
+  cli();
+  pacedRun(handler, 3, 0, scratch + 2 * PACED_MAX);
+  SREG = sreg;
+  irqServiced++;
+  if (latency > irqLatencyMax) irqLatencyMax = latency;
+}
+
 // ---------------------------------------------------------------- framing
 
 static const uint8_t ERROR = 0xFF;
@@ -409,6 +635,9 @@ enum : uint8_t {
   CMD_INT_PERIOD = 0x0A,
   CMD_SCRIPT = 0x0B,
   CMD_READ_RUN = 0x0C,
+  CMD_PACED = 0x0D,
+  CMD_INT_RUN = 0x0E,
+  CMD_TRAFFIC = 0x0F,
 };
 
 enum : uint8_t {
@@ -453,6 +682,7 @@ static bool take(uint8_t *destination, uint16_t count, uint16_t milliseconds) {
   uint32_t last = millis();
   uint16_t got = 0;
   while (got < count) {
+    serveWhileIdle();
     if (Serial.available()) {
       destination[got++] = (uint8_t)Serial.read();
       last = millis();
@@ -525,6 +755,7 @@ static void dispatch(uint8_t type, uint8_t sequence, uint8_t *payload, uint8_t l
       return;
     }
     case CMD_IDLE: {
+      irqStep = 0;
       busIdle();
       reply(type | ANSWER, sequence, nullptr, 0);
       return;
@@ -587,7 +818,7 @@ static void dispatch(uint8_t type, uint8_t sequence, uint8_t *payload, uint8_t l
       if (length != 3) { fail(sequence, ERR_LENGTH); return; }
       const uint8_t count = payload[1];
       if (count == 0 || count > BLOCK_MAX / 2) { fail(sequence, ERR_LENGTH); return; }
-      static uint8_t raw[BLOCK_MAX + 4];
+      uint8_t *raw = scratch;
       const uint32_t spent = readRun(payload[0], count, payload[2], raw + 4);
       raw[0] = (uint8_t)spent;
       raw[1] = (uint8_t)(spent >> 8);
@@ -619,6 +850,178 @@ static void dispatch(uint8_t type, uint8_t sequence, uint8_t *payload, uint8_t l
       reply(type | ANSWER, sequence, out, 5 + 3 * logged);
       return;
     }
+    case CMD_PACED: {
+      // extra, then (op, value) x 1 to PACED_MAX: pacedRun, reads compared as
+      // SCRIPT compares them. extra b7 set answers the reads' bytes instead of
+      // the log. Answers differed, Timer 1's ticks for the run (u32), then the
+      // log or the bytes.
+      if (length < 3 || !(length & 1) || (length - 1) / 2 > PACED_MAX) { fail(sequence, ERR_LENGTH); return; }
+      const uint8_t extra = payload[0] & 0x7F;
+      const bool bytes = payload[0] & 0x80;
+      const uint8_t *pairs = payload + 1;
+      const uint8_t count = (uint8_t)((length - 1) / 2);
+      for (uint8_t i = 0; i < count; i++) {
+        if ((pairs[2 * i] & 0xC0) == 0xC0) { fail(sequence, ERR_LENGTH); return; }
+        prepare(entries[i], pairs[2 * i], pairs[2 * i + 1]);
+      }
+      holdBegin();
+      const uint32_t began = heldNow();
+      pacedRun(entries, count, extra, scratch);
+      const uint32_t spent = heldNow() - began;
+      holdEnd();
+      uint8_t *out = answer;
+      uint8_t size = 5;
+      if (bytes) {
+        out[0] = 0;
+        for (uint8_t i = 0; i < count; i++) {
+          if (pairs[2 * i] & 0xC0) out[size++] = sampled(scratch + 2 * i);
+        }
+      } else {
+        out[0] = compareRun(pairs, count, scratch, out + 5, 0);
+        size = (uint8_t)(5 + 3 * (out[0] < SCRIPT_LOG ? out[0] : SCRIPT_LOG));
+      }
+      out[1] = (uint8_t)spent;
+      out[2] = (uint8_t)(spent >> 8);
+      out[3] = (uint8_t)(spent >> 16);
+      out[4] = (uint8_t)(spent >> 24);
+      reply(type | ANSWER, sequence, out, size);
+      return;
+    }
+    case CMD_INT_RUN: {
+      // edges(2), timeout(1) in 4.096 ms overflows, flags(1), delay(2) in
+      // ticks, extra(1), sequences(1), then each sequence: count(1) and its
+      // (op, value) pairs. For each falling edge of /INT, sequence (edge mod
+      // sequences) is played at pacedRun's spacing once `delay` ticks have
+      // passed since the edge. flags b0: answer each edge's time (u32) and
+      // the ticks from it to the run (u16); b1: answer each run's read bytes.
+      // Answers edges taken (u16), 1 if a wait timed out, reads that differed
+      // (u16), then the records.
+      if (length < 9) { fail(sequence, ERR_LENGTH); return; }
+      const uint16_t edges = (uint16_t)payload[0] | ((uint16_t)payload[1] << 8);
+      const uint8_t timeout = payload[2], flags = payload[3];
+      const uint16_t delay = (uint16_t)payload[4] | ((uint16_t)payload[5] << 8);
+      const uint8_t extra = payload[6], sequences = payload[7];
+      if (!sequences || sequences > 4) { fail(sequence, ERR_LENGTH); return; }
+      const uint8_t *seqPairs[4];
+      uint8_t seqCount[4], seqFirst[4];
+      uint8_t at = 8, total = 0;
+      for (uint8_t q = 0; q < sequences; q++) {
+        if (at >= length) { fail(sequence, ERR_LENGTH); return; }
+        const uint8_t n = payload[at++];
+        if (!n || total + n > PACED_MAX || at + 2 * n > length) { fail(sequence, ERR_LENGTH); return; }
+        seqPairs[q] = payload + at;
+        seqCount[q] = n;
+        seqFirst[q] = total;
+        for (uint8_t i = 0; i < n; i++) {
+          if ((payload[at + 2 * i] & 0xC0) == 0xC0) { fail(sequence, ERR_LENGTH); return; }
+          prepare(entries[total + i], payload[at + 2 * i], payload[at + 2 * i + 1]);
+        }
+        total = (uint8_t)(total + n);
+        at = (uint8_t)(at + 2 * n);
+      }
+      if (at != length) { fail(sequence, ERR_LENGTH); return; }
+      uint8_t *records = answer + 5;
+      const uint8_t room = 250;
+      uint8_t size = 0;
+      uint16_t done = 0, differed = 0;
+      bool timedOut = false;
+      uint8_t log[3 * SCRIPT_LOG];
+      // /INT already low is an edge not yet served: the capture interrupt has
+      // its time. Edges from now on are caught with interrupts off.
+      const bool asserted = !(PINB & _BV(PB0));
+      const uint32_t before = intTicks();
+      holdBegin();
+      TIFR1 = _BV(ICF1);
+      for (uint8_t q = 0; done < edges; q = (uint8_t)(q + 1 == sequences ? 0 : q + 1)) {
+        uint32_t edge;
+        if (done == 0 && asserted) edge = before;
+        else if (!heldEdge(timeout, edge)) { timedOut = true; break; }
+        const uint16_t low = (uint16_t)edge;
+        while ((uint16_t)(TCNT1 - low) < delay) {
+        }
+        const uint16_t offset = (uint16_t)(TCNT1 - low);
+        pacedRun(entries + seqFirst[q], seqCount[q], extra, scratch);
+        const uint8_t d = compareRun(seqPairs[q], seqCount[q], scratch, log, 0);
+        differed = (uint16_t)(differed + d);
+        done++;
+        // Whole records only, so the host can read them in step.
+        uint8_t reads = 0;
+        if (flags & 2) {
+          for (uint8_t i = 0; i < seqCount[q]; i++) if (seqPairs[q][2 * i] & 0xC0) reads++;
+        }
+        const bool fits = size + ((flags & 1) ? 6 : 0) + reads <= room;
+        if (!fits) continue;
+        if (flags & 1) {
+          records[size++] = (uint8_t)edge;
+          records[size++] = (uint8_t)(edge >> 8);
+          records[size++] = (uint8_t)(edge >> 16);
+          records[size++] = (uint8_t)(edge >> 24);
+          records[size++] = (uint8_t)offset;
+          records[size++] = (uint8_t)(offset >> 8);
+        }
+        if (flags & 2) {
+          for (uint8_t i = 0; i < seqCount[q]; i++) {
+            if (seqPairs[q][2 * i] & 0xC0) records[size++] = sampled(scratch + 2 * i);
+          }
+        }
+      }
+      holdEnd();
+      answer[0] = (uint8_t)done;
+      answer[1] = (uint8_t)(done >> 8);
+      answer[2] = timedOut;
+      answer[3] = (uint8_t)differed;
+      answer[4] = (uint8_t)(differed >> 8);
+      reply(type | ANSWER, sequence, answer, (uint8_t)(5 + size));
+      return;
+    }
+    case CMD_TRAFFIC: {
+      // A paced batch, as PACED, with a scanline handler served before and
+      // after it whenever /INT is low: IRQLINE moved on by `step`, wrapping
+      // below `wrap` (0 for 256), and STAT1 read, on pair `pair`. step(1), wrap(1),
+      // pair(1), extra(1), then the pairs; step 0 leaves the handler as it is
+      // and serves nothing. Answers as PACED, then handlers served (u32) and
+      // the longest from an edge to its handler (u16 ticks), both since the
+      // handler was last set up.
+      if (length < 6 || (length & 1) || (length - 4) / 2 > PACED_MAX) { fail(sequence, ERR_LENGTH); return; }
+      if (payload[0] && (payload[0] != irqStep || payload[1] != irqWrap || payload[2] != irqPair)) {
+        irqStep = payload[0];
+        irqWrap = payload[1];
+        irqPair = payload[2];
+        irqLine = 0;
+        irqServiced = 0;
+        irqLatencyMax = 0;
+      }
+      const uint8_t extra = payload[3];
+      const uint8_t *pairs = payload + 4;
+      const uint8_t count = (uint8_t)((length - 4) / 2);
+      for (uint8_t i = 0; i < count; i++) {
+        if ((pairs[2 * i] & 0xC0) == 0xC0) { fail(sequence, ERR_LENGTH); return; }
+        prepare(entries[i], pairs[2 * i], pairs[2 * i + 1]);
+        serveWhileIdle();                                // the batch's setting up is not deaf to /INT
+      }
+      holdBegin();
+      if (payload[0] && !(PINB & _BV(PB0))) serviceScanline();
+      const uint32_t began = heldNow();
+      pacedRun(entries, count, extra, scratch);
+      const uint32_t spent = heldNow() - began;
+      if (payload[0] && !(PINB & _BV(PB0))) serviceScanline();
+      holdEnd();
+      uint8_t *out = answer;
+      out[0] = compareRun(pairs, count, scratch, out + 5, 0);
+      uint8_t size = (uint8_t)(5 + 3 * (out[0] < SCRIPT_LOG ? out[0] : SCRIPT_LOG));
+      out[1] = (uint8_t)spent;
+      out[2] = (uint8_t)(spent >> 8);
+      out[3] = (uint8_t)(spent >> 16);
+      out[4] = (uint8_t)(spent >> 24);
+      out[size++] = (uint8_t)irqServiced;
+      out[size++] = (uint8_t)(irqServiced >> 8);
+      out[size++] = (uint8_t)(irqServiced >> 16);
+      out[size++] = (uint8_t)(irqServiced >> 24);
+      out[size++] = (uint8_t)irqLatencyMax;
+      out[size++] = (uint8_t)(irqLatencyMax >> 8);
+      reply(type | ANSWER, sequence, out, size);
+      return;
+    }
     default:
       fail(sequence, ERR_UNKNOWN);
       return;
@@ -634,6 +1037,7 @@ void setup() {
 }
 
 void loop() {
+  serveWhileIdle();
   if (!Serial.available()) return;
   if ((uint8_t)Serial.read() != 'N') return;         // hunt for the sync word
 
@@ -648,7 +1052,10 @@ void loop() {
 
   uint16_t crc = 0xFFFF;
   for (uint8_t i = 0; i < 3; i++) crc = crcByte(crc, head[i]);
-  for (uint8_t i = 0; i < length; i++) crc = crcByte(crc, body[i]);
+  for (uint8_t i = 0; i < length; i++) {
+    crc = crcByte(crc, body[i]);
+    if (!(i & 15)) serveWhileIdle();                   // a big packet's CRC is a millisecond
+  }
   const uint16_t want = (uint16_t)body[length] | ((uint16_t)body[length + 1] << 8);
   if (crc != want) { fail(sequence, ERR_CRC); return; }
 

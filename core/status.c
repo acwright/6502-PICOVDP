@@ -2,8 +2,8 @@
 // (§14).
 //
 // Bus side only. Everything here runs at a line start or a status read — on the
-// RP2350 both are core 1 interrupts of one priority, so neither preempts the
-// other (PLAN.md section 3) and nothing here needs a lock.
+// RP2350 the bus interrupt and the latch's moment, which the bus cannot
+// interrupt (vdp_latch_take), so nothing here needs a lock.
 
 #include "vdp_internal.h"
 
@@ -12,8 +12,9 @@
 // §3, §14. The display line is numbered with the geometry in effect as the line
 // begins, so a change between a 192- and a 240-line geometry moves it 24 lines
 // here and nowhere else.
-void VDP_HOT(vdp_raster_line_start)(vdp_t *v, uint16_t screen_line) {
-    const vdp_geometry_t *g = vdp_geometry(v->reg, NULL);
+uint8_t VDP_BUS(vdp_raster_line_start)(vdp_t *v, uint16_t screen_line) {
+    const vdp_geometry_t *g = v->geometry;
+    uint8_t fonts = 0;
     uint16_t line = vdp_display_line_of(screen_line, g);
     v->display_line = line;
 
@@ -26,10 +27,12 @@ void VDP_HOT(vdp_raster_line_start)(vdp_t *v, uint16_t screen_line) {
     // picture that shrinks past its new end raises it at once; one that grows
     // after it has fired does not raise it again.
     //
-    // A pending FONT load lands here first, before F sets and before /INT is
-    // latched for it (§7, §14): whoever waits for either finds the copy whole.
+    // A pending FONT load lands here, before F sets and before /INT is latched
+    // for it (§7, §14): whoever waits for either finds the copy whole. The
+    // latch carries it out (vdp_latch_take).
     if (screen_line >= g->origin_y + g->lines && !(v->frame_events & VDP_IRQ_VBLANK)) {
-        if (v->font_pending) vdp_font_complete(v);
+        fonts = v->font_pending;
+        v->font_pending = 0;
         vdp_frame_event(v, VDP_IRQ_VBLANK);
         v->stat0 |= VDP_STAT0_F;
     }
@@ -43,6 +46,7 @@ void VDP_HOT(vdp_raster_line_start)(vdp_t *v, uint16_t screen_line) {
     if (screen_line == VDP_SCREEN_LINES - 1) {
         v->frame_events &= (uint8_t)~(VDP_IRQ_OVERFLOW | VDP_IRQ_COLLISION);
     }
+    return fonts;
 }
 
 // §6: a read of STAT0 clears its flags and what details them, and the three
@@ -60,7 +64,7 @@ static inline uint8_t pending(const vdp_t *v) {
     return (uint8_t)(v->irq_latch & v->reg[VDP_REG_IRQEN] & VDP_IRQ_SOURCES);
 }
 
-uint8_t VDP_HOT(vdp_status_peek)(const vdp_t *v, unsigned select) {
+uint8_t VDP_BUS(vdp_status_peek)(const vdp_t *v, unsigned select) {
     switch (select & VDP_STATSEL_MASK) {
     case 0:
         return v->stat0;
@@ -72,8 +76,7 @@ uint8_t VDP_HOT(vdp_status_peek)(const vdp_t *v, unsigned select) {
     case 3: {
         // b0 against the picture's height as it is now, whichever geometry
         // numbered the line.
-        const vdp_geometry_t *g = vdp_geometry(v->reg, NULL);
-        return (uint8_t)((v->display_line >= g->lines ? 0x01 : 0) | (v->hblank ? 0x02 : 0));
+        return (uint8_t)((v->display_line >= v->geometry->lines ? 0x01 : 0) | (v->hblank ? 0x02 : 0));
     }
     case 4:
         return VDP_STAT_IDENTIFICATION;
@@ -89,7 +92,7 @@ uint8_t VDP_HOT(vdp_status_peek)(const vdp_t *v, unsigned select) {
     }
 }
 
-uint8_t VDP_HOT(vdp_status_read)(vdp_t *v, unsigned select) {
+uint8_t VDP_BUS(vdp_status_read)(vdp_t *v, unsigned select) {
     uint8_t value = vdp_status_peek(v, select);
     switch (select & VDP_STATSEL_MASK) {
     case 0:
@@ -108,7 +111,7 @@ uint8_t VDP_HOT(vdp_status_read)(vdp_t *v, unsigned select) {
 // more than it showed (vdp_read_served). STAT0 clears the flags it showed, and
 // with each what details it and the STAT1 latch it stands for; STAT1 clears the
 // latches it showed, and those IRQEN no longer enables, which no read shows.
-void VDP_HOT(vdp_status_acknowledge)(vdp_t *v, unsigned select, uint8_t served) {
+void VDP_BUS(vdp_status_acknowledge)(vdp_t *v, unsigned select, uint8_t served) {
     switch (select & VDP_STATSEL_MASK) {
     case 0: {
         uint8_t flags = (uint8_t)(served & (VDP_STAT0_F | VDP_STAT0_OVF | VDP_STAT0_COL));
@@ -148,9 +151,9 @@ void vdp_status_reset(vdp_t *v, bool power_on) {
     // with its next line start. Until then the line is numbered as the reset
     // geometry would number it, and nothing has happened in its frame.
     v->frame_events = 0;
-    v->display_line = vdp_display_line_of(v->screen_line, vdp_geometry(v->reg, NULL));
+    v->display_line = vdp_display_line_of(v->screen_line, v->geometry);
 }
 
-bool VDP_HOT(vdp_int_asserted)(const vdp_t *v) {
+bool VDP_BUS(vdp_int_asserted)(const vdp_t *v) {
     return pending(v) != 0;
 }

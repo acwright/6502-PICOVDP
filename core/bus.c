@@ -14,7 +14,8 @@
 // and that catch-up copies it whole. Every write to VRAM comes through here —
 // both data ports, reset's palette and a debugger's pokes — because the palette
 // snoop (§11) is a property of the memory, not of who wrote to it.
-void VDP_HOT(vdp_poke)(vdp_t *v, uint16_t address, uint8_t value) {
+void VDP_BUS(vdp_poke)(vdp_t *v, uint16_t address, uint8_t value) {
+    vdp_copy_settle(v, address);
     v->vram[address] = value;
     uint32_t tail = v->journal_tail;
     if (tail - v->journal_head < VDP_JOURNAL_ENTRIES) {
@@ -26,14 +27,12 @@ void VDP_HOT(vdp_poke)(vdp_t *v, uint16_t address, uint8_t value) {
     }
 }
 
-// A block of constant data, written to the bus copy at once. The render side
-// takes it whole when its replay of the journal reaches the place it was
-// written, so it lands in order among the single writes around it, and a late
-// catch-up takes exactly what a prompt one does. A ring that is full marks the
-// pages instead, as a full journal does.
-void VDP_HOT(vdp_bulk_write)(vdp_t *v, uint16_t address, const uint8_t *bytes, unsigned length) {
-    if (length == 0) return;
-    memcpy(v->vram + address, bytes, length);
+// A block of constant data for the render side, which takes it whole when its
+// replay of the journal reaches the place it was written, so it lands in order
+// among the single writes around it, and a late catch-up takes exactly what a
+// prompt one does. A ring that is full marks the pages instead, as a full
+// journal does.
+static void VDP_HOT(bulk_record)(vdp_t *v, uint16_t address, const uint8_t *bytes, unsigned length) {
     uint32_t tail = v->bulk_tail;
     if (tail - v->bulk_head < VDP_BULK_ENTRIES) {
         v->bulk[tail & (VDP_BULK_ENTRIES - 1)] =
@@ -46,20 +45,69 @@ void VDP_HOT(vdp_bulk_write)(vdp_t *v, uint16_t address, const uint8_t *bytes, u
     for (unsigned page = first; page <= last; page++) v->bulk_pages |= UINT64_C(1) << page;
 }
 
+// A bulk write: the bus copy takes it at once.
+void VDP_HOT(vdp_bulk_write)(vdp_t *v, uint16_t address, const uint8_t *bytes, unsigned length) {
+    if (length == 0) return;
+    vdp_copies_finish(v);  // in the order they were written
+    memcpy(v->vram + address, bytes, length);
+    bulk_record(v, address, bytes, length);
+}
+
+// One chunk of a FONT copy into the bus copy: bit `chunk` of the pending word.
+void VDP_BUS(vdp_copy_chunk)(vdp_t *v, unsigned chunk) {
+    const vdp_bulk_t *c = &v->copy[chunk / VDP_COPY_CHUNKS];
+    const unsigned at = (chunk % VDP_COPY_CHUNKS) * VDP_COPY_STEP;
+    unsigned n = c->length - at;
+    if (n > VDP_COPY_STEP) n = VDP_COPY_STEP;
+    memcpy(v->vram + c->address + at, c->bytes + at, n);
+    v->copy_pending &= ~(UINT64_C(1) << chunk);
+    if (!v->copy_pending) v->copies = 0;
+}
+
+bool VDP_HOT(vdp_latch_copy)(vdp_t *v) {
+    if (!v->copy_pending) return false;
+    vdp_copy_chunk(v, (unsigned)__builtin_ctzll(v->copy_pending));
+    return v->copy_pending != 0;
+}
+
+void VDP_HOT(vdp_copies_finish)(vdp_t *v) {
+    while (vdp_latch_copy(v)) {
+    }
+}
+
+// A register's byte, and the journal entry that carries it to the render side
+// at the next latch's catch-up. A full journal has that latch copy the whole
+// file instead.
+static inline void set_register(vdp_t *v, unsigned home, uint8_t value) {
+    v->reg[home] = value;
+    uint32_t tail = v->reg_journal_tail;
+    if (tail - v->reg_journal_head < VDP_REGISTER_JOURNAL) {
+        v->reg_journal_index[tail & (VDP_REGISTER_JOURNAL - 1)] = (uint8_t)home;
+        v->reg_journal_value[tail & (VDP_REGISTER_JOURNAL - 1)] = value;
+        v->reg_journal_tail = tail + 1;
+    } else {
+        v->reg_whole = true;
+    }
+}
+
 // §5. Seven bits of register number, so $08-$7F are always live. A reserved
 // register stores what is written and does nothing more.
-void VDP_HOT(vdp_register_write)(vdp_t *v, unsigned index, uint8_t value) {
+void VDP_BUS(vdp_register_write)(vdp_t *v, unsigned index, uint8_t value) {
     unsigned home = vdp_register_home(index);
-    v->reg[home] = value;
+    set_register(v, home, value);
     // §14: MODE1 b5 and IRQEN b0 are one bit under two names. The byte-wide
     // aliases give a register one home; a single bit cannot have one without a
     // branch in every read, so the two copies are kept equal on the way in.
     if (home == VDP_REG_MODE1) {
-        v->reg[VDP_REG_IRQEN] = (uint8_t)((v->reg[VDP_REG_IRQEN] & ~VDP_IRQ_VBLANK) |
-                                          ((value & VDP_MODE1_IE) ? VDP_IRQ_VBLANK : 0));
+        set_register(v, VDP_REG_IRQEN, (uint8_t)((v->reg[VDP_REG_IRQEN] & ~VDP_IRQ_VBLANK) |
+                                                 ((value & VDP_MODE1_IE) ? VDP_IRQ_VBLANK : 0)));
     } else if (home == VDP_REG_IRQEN) {
-        v->reg[VDP_REG_MODE1] = (uint8_t)((v->reg[VDP_REG_MODE1] & ~VDP_MODE1_IE) |
-                                          ((value & VDP_IRQ_VBLANK) ? VDP_MODE1_IE : 0));
+        set_register(v, VDP_REG_MODE1, (uint8_t)((v->reg[VDP_REG_MODE1] & ~VDP_MODE1_IE) |
+                                                 ((value & VDP_IRQ_VBLANK) ? VDP_MODE1_IE : 0)));
+    }
+    // The geometry is kept resolved for the latch and STAT3 (§9).
+    if (home == VDP_REG_MODE0 || home == VDP_REG_MODE1 || home == VDP_REG_VMODE) {
+        v->geometry = vdp_geometry(v->reg, NULL);
     }
     // §7: every write to FONT is a command, even of the value it holds. A
     // debugger's write is one too, as it is in Video.ts.
@@ -76,7 +124,7 @@ static inline void advance(vdp_t *v, vdp_port_t *p) {
 }
 
 // §4's command protocol: a payload, then a command byte.
-static void VDP_HOT(command)(vdp_t *v, vdp_port_t *p, uint8_t value) {
+static void VDP_BUS(command)(vdp_t *v, vdp_port_t *p, uint8_t value) {
     if (!p->second) {
         p->payload = value;
         p->second = true;
@@ -98,12 +146,13 @@ static void VDP_HOT(command)(vdp_t *v, vdp_port_t *p, uint8_t value) {
     if (p->read_mode) {
         // Set a read address: fetch the byte at the pointer into the prefetch;
         // advance. Setting a write address does nothing more.
+        vdp_copy_settle(v, p->pointer);
         p->prefetch = v->vram[p->pointer];
         advance(v, p);
     }
 }
 
-uint8_t VDP_HOT(vdp_read)(vdp_t *v, unsigned port) {
+uint8_t VDP_BUS(vdp_read)(vdp_t *v, unsigned port) {
     unsigned pair = (port >> 1) & 1;
     vdp_port_t *p = &v->port[pair];
     // Any access to a pair's data port, and any read of its status port, resets
@@ -118,6 +167,7 @@ uint8_t VDP_HOT(vdp_read)(vdp_t *v, unsigned port) {
     // Read VC_DATA: return the prefetch; fetch the byte at the pointer into it;
     // advance.
     uint8_t value = p->prefetch;
+    vdp_copy_settle(v, p->pointer);
     p->prefetch = v->vram[p->pointer];
     advance(v, p);
     return value;
@@ -126,7 +176,7 @@ uint8_t VDP_HOT(vdp_read)(vdp_t *v, unsigned port) {
 // §2: the read program answers from a word staged before the read, one byte a
 // port in A1:A0's order — data A, status A, data B, status B — each what
 // vdp_read would return now. Nothing here changes the card.
-uint32_t VDP_HOT(vdp_staged)(const vdp_t *v) {
+uint32_t VDP_BUS(vdp_staged)(const vdp_t *v) {
     return (uint32_t)v->port[0].prefetch |
            (uint32_t)vdp_status_peek(v, v->reg[VDP_REG_STATSEL_A]) << 8 |
            (uint32_t)v->port[1].prefetch << 16 |
@@ -140,7 +190,7 @@ uint32_t VDP_HOT(vdp_staged)(const vdp_t *v) {
 // CPU never saw is not cleared. A data read moves its port on the same way
 // whatever it returned. Returns what vdp_read would have, so the caller can
 // count reads that were served stale.
-uint8_t VDP_HOT(vdp_read_served)(vdp_t *v, unsigned port, uint8_t served) {
+uint8_t VDP_BUS(vdp_read_served)(vdp_t *v, unsigned port, uint8_t served) {
     if (!(port & 1)) return vdp_read(v, port);
     unsigned pair = (port >> 1) & 1;
     unsigned select = v->reg[pair ? VDP_REG_STATSEL_B : VDP_REG_STATSEL_A];
@@ -151,7 +201,7 @@ uint8_t VDP_HOT(vdp_read_served)(vdp_t *v, unsigned port, uint8_t served) {
     return now;
 }
 
-void VDP_HOT(vdp_write)(vdp_t *v, unsigned port, uint8_t value) {
+void VDP_BUS(vdp_write)(vdp_t *v, unsigned port, uint8_t value) {
     vdp_port_t *p = &v->port[(port >> 1) & 1];
     if (port & 1) {
         command(v, p, value);

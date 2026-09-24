@@ -25,7 +25,11 @@ void vdp_init(vdp_t *v, uint8_t version) {
 }
 
 void vdp_reset(vdp_t *v, bool power_on) {
+    // A FONT load a latch has begun is part of what came before the reset (§7).
+    vdp_copies_finish(v);
     reset_registers(v->reg);
+    v->geometry = vdp_geometry(v->reg, NULL);
+    v->reg_whole = true;  // the next latch copies the file: no journal entry each
     vdp_status_reset(v, power_on);
     // Both port pairs: pointer 0, direction read, prefetch 0, flip-flop
     // cleared. STATSEL is in the register file, and 0 already.
@@ -48,6 +52,8 @@ void vdp_reset(vdp_t *v, bool power_on) {
         memcpy(v->render_vram, v->vram, VDP_VRAM_SIZE);
         vdp_render_guard(v);
         memcpy(v->render_reg, v->reg, sizeof v->render_reg);
+        v->reg_journal_head = v->reg_journal_tail = 0;
+        v->reg_whole = false;
         v->journal_head = v->journal_tail = 0;
         v->dirty_pages = 0;
         v->bulk_head = v->bulk_tail = 0;
@@ -85,31 +91,100 @@ void vdp_line_start(vdp_t *v, uint16_t screen_line) {
 
 // §3's latch, as the line begins: the line's events (§14), numbered and judged
 // with the card as it stands now, and a record of that card for the render side
-// — the register file whole, and where the journal's writes end. When the ring
+// — where the journals' writes end, VRAM's and the registers'. When the ring
 // is full, the render side is VDP_LATCHES lines behind: the newest record takes
 // this latch instead, and the line it held is never built.
-void VDP_HOT(vdp_latch)(vdp_t *v, uint16_t screen_line, uint32_t tag) {
-    v->screen_line = screen_line % VDP_SCREEN_LINES;
-    vdp_raster_line_start(v, v->screen_line);
+void vdp_latch(vdp_t *v, uint16_t screen_line, uint32_t tag) {
+    vdp_latch_begin(v, screen_line, tag);
+    vdp_copies_finish(v);
+}
 
+// The latch less the bus copy's part of a FONT load, which vdp_latch_copy
+// moves after it (Phase 13).
+void vdp_latch_begin(vdp_t *v, uint16_t screen_line, uint32_t tag) {
+    vdp_latch_take_t t;
+    vdp_latch_take(v, screen_line, &t);
+    vdp_latch_record(v, &t, tag);
+}
+
+// The latch's one moment: the line's events, judged with the card as it stands
+// now, and where the journals end — the writes before the latch, which its
+// line is built from (§3). On the RP2350 no access interleaves with it, and it
+// is short: an access waits for it (Phase 13). The register file is copied only
+// when its journal cannot say, which is after a reset or an overflow, or when
+// a full ring merges into a record that holds a whole copy already, which
+// must be this latch's. A FONT load landing here is queued for the bus copy,
+// where an access that reaches it first finishes it.
+void VDP_BUS(vdp_latch_take)(vdp_t *v, uint16_t screen_line, vdp_latch_take_t *t) {
+    v->screen_line = screen_line < VDP_SCREEN_LINES ? screen_line : screen_line % VDP_SCREEN_LINES;
+    const uint8_t fonts = vdp_raster_line_start(v, v->screen_line);
+    t->screen_line = v->screen_line;
+    t->reg_end = v->reg_journal_tail;
+    t->journal_end = v->journal_tail;
+    t->bulk_end = v->bulk_tail;
+    t->pages = v->dirty_pages | v->bulk_pages;
+    t->overflowed = v->dirty_pages != 0;
+    v->dirty_pages = 0;
+    v->bulk_pages = 0;
+    const uint32_t tail = v->latch_tail;
+    t->reg_whole = v->reg_whole ||
+                   (tail - v->latch_head == VDP_LATCHES && v->latch[(tail - 1) & (VDP_LATCHES - 1)].reg_whole);
+    if (t->reg_whole) memcpy(v->reg_taken, v->reg, sizeof v->reg_taken);
+    v->reg_whole = false;
+    t->fonts = fonts;
+    t->font_base[0] = v->font_base[0];
+    t->font_base[1] = v->font_base[1];
+    // A frame's copies are long done by the next vertical blank; if not, done
+    // now, before this one's are queued behind them.
+    if (fonts && v->copy_pending) vdp_copies_finish(v);
+    for (unsigned layer = 0; layer < 2; layer++) {
+        if (!(fonts & (1u << layer))) continue;
+        // Font $00 is the only one there is; vdp_font_command records no other.
+        const unsigned i = v->copies++;
+        v->copy[i] = (vdp_bulk_t){.bytes = vdp_font_cp437, .address = v->font_base[layer], .length = VDP_FONT_BYTES};
+        v->copy_pending |= UINT64_C(0xffffffff) << (i * VDP_COPY_CHUNKS);
+    }
+}
+
+// The record, from what the latch took. It is the latch's own until the ring's
+// tail moves, so accesses may come between: nothing here reads what they write.
+// When the ring is full, the render side is VDP_LATCHES lines behind: the
+// newest record takes this latch instead, and the line it held is never built.
+void VDP_HOT(vdp_latch_record)(vdp_t *v, const vdp_latch_take_t *t, uint32_t tag) {
     uint32_t tail = v->latch_tail;
     bool full = tail - v->latch_head == VDP_LATCHES;
     vdp_latch_record_t *r = &v->latch[(full ? tail - 1 : tail) & (VDP_LATCHES - 1)];
-    r->bulk_end = v->bulk_tail;
+    r->bulk_end = t->bulk_end;
     if (full) {
-        r->dirty_pages |= v->dirty_pages | v->bulk_pages;
-        r->overflowed |= v->dirty_pages != 0;
+        r->dirty_pages |= t->pages;
+        r->overflowed |= t->overflowed;
         v->latches_merged++;
     } else {
-        r->dirty_pages = v->dirty_pages | v->bulk_pages;
-        r->overflowed = v->dirty_pages != 0;
+        r->dirty_pages = t->pages;
+        r->overflowed = t->overflowed;
     }
-    v->dirty_pages = 0;
-    v->bulk_pages = 0;
-    memcpy(r->reg, v->reg, sizeof r->reg);
-    r->journal_end = v->journal_tail;
+    // The registers by where their journal ends, or whole.
+    if (t->reg_whole) memcpy(r->reg, v->reg_taken, sizeof r->reg);
+    if (t->reg_whole || !full) r->reg_whole = t->reg_whole;
+    r->reg_end = t->reg_end;
+    r->journal_end = t->journal_end;
     r->tag = tag;
-    r->screen_line = v->screen_line;
+    r->screen_line = t->screen_line;
+    // The fonts landing now, at their place among the writes: a merged record
+    // may hold an earlier latch's, and replays past them. One that already
+    // holds a vertical blank's — the render side a frame behind — takes this
+    // one's as pages, from the bus copy as the catch-up finds it.
+    if (!full) r->fonts = 0;
+    if (t->fonts && full && r->fonts) {
+        for (unsigned layer = 0; layer < 2; layer++) {
+            if (t->fonts & (1u << layer)) r->dirty_pages |= UINT64_C(0x3) << (t->font_base[layer] >> VDP_VRAM_PAGE_SHIFT);
+        }
+    } else if (t->fonts) {
+        r->fonts = t->fonts;
+        r->font_at = t->journal_end;
+        r->font_base[0] = t->font_base[0];
+        r->font_base[1] = t->font_base[1];
+    }
     // The record is whole before the render side can see it.
     if (!full) v->latch_tail = tail + 1;
 }
@@ -142,6 +217,14 @@ bool VDP_HOT(vdp_catch_up)(vdp_t *v) {
         for (; bulk != r->bulk_end && v->bulk[bulk & (VDP_BULK_ENTRIES - 1)].at == i; bulk++) {
             render_bulk(v, &v->bulk[bulk & (VDP_BULK_ENTRIES - 1)], base);
         }
+        // FONT loads at their latch, layer 0's first (§7).
+        if (r->fonts && i == r->font_at) {
+            for (unsigned layer = 0; layer < 2; layer++) {
+                if (!(r->fonts & (1u << layer))) continue;
+                const vdp_bulk_t font = {.bytes = vdp_font_cp437, .address = r->font_base[layer], .length = VDP_FONT_BYTES};
+                render_bulk(v, &font, base);
+            }
+        }
         if (i == r->journal_end) break;
         uint16_t address = v->journal_address[i & (VDP_JOURNAL_ENTRIES - 1)];
         v->render_vram[address] = v->journal_value[i & (VDP_JOURNAL_ENTRIES - 1)];
@@ -170,9 +253,18 @@ bool VDP_HOT(vdp_catch_up)(vdp_t *v) {
         }
     }
 
-    // The registers, whole. A PALBASE that moved re-reads the window (§11),
-    // from the render copy just brought up to date.
-    memcpy(v->render_reg, r->reg, sizeof v->render_reg);
+    // The registers: their journal's writes, in order, or the file whole. A
+    // PALBASE that moved re-reads the window (§11), from the render copy just
+    // brought up to date.
+    if (r->reg_whole) {
+        memcpy(v->render_reg, r->reg, sizeof v->render_reg);
+    } else {
+        for (uint32_t i = v->reg_journal_head; i != r->reg_end; i++) {
+            v->render_reg[v->reg_journal_index[i & (VDP_REGISTER_JOURNAL - 1)]] =
+                v->reg_journal_value[i & (VDP_REGISTER_JOURNAL - 1)];
+        }
+    }
+    v->reg_journal_head = r->reg_end;
     if (reload || vdp_palette_base(v->render_reg) != base) vdp_palette_reload(v);
 
     // The line built now is the next one: screen line 0 as 261 begins (§3).
@@ -192,10 +284,14 @@ void VDP_HOT(vdp_publish)(vdp_t *v, const vdp_half_t *a, const vdp_half_t *b) {
         vdp_report_overflow(v, v->render_overflow - 1u);
         v->render_overflow = 0;
     }
-    if (a) vdp_publish_collisions(v, a);
-    if (b) vdp_publish_collisions(v, b);
+    const bool in_a = a && a->collided, in_b = b && b->collided;
+    if (in_a || in_b) vdp_publish_collisions(v, (in_a ? a->collisions : 0) | (in_b ? b->collisions : 0));
 }
 
-void vdp_set_hblank(vdp_t *v, bool hblank) {
+// Whether either port's answer moved with it: only a port whose STATSEL names
+// STAT3 reads the bit, so the bus need not restage for it otherwise.
+bool VDP_HOT(vdp_set_hblank)(vdp_t *v, bool hblank) {
+    if (v->hblank == hblank) return false;
     v->hblank = hblank;
+    return (v->reg[VDP_REG_STATSEL_A] & VDP_STATSEL_MASK) == 3 || (v->reg[VDP_REG_STATSEL_B] & VDP_STATSEL_MASK) == 3;
 }

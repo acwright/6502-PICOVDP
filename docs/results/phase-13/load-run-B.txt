@@ -1,0 +1,67 @@
+the load run: full-4bpp-32-det-lim16 with FONT loads for both layers every frame, its program on port A; the Nano's 2 MHz trials and a scanline interrupt every eight lines on port B; snapshots streaming; a capture every minute; 30 minutes
+  1.0 min: late rows 0, FIFO overruns 0, stale data 0; 7175 batches, trials {"backToBack":232024,"afterAddress":81295,"writes":234416}, 112375 scanline handlers; 400 snapshots, 0 rows wrong
+  the link failed (no answer to command 3 in 30000 ms); 52289765 bytes received, the last 29940 ms ago; another process: pico9918pro 53F484FEBE7C6D3B, build 2ce5a15-dirty, running; reopened
+  a snapshot took 30250 ms
+  2.2 min: late rows 0, FIFO overruns 0, stale data 0; 14275 batches, trials {"backToBack":461526,"afterAddress":161772,"writes":466382}, 224612 scanline handlers; 674 snapshots, 0 rows wrong
+  3.0 min: late rows 0, FIFO overruns 0, stale data 0; 20053 batches, trials {"backToBack":648348,"afterAddress":227256,"writes":655130}, 337440 scanline handlers; 999 snapshots, 0 rows wrong
+  4.0 min: late rows 0, FIFO overruns 0, stale data 0; 27213 batches, trials {"backToBack":879887,"afterAddress":308414,"writes":888958}, 449567 scanline handlers; 1399 snapshots, 0 rows wrong
+  5.0 min: late rows 0, FIFO overruns 0, stale data 0; 34364 batches, trials {"backToBack":1111135,"afterAddress":389437,"writes":1122590}, 562115 scanline handlers; 1799 snapshots, 0 rows wrong
+  6.0 min: late rows 0, FIFO overruns 0, stale data 0; 41541 batches, trials {"backToBack":1343159,"afterAddress":470798,"writes":1357006}, 674162 scanline handlers; 2199 snapshots, 0 rows wrong
+  7.0 min: late rows 0, FIFO overruns 0, stale data 0; 48689 batches, trials {"backToBack":1574310,"afterAddress":551787,"writes":1590540}, 787307 scanline handlers; 2599 snapshots, 0 rows wrong
+  8.0 min: late rows 0, FIFO overruns 0, stale data 0; 56023 batches, trials {"backToBack":1811378,"afterAddress":634916,"writes":1830150}, 899256 scanline handlers; 2999 snapshots, 0 rows wrong
+  9.0 min: late rows 0, FIFO overruns 0, stale data 0; 63419 batches, trials {"backToBack":2050580,"afterAddress":718727,"writes":2071720}, 1010854 scanline handlers; 3399 snapshots, 0 rows wrong
+  10.0 min: late rows 0, FIFO overruns 0, stale data 0; 70841 batches, trials {"backToBack":2290558,"afterAddress":802843,"writes":2314172}, 1122428 scanline handlers; 3799 snapshots, 0 rows wrong
+  11.0 min: late rows 0, FIFO overruns 0, stale data 0; 78243 batches, trials {"backToBack":2529857,"afterAddress":886754,"writes":2555938}, 1234257 scanline handlers; 4199 snapshots, 0 rows wrong
+  12.0 min: late rows 0, FIFO overruns 0, stale data 0; 85683 batches, trials {"backToBack":2770417,"afterAddress":971074,"writes":2798978}, 1346371 scanline handlers; 4600 snapshots, 0 rows wrong
+  13.0 min: late rows 0, FIFO overruns 0, stale data 0; 92910 batches, trials {"backToBack":3004090,"afterAddress":1052980,"writes":3035060}, 1458004 scanline handlers; 5000 snapshots, 0 rows wrong
+  14.0 min: late rows 0, FIFO overruns 0, stale data 0; 100133 batches, trials {"backToBack":3237666,"afterAddress":1134819,"writes":3271044}, 1569284 scanline handlers; 5400 snapshots, 0 rows wrong
+  15.0 min: late rows 0, FIFO overruns 0, stale data 0; 107483 batches, trials {"backToBack":3475316,"afterAddress":1218119,"writes":3511144}, 1681017 scanline handlers; 5800 snapshots, 0 rows wrong
+  16.0 min: late rows 0, FIFO overruns 0, stale data 0; 114916 batches, trials {"backToBack":3715585,"afterAddress":1302370,"writes":3753988}, 1792293 scanline handlers; 6200 snapshots, 0 rows wrong
+  17.0 min: late rows 0, FIFO overruns 0, stale data 0; 122369 batches, trials {"backToBack":3956630,"afterAddress":1386827,"writes":3997420}, 1903568 scanline handlers; 6600 snapshots, 0 rows wrong
+  18.0 min: late rows 0, FIFO overruns 0, stale data 0; 129762 batches, trials {"backToBack":4195638,"afterAddress":1470636,"writes":4238892}, 2015140 scanline handlers; 7000 snapshots, 0 rows wrong
+  19.0 min: late rows 0, FIFO overruns 0, stale data 0; 137225 batches, trials {"backToBack":4436974,"afterAddress":1555195,"writes":4482716}, 2126586 scanline handlers; 7400 snapshots, 0 rows wrong
+  20.0 min: late rows 0, FIFO overruns 0, stale data 0; 144683 batches, trials {"backToBack":4678116,"afterAddress":1639719,"writes":4726344}, 2238125 scanline handlers; 7801 snapshots, 0 rows wrong
+  21.0 min: late rows 0, FIFO overruns 0, stale data 0; 152143 batches, trials {"backToBack":4919258,"afterAddress":1724276,"writes":4970070}, 2349852 scanline handlers; 8201 snapshots, 0 rows wrong
+  22.0 min: late rows 0, FIFO overruns 0, stale data 0; 159604 batches, trials {"backToBack":5160497,"afterAddress":1808834,"writes":5213796}, 2461525 scanline handlers; 8601 snapshots, 0 rows wrong
+  23.0 min: late rows 0, FIFO overruns 0, stale data 0; 167035 batches, trials {"backToBack":5400766,"afterAddress":1893052,"writes":5456542}, 2573389 scanline handlers; 9001 snapshots, 0 rows wrong
+  24.0 min: late rows 0, FIFO overruns 0, stale data 0; 174484 batches, trials {"backToBack":5641617,"afterAddress":1977474,"writes":5699876}, 2685381 scanline handlers; 9401 snapshots, 0 rows wrong
+  25.0 min: late rows 0, FIFO overruns 0, stale data 0; 181944 batches, trials {"backToBack":5882856,"afterAddress":2062032,"writes":5943504}, 2795994 scanline handlers; 9801 snapshots, 0 rows wrong
+  26.0 min: late rows 0, FIFO overruns 0, stale data 0; 189378 batches, trials {"backToBack":6123222,"afterAddress":2146284,"writes":6186348}, 2907660 scanline handlers; 10201 snapshots, 0 rows wrong
+  27.0 min: late rows 0, FIFO overruns 0, stale data 0; 196838 batches, trials {"backToBack":6364461,"afterAddress":2230809,"writes":6430074}, 3019193 scanline handlers; 10601 snapshots, 0 rows wrong
+  28.0 min: late rows 0, FIFO overruns 0, stale data 0; 204263 batches, trials {"backToBack":6604536,"afterAddress":2314959,"writes":6672624}, 3131014 scanline handlers; 11001 snapshots, 0 rows wrong
+  29.0 min: late rows 0, FIFO overruns 0, stale data 0; 211715 batches, trials {"backToBack":6845484,"afterAddress":2399415,"writes":6916056}, 3242844 scanline handlers; 11401 snapshots, 0 rows wrong
+  capture at 6 s: scene frame 451 of 80, 51.5 levels out against 80.5 for the rest, at 3,-1
+  capture at 67 s: scene frame 4111 of 89, 51.7 levels out against 80.7 for the rest, at 3,-1
+  capture at 132 s: scene frame 6485 of 1891, 51.6 levels out against 80.8 for the rest, at 3,-1
+  capture at 193 s: scene frame 11680 of 77, 51.8 levels out against 80.7 for the rest, at 3,-1
+  capture at 254 s: scene frame 15340 of 78, 51.5 levels out against 80.6 for the rest, at 3,-1
+  capture at 316 s: scene frame 19000 of 79, 51.4 levels out against 80.5 for the rest, at 3,-1
+  capture at 377 s: scene frame 22659 of 79, 51.8 levels out against 80.6 for the rest, at 3,-1
+  capture at 438 s: scene frame 26319 of 79, 51.4 levels out against 80.6 for the rest, at 3,-1
+  capture at 499 s: scene frame 29978 of 88, 51.4 levels out against 80.7 for the rest, at 3,-1
+  capture at 560 s: scene frame 33637 of 86, 51.5 levels out against 80.6 for the rest, at 3,-1
+  capture at 621 s: scene frame 37298 of 79, 51.7 levels out against 80.7 for the rest, at 3,-1
+  capture at 682 s: scene frame 40958 of 85, 51.4 levels out against 80.5 for the rest, at 3,-1
+  capture at 743 s: scene frame 44619 of 86, 51.7 levels out against 80.8 for the rest, at 3,-1
+  capture at 804 s: scene frame 48280 of 79, 51.6 levels out against 80.7 for the rest, at 3,-1
+  capture at 865 s: scene frame 51939 of 79, 51.6 levels out against 80.7 for the rest, at 3,-1
+  capture at 926 s: scene frame 55601 of 87, 51.7 levels out against 80.8 for the rest, at 3,-1
+  capture at 987 s: scene frame 59261 of 75, 51.4 levels out against 80.5 for the rest, at 3,-1
+  capture at 1048 s: scene frame 62921 of 84, 51.5 levels out against 80.5 for the rest, at 3,-1
+  capture at 1109 s: scene frame 66580 of 78, 51.2 levels out against 80.7 for the rest, at 3,-1
+  capture at 1170 s: scene frame 70240 of 78, 51.6 levels out against 80.6 for the rest, at 3,-1
+  capture at 1232 s: scene frame 73900 of 84, 51.6 levels out against 80.7 for the rest, at 3,-1
+  capture at 1293 s: scene frame 77561 of 89, 51.6 levels out against 80.5 for the rest, at 3,-1
+  capture at 1354 s: scene frame 81221 of 87, 51.6 levels out against 80.8 for the rest, at 3,-1
+  capture at 1415 s: scene frame 84881 of 78, 51.8 levels out against 80.8 for the rest, at 3,-1
+  capture at 1476 s: scene frame 88540 of 77, 51.7 levels out against 80.7 for the rest, at 3,-1
+  capture at 1537 s: scene frame 92200 of 80, 51.8 levels out against 80.8 for the rest, at 3,-1
+  capture at 1598 s: scene frame 95860 of 87, 51.3 levels out against 80.5 for the rest, at 3,-1
+  capture at 1659 s: scene frame 99519 of 77, 51.4 levels out against 80.8 for the rest, at 3,-1
+  capture at 1720 s: scene frame 103178 of 77, 51.4 levels out against 80.7 for the rest, at 3,-1
+  capture at 1781 s: scene frame 106838 of 79, 51.7 levels out against 80.8 for the rest, at 3,-1
+30 minutes: late rows 0, latches merged 0, FIFO overruns 0/0, stale data reads 0
+  trials: back to back 7,086,529, after an address 2,483,905, writes 7,159,586; 0 reads wrong
+  3,353,735 scanline handlers, the longest wait for one 308.1 us; 11801 snapshots, 0 rows wrong, 0 late
+  the host's link reader had to be reopened 1 time(s): 131 s, no answer to command 3 in 30000 ms
+  30 captures, 0 out of tolerance; latch interrupt max 1249, bus held off at most 244 cycles, status staged 981 cycles after its line start at most

@@ -1,0 +1,13 @@
+7228.1 s up, clock 352000000 Hz, budget 22372 cycles a display line
+  rows built 864942, lines taken 944230, LATE ROWS 0, latches merged 0
+  missed bells 0, journal overflows 0, raster slips 0, bus stand-ins 0
+  latency (latch to buffer): max 20935 (spare 6%), 99.9% 19583, mean 9601
+  build (catch-up to buffer): max 17674, mean 7413
+  stage maxima: core 1 catch-up 5376, half 15789, expand 1689, wait 3856, publish 619; core 0 half and expand 13504
+  split mean 168 over 864942 divided rows; latch interrupt max 1140, line-start interrupt max 115
+  bus: 453700 writes, 353700 reads, STALE DATA READS 0, stale status reads 0, coincident 0, resets 0, /INT asserted
+       FIFO OVERRUNS write 0 read 0, staging waits 0, interrupt max 276 cycles, mean 142
+  bus held off at most: latch 154, FONT copy step 0, publish 133, thread 152 cycles
+  line start to latch: max 415, mean 80; to status staged: max 905 (2.57 us), 99.9% 703, mean 470, over 944231 lines
+  OVF or COL published: 3604 rows, max 20389 (57.92 us), mean 14460 after their latch's line start
+  frame, line 0 to line 0: 5872643-5872655 cycles, mean 5872650 (16.68366 ms by the card's clock)

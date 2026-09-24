@@ -179,6 +179,33 @@ static void stats(uint8_t sequence, const uint8_t *payload, uint32_t count) {
     const uint32_t bus[] = {b.writes, b.reads, b.stale_data, b.stale_status, b.coincident, b.write_overruns,
                             b.read_overruns, b.staging_waits, b.resets, b.isr_max, b.int_level};
     for (unsigned i = 0; i < sizeof bus / sizeof bus[0]; i++) put32(&w, bus[i]);
+    // Phase 13: what holds the bus off, and the raster's timing, appended.
+    put8(&w, RENDERER_MASKED_KINDS);
+    for (unsigned i = 0; i < RENDERER_MASKED_KINDS; i++) put32(&w, s.masked_max[i]);
+    put32(&w, s.bell_max);
+    put32(&w, s.bell_mean);
+    put32(&w, s.flag_rows);
+    put32(&w, s.flag_max);
+    put32(&w, s.flag_mean);
+    put32(&w, s.frame_min);
+    put32(&w, s.frame_max);
+    put32(&w, s.frame_mean);
+    put32(&w, b.isr_mean);
+    put32(&w, b.lag_count);
+    put32(&w, b.lag_max);
+    put32(&w, b.lag_mean);
+    put16(&w, BUS_LAG_BINS);
+    put16(&w, BUS_LAG_BIN);
+    for (unsigned i = 0; i < BUS_LAG_BINS; i++) put16(&w, b.lag_histogram[i]);
+    put8(&w, BUS_STALE_KEPT);
+    for (unsigned i = 0; i < BUS_STALE_KEPT; i++) {
+        put8(&w, b.stale[i].port);
+        put8(&w, b.stale[i].served);
+        put8(&w, b.stale[i].held);
+        put32(&w, b.stale[i].staged);
+        put32(&w, b.stale[i].since_stage);
+        put32(&w, b.stale[i].since_entry);
+    }
     reply(CMD_STATS, sequence, &w);
 }
 
@@ -304,6 +331,7 @@ static void load(uint8_t sequence, const uint8_t *payload, uint32_t count) {
         .handicap_every = (uint16_t)(payload[8] | payload[9] << 8),
         .handicap_cycles = payload[10] | payload[11] << 8 | payload[12] << 16 | (uint32_t)payload[13] << 24,
         .fonts = count >= 15 && (payload[14] & 1),
+        .scene_pair_b = count >= 15 && (payload[14] & 2),
     };
     if (!renderer_load(&l, 1000)) return error(sequence, "LOAD: core 1 did not answer");
     writer_t w = {response, response + sizeof response};

@@ -2,8 +2,7 @@
 //
 // The bytes are fonts/cp437-6x8.bin, generated into font_data.c at build time
 // (core/CMakeLists.txt); none are typed here. Bus side only: a load is recorded
-// as FONT is written, and carried out at the latch where vertical blank fires,
-// both in core 1's interrupts of one priority on the RP2350.
+// as FONT is written, and carried out at the latch where vertical blank fires.
 
 #include "vdp_internal.h"
 
@@ -20,15 +19,8 @@ void VDP_HOT(vdp_font_command)(vdp_t *v, uint8_t value) {
     v->font_pending |= (uint8_t)(1u << layer);
 }
 
-// §7, §14: at the line start where vertical blank fires, before F sets, before
-// the latch record is taken, so the render side has the pages from this latch.
-// A 2 KB copy is VRAM written in every other respect: the palette cache takes
-// what lands in its window, and no port's pointer or prefetch moves.
-void VDP_HOT(vdp_font_complete)(vdp_t *v) {
-    for (unsigned layer = 0; layer < 2; layer++) {
-        if (!(v->font_pending & (1u << layer))) continue;
-        // Font $00 is the only one there is; vdp_font_command records no other.
-        vdp_bulk_write(v, v->font_base[layer], vdp_font_cp437, VDP_FONT_BYTES);
-    }
-    v->font_pending = 0;
-}
+// The loads land at the line start where vertical blank fires, before F sets
+// (vdp_raster_line_start), and the latch there carries them out
+// (vdp_latch_take): a 2 KB copy is VRAM written in every other respect, so
+// the palette cache takes what lands in its window, and no port's pointer or
+// prefetch moves.

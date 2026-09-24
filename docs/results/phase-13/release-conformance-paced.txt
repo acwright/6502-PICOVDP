@@ -1,0 +1,21 @@
+  back to back, 4 us: 12000 data reads 4.06 us apart: all right
+  back to back, 2 us: 12000 data reads 1.98 us apart: all right
+  back to back, flat out: 12000 data reads 1.16 us apart: all right
+  6502-2mhz: script flip-flop, 31 accesses: ok
+  6502-2mhz: script prefetch, 38 accesses: ok
+  6502-2mhz: script read-orders, 126 accesses: ok
+  6502-2mhz: script registers, 274 accesses: ok
+  6502-2mhz: script status, 18 accesses: ok
+  6502-2mhz: script vbank-vinc, 108 accesses: ok
+  6502-2mhz: 1,000,000 accesses, 8,220 a second
+  6502-2mhz: 2,000,000 accesses, 9,959 a second
+  6502-2mhz: 3,000,000 accesses, 10,707 a second
+  6502-2mhz: 4,000,000 accesses, 11,131 a second
+  6502-2mhz: 5,000,000 accesses, 11,397 a second
+  6502-2mhz: 6,000,000 accesses, 11,584 a second
+  6502-2mhz: 7,000,000 accesses, 11,714 a second
+  6502-2mhz: 8,000,000 accesses, 11,820 a second
+  6502-2mhz: 9,000,000 accesses, 11,903 a second
+  6502-2mhz: 10,000,000 accesses, 11,973 a second
+6502-2mhz: 10,000,595 accesses (1,726,249 reads, 1,475,718 compared) in 839 s; 0 mismatching batches, 0 of 17 state checks differ
+wrote docs/results/phase-13/release-conformance-paced.json

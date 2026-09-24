@@ -426,6 +426,48 @@ TEST(late_catch_ups_take_what_prompt_ones_do) {
     free(prompt);
 }
 
+// Phase 13: registers reach the render side through a journal of their own.
+// One that overflows — more register writes than it holds, with the render
+// side behind — has the next latch copy the file whole, and every latch still
+// gives its line the registers as they stood; a merged record's whole copy is
+// its latest latch's.
+TEST(the_register_journal_overflows_to_a_whole_copy) {
+    vdp_t *v = new_card();
+    vdp_line_start(v, 30);
+    for (unsigned n = 0; n < VDP_REGISTER_JOURNAL + 40; n++) set_reg(v, 0x07, (uint8_t)n);
+    CHECK(v->reg_whole);
+    vdp_latch(v, 31, 31);
+    CHECK(!v->reg_whole);
+    CHECK(vdp_catch_up(v));
+    CHECK_EQ((uint8_t)(VDP_REGISTER_JOURNAL + 39), v->render_reg[0x07]);
+    CHECK(render_in_step(v));
+
+    // Behind by a full ring, the journal filling between latches, one merged.
+    for (unsigned n = 0; n < VDP_LATCHES + 1; n++) {
+        for (unsigned k = 0; k < 40; k++) set_reg(v, (uint8_t)(0x40 + (k & 7)), (uint8_t)(n * 40 + k));
+        set_reg(v, 0x07, (uint8_t)n);
+        vdp_latch(v, (uint16_t)(40 + n), n);
+    }
+    CHECK_EQ(1, vdp_debug_stats(v).latches_merged);
+    for (unsigned n = 0; n < VDP_LATCHES; n++) {
+        CHECK(vdp_catch_up(v));
+        unsigned latch = n < VDP_LATCHES - 1 ? n : VDP_LATCHES;
+        CHECK_EQ(latch, v->render_tag);
+        CHECK_EQ(latch, v->render_reg[0x07]);
+        CHECK_EQ((uint8_t)(latch * 40 + 39), v->render_reg[0x47]);
+    }
+    CHECK(!vdp_catch_up(v));
+    CHECK(render_in_step(v));
+
+    // A reset rewrites the file without a journal entry each.
+    set_reg(v, 0x07, 0x99);
+    vdp_reset(v, false);
+    CHECK(v->reg_whole);
+    vdp_line_start(v, 60);
+    CHECK(render_in_step(v));
+    free(v);
+}
+
 int main(void) {
     RUN(operations_after_the_latch_wait_for_the_next);
     RUN(journal_overflow_copies_pages);
@@ -433,6 +475,7 @@ int main(void) {
     RUN(random_traffic_keeps_the_render_side_in_step);
     RUN(a_late_catch_up_takes_the_card_as_it_stood);
     RUN(a_full_ring_merges_into_its_newest);
+    RUN(the_register_journal_overflows_to_a_whole_copy);
     RUN(status_waits_for_the_publish);
     RUN(late_catch_ups_take_what_prompt_ones_do);
     return TEST_RESULT();

@@ -1,0 +1,11 @@
+8 scenes, 60 s each, the Nano's 2 MHz traffic on port B
+LATE  full-4bpp-16           rows 863189, late 157, merged 0; latency max 24354 (-9% spare), 99.9% 21119, mean 9347; core 1 half 16223, core 0 14818, split 168; latch isr max 1115; 7860 batches of 2 MHz accesses, 0 reads wrong, 0 stale, bus interrupt mean 142
+LATE  full-4bpp-16-det       rows 863243, late 841, merged 0; latency max 30121 (-35% spare), 99.9% 25215, mean 9473; core 1 half 20322, core 0 16847, split 167; latch isr max 1049; 8024 batches of 2 MHz accesses, 0 reads wrong, 0 stale, bus interrupt mean 142
+LATE  full-4bpp-32           rows 863164, late 1240, merged 0; latency max 28612 (-28% spare), 99.9% 25343, mean 10037; core 1 half 19645, core 0 16447, split 168; latch isr max 1113; 8064 batches of 2 MHz accesses, 0 reads wrong, 0 stale, bus interrupt mean 142
+LATE  full-4bpp-32-det       rows 863181, late 4521, merged 0; latency max 33447 (-50% spare), 99.9% 30719, mean 10289; core 1 half 22078, core 0 18367, split 168; latch isr max 1112; 8089 batches of 2 MHz accesses, 0 reads wrong, 0 stale, bus interrupt mean 142
+ok    full-4bpp-16-lim16     rows 863232, late 0, merged 0; latency max 18076 (19% spare), 99.9% 15999, mean 9097; core 1 half 12647, core 0 11289, split 167; latch isr max 1045; 8046 batches of 2 MHz accesses, 0 reads wrong, 0 stale, bus interrupt mean 142
+ok    full-4bpp-16-det-lim16 rows 863202, late 0, merged 0; latency max 19350 (14% spare), 99.9% 17535, mean 9165; core 1 half 13945, core 0 12569, split 167; latch isr max 1048; 8062 batches of 2 MHz accesses, 0 reads wrong, 0 stale, bus interrupt mean 142
+ok    full-4bpp-32-lim16     rows 863202, late 0, merged 0; latency max 19471 (13% spare), 99.9% 18175, mean 9453; core 1 half 14115, core 0 12329, split 168; latch isr max 1046; 8076 batches of 2 MHz accesses, 0 reads wrong, 0 stale, bus interrupt mean 142
+ok    full-4bpp-32-det-lim16 rows 863233, late 0, merged 0; latency max 20935 (6% spare), 99.9% 19583, mean 9601; core 1 half 15789, core 0 13504, split 168; latch isr max 1140; 8101 batches of 2 MHz accesses, 0 reads wrong, 0 stale, bus interrupt mean 142
+wrote docs/results/phase-13/scenes-traffic.json
+4 scene(s) with late rows or wrong snapshots

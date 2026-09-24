@@ -1,0 +1,236 @@
+[
+ {
+  "timing": "6502-1mhz",
+  "profile": {
+   "setup": 2,
+   "width": 2,
+   "hold": 2,
+   "gap": 4
+  },
+  "scripts": [
+   {
+    "name": "flip-flop",
+    "accesses": 31,
+    "ok": true
+   },
+   {
+    "name": "prefetch",
+    "accesses": 38,
+    "ok": true
+   },
+   {
+    "name": "read-orders",
+    "accesses": 126,
+    "ok": true
+   },
+   {
+    "name": "registers",
+    "accesses": 274,
+    "ok": true
+   },
+   {
+    "name": "status",
+    "accesses": 18,
+    "ok": true
+   },
+   {
+    "name": "vbank-vinc",
+    "accesses": 108,
+    "ok": true
+   }
+  ],
+  "accesses": 10000595,
+  "paced": 0,
+  "reads": 1726249,
+  "compared": 1475718,
+  "mismatches": [],
+  "stateChecks": 16,
+  "stateFailures": [],
+  "fontsRedirected": 2779,
+  "seconds": 742.721,
+  "bus": null,
+  "busBefore": null,
+  "backToBack": [
+   {
+    "spacing": "4 us",
+    "required": true,
+    "periodNs": 4046,
+    "reads": 12000,
+    "wrong": 0,
+    "first": null
+   },
+   {
+    "spacing": "2 us",
+    "required": false,
+    "periodNs": 1983,
+    "reads": 12000,
+    "wrong": 0,
+    "first": null
+   },
+   {
+    "spacing": "flat out",
+    "required": false,
+    "periodNs": 1159,
+    "reads": 12000,
+    "wrong": 0,
+    "first": null
+   }
+  ]
+ },
+ {
+  "timing": "6502-2mhz",
+  "profile": {
+   "setup": 1,
+   "width": 0,
+   "hold": 1,
+   "gap": 2
+  },
+  "scripts": [
+   {
+    "name": "flip-flop",
+    "accesses": 31,
+    "ok": true
+   },
+   {
+    "name": "prefetch",
+    "accesses": 38,
+    "ok": true
+   },
+   {
+    "name": "read-orders",
+    "accesses": 126,
+    "ok": true
+   },
+   {
+    "name": "registers",
+    "accesses": 274,
+    "ok": true
+   },
+   {
+    "name": "status",
+    "accesses": 18,
+    "ok": true
+   },
+   {
+    "name": "vbank-vinc",
+    "accesses": 108,
+    "ok": true
+   }
+  ],
+  "accesses": 10000595,
+  "paced": 0,
+  "reads": 1726249,
+  "compared": 1475718,
+  "mismatches": [],
+  "stateChecks": 16,
+  "stateFailures": [],
+  "fontsRedirected": 2779,
+  "seconds": 728.863,
+  "bus": null,
+  "busBefore": null,
+  "backToBack": [
+   {
+    "spacing": "4 us",
+    "required": true,
+    "periodNs": 4046,
+    "reads": 12000,
+    "wrong": 0,
+    "first": null
+   },
+   {
+    "spacing": "2 us",
+    "required": false,
+    "periodNs": 1983,
+    "reads": 12000,
+    "wrong": 0,
+    "first": null
+   },
+   {
+    "spacing": "flat out",
+    "required": false,
+    "periodNs": 1159,
+    "reads": 12000,
+    "wrong": 0,
+    "first": null
+   }
+  ]
+ },
+ {
+  "timing": "fastest",
+  "profile": {
+   "setup": 0,
+   "width": 0,
+   "hold": 0,
+   "gap": 0
+  },
+  "scripts": [
+   {
+    "name": "flip-flop",
+    "accesses": 31,
+    "ok": true
+   },
+   {
+    "name": "prefetch",
+    "accesses": 38,
+    "ok": true
+   },
+   {
+    "name": "read-orders",
+    "accesses": 126,
+    "ok": true
+   },
+   {
+    "name": "registers",
+    "accesses": 274,
+    "ok": true
+   },
+   {
+    "name": "status",
+    "accesses": 18,
+    "ok": true
+   },
+   {
+    "name": "vbank-vinc",
+    "accesses": 108,
+    "ok": true
+   }
+  ],
+  "accesses": 10000595,
+  "paced": 0,
+  "reads": 1726249,
+  "compared": 1475718,
+  "mismatches": [],
+  "stateChecks": 16,
+  "stateFailures": [],
+  "fontsRedirected": 2779,
+  "seconds": 723.181,
+  "bus": null,
+  "busBefore": null,
+  "backToBack": [
+   {
+    "spacing": "4 us",
+    "required": true,
+    "periodNs": 4046,
+    "reads": 12000,
+    "wrong": 0,
+    "first": null
+   },
+   {
+    "spacing": "2 us",
+    "required": false,
+    "periodNs": 1983,
+    "reads": 12000,
+    "wrong": 0,
+    "first": null
+   },
+   {
+    "spacing": "flat out",
+    "required": false,
+    "periodNs": 1159,
+    "reads": 12000,
+    "wrong": 0,
+    "first": null
+   }
+  ]
+ }
+]

@@ -32,6 +32,14 @@
 // Phase 11: the bus's read program answers from a staged word, so the card
 // stages all four ports' answers (vdp_staged) and takes each read as what it
 // returned (vdp_read_served).
+// Phase 13: the bus may interrupt the latch, so a 2 MHz CPU's accesses are
+// never held behind it. The latch's moment is short (vdp_latch_take): the
+// register writes are journaled as VRAM's are, so a latch notes where the
+// journals end rather than copying the register file, and its record is built
+// afterwards (vdp_latch_record). The FONT copies it begins go into the bus copy
+// a chunk at a time (vdp_latch_copy), and an access that reaches a chunk not
+// yet copied copies it first, so every access after the latch finds the load
+// whole (§7).
 
 #pragma once
 
@@ -66,6 +74,20 @@
 // its pages instead, which a late catch-up takes from the bus copy as it then
 // is. A power of two.
 #define VDP_BULK_ENTRIES 16
+
+// A FONT copy goes into the bus copy a chunk at a time, in any order: a step of
+// vdp_latch_copy, or an access that reaches a chunk not yet copied, copies
+// that chunk. One is about 100 cycles on the RP2350 under a busy picture,
+// against the ~570 an access has at 2 MHz (§4, Phase 13). A copy is at most
+// 2 KB: 32 chunks, and two copies' chunks one bit each in a 64-bit word.
+#define VDP_COPY_STEP 64
+#define VDP_COPY_CHUNKS 32
+
+// Register writes the journal holds for the render side (Phase 13), so a latch
+// records where they end instead of copying all 128 registers. A 6502 at 2 MHz
+// makes at most 16 a line; one that finds the ring full has the next latch
+// copy the register file whole instead. A power of two: the journal is a ring.
+#define VDP_REGISTER_JOURNAL 256
 
 // Latches the render side can fall behind by (§18's late lines). A latch that
 // finds them all waiting is merged into the newest, whose line is then never
@@ -134,10 +156,16 @@ typedef struct vdp_port {
     bool second;       // the flip-flop: the next command-port write completes a pair
 } vdp_port_t;
 
-// What a latch leaves for the render side (§3): the card as it stood, less
-// VRAM, which the journal carries.
+// What a latch leaves for the render side (§3): where the journals end, which
+// carry VRAM and the registers, and the register file whole only when the
+// register journal cannot say (reg_whole).
 typedef struct vdp_latch_record {
-    uint8_t reg[VDP_REGISTERS];
+    uint8_t reg[VDP_REGISTERS];  // when reg_whole: the register file as the latch found it
+    bool reg_whole;
+    uint32_t reg_end;        // the register journal's tail at the latch
+    uint8_t fonts;           // FONT loads landing at the latch (§7): bit n for layer n's ...
+    uint16_t font_base[2];   // ... at its destination, ...
+    uint32_t font_at;        // ... after the journal's writes before this place: the latch's
     uint64_t dirty_pages;    // pages written past a full journal, or a full bulk ring, before the latch
     bool overflowed;         // some of them because the journal was full
     uint32_t bulk_end;       // the bulk ring's tail at the latch
@@ -145,6 +173,18 @@ typedef struct vdp_latch_record {
     uint32_t tag;            // the platform's, handed back with the render side (vdp_latch)
     uint16_t screen_line;
 } vdp_latch_record_t;
+
+// What a latch takes from the bus side in its one moment (vdp_latch_take),
+// for its record to be built from afterwards (vdp_latch_record).
+typedef struct vdp_latch_take {
+    uint32_t reg_end, journal_end, bulk_end;  // where the journals and the bulk ring end
+    uint64_t pages;          // pages to copy whole: written past a full journal, or bulk writes past a full ring
+    bool overflowed;         // some of them because the journal was full
+    bool reg_whole;          // the register file had to be copied whole: into the card's reg_taken
+    uint8_t fonts;           // FONT loads landing at the latch (§7), bit n for layer n, ...
+    uint16_t font_base[2];   // ... at these destinations
+    uint16_t screen_line;
+} vdp_latch_take_t;
 
 // The whole card. Callers allocate it — it is about 141 KB, so statically or on
 // the heap — and hand it to vdp_init. Its fields belong to the core.
@@ -166,6 +206,15 @@ typedef struct vdp {
     uint64_t dirty_pages;                   // pages written after the journal filled, since the last latch
     uint32_t journal_overflows;             // catch-ups that fell back to page copies
 
+    // Register writes the render side has not taken, the same way: each the
+    // byte a write left at a register's home (§5).
+    uint8_t reg_journal_index[VDP_REGISTER_JOURNAL];
+    uint8_t reg_journal_value[VDP_REGISTER_JOURNAL];
+    uint32_t reg_journal_head;
+    uint32_t reg_journal_tail;
+    bool reg_whole;                         // the ring filled, or a reset rewrote the file: the next latch copies it
+    uint8_t reg_taken[VDP_REGISTERS];       // the file a latch copied whole, for its record
+
     // Bulk writes the render side has not taken (vdp_bulk_write), a ring the
     // same way, each placed in the journal's order by the tail it found.
     vdp_bulk_t bulk[VDP_BULK_ENTRIES];
@@ -174,6 +223,14 @@ typedef struct vdp {
     uint64_t bulk_pages;                    // pages of bulk writes that found the ring full, since the last latch
     uint8_t reset_palette[512];             // §11's table as reset writes it, for bulk writes to point at
 
+    // FONT loads a latch has begun, in its record already, whose bytes are not
+    // all in the bus copy yet (vdp_latch_copy). Bit (32 x i + c) of pending:
+    // chunk c of copy[i] still to copy. An access that reaches such a chunk
+    // copies it first.
+    vdp_bulk_t copy[2];
+    uint8_t copies;
+    uint64_t copy_pending;
+
     // Latches the render side has not taken, a ring the same way: latch_tail
     // is vdp_latch's, latch_head vdp_catch_up's.
     vdp_latch_record_t latch[VDP_LATCHES];
@@ -181,6 +238,7 @@ typedef struct vdp {
     uint32_t latch_tail;
     uint32_t latches_merged;                // latches merged into a full ring's newest
 
+    const struct vdp_geometry *geometry;    // the geometry the register file selects now (§9), kept as it is written
     uint16_t screen_line;                   // the screen line last begun, §3
     uint16_t display_line;                  // its number from the picture's first line, as it began, §3
     bool hblank;                            // STAT3 b1, from the platform, §6
@@ -227,8 +285,12 @@ uint8_t vdp_read(vdp_t *v, unsigned port);                  // port = A1:A0, §4
 void    vdp_write(vdp_t *v, unsigned port, uint8_t value);  // §4
 void    vdp_line_start(vdp_t *v, uint16_t screen_line);     // a screen line begins, §3: latch, catch up, publish
 void    vdp_latch(vdp_t *v, uint16_t screen_line, uint32_t tag); // its bus side, now; tag comes back in render_tag
+void    vdp_latch_begin(vdp_t *v, uint16_t screen_line, uint32_t tag); // vdp_latch less its FONT copies (Phase 13): take, then record
+void    vdp_latch_take(vdp_t *v, uint16_t screen_line, vdp_latch_take_t *t); // the one moment: events, and where the journals end
+void    vdp_latch_record(vdp_t *v, const vdp_latch_take_t *t, uint32_t tag); // the record, from what was taken; the bus may interleave
+bool    vdp_latch_copy(vdp_t *v);                           // the next step of them: false once none remain
 bool    vdp_catch_up(vdp_t *v);                             // the render side to the oldest latch it has not taken; false if none
-void    vdp_set_hblank(vdp_t *v, bool hblank);              // STAT3 b1, from the platform, §6
+bool    vdp_set_hblank(vdp_t *v, bool hblank);              // STAT3 b1, from the platform, §6; true if a port's answer moved
 int     vdp_split_choose(const vdp_t *v);                   // the picture column the cores divide this row at; 0: one core builds it
 void    vdp_build_half(const vdp_t *v, vdp_half_t *h, int x0, int x1); // picture columns [x0, x1): backdrop, layers, sprites; no status
 void    vdp_expand_half(const vdp_t *v, const vdp_half_t *h, uint16_t *rgb);   // its frame columns, 12-bit 0x0BGR, x2

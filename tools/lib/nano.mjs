@@ -29,6 +29,9 @@ export const CMD = {
   INT_PERIOD: 0x0a,
   SCRIPT: 0x0b,
   READ_RUN: 0x0c,
+  PACED: 0x0d,
+  INT_RUN: 0x0e,
+  TRAFFIC: 0x0f,
 }
 
 /**
@@ -343,6 +346,82 @@ export class Nano {
     return { bytes: Buffer.from(out.subarray(4)), ns: out.readUInt32LE(0) * TICK_NS }
   }
 
+  /**
+   * Up to PACED_MAX accesses as (op, value) pairs, SCRIPT's ops less its
+   * controls, each exactly pacedCycles(extra) after the last — 2 us at 0 —
+   * with reads compared on the Nano. `bytes` returns what every read returned
+   * instead of the log.
+   */
+  async paced(pairs, { extra = 0, bytes = false, retry = true } = {}) {
+    const body = Buffer.from(pairs)
+    if (!body.length || body.length & 1 || body.length > 2 * PACED_MAX) {
+      throw new NanoError(`paced run of ${body.length} bytes: 2 to ${2 * PACED_MAX}, in pairs`)
+    }
+    const out = await this.request(CMD.PACED, [(extra & 0x7f) | (bytes ? 0x80 : 0), ...body], { retry })
+    const result = { differed: out[0], ns: out.readUInt32LE(1) * TICK_NS }
+    if (bytes) result.bytes = Buffer.from(out.subarray(5))
+    else {
+      result.log = []
+      for (let at = 5; at + 3 <= out.length; at += 3) result.log.push({ index: out[at], expected: out[at + 1], got: out[at + 2] })
+    }
+    return result
+  }
+
+  /**
+   * For each of `edges` falling edges of /INT, play the next of `sequences`
+   * (each a list of (op, value) pairs) at PACED's spacing, `delayTicks` after
+   * the edge. `times` returns each edge's Timer 1 count and the ticks from it
+   * to the run; `reads` each run's read bytes. The Nano's interrupts are off
+   * throughout, so nothing else may be asked of it meanwhile.
+   */
+  async intRun(sequences, { edges = 1, timeout = 0.1, times = false, reads = false, delayTicks = 0, extra = 0 } = {}) {
+    const overflows = Math.min(255, Math.max(1, Math.ceil((timeout * 1e3) / 4.096)))
+    const body = [edges & 0xff, (edges >> 8) & 0xff, overflows, (times ? 1 : 0) | (reads ? 2 : 0),
+      delayTicks & 0xff, (delayTicks >> 8) & 0xff, extra, sequences.length]
+    for (const pairs of sequences) body.push(pairs.length / 2, ...pairs)
+    const out = await this.request(CMD.INT_RUN, body, { timeout: edges * (timeout * 1000 + 20) + 4000, retry: false })
+    const result = { edges: out.readUInt16LE(0), timedOut: out[2] === 1, differed: out.readUInt16LE(3), records: [] }
+    const readsPer = sequences.map((pairs) => pairs.filter((v, i) => i % 2 === 0 && (v & 0xc0)).length)
+    let at = 5
+    for (let e = 0; e < result.edges; e++) {
+      const size = (times ? 6 : 0) + (reads ? readsPer[e % sequences.length] : 0)
+      if (at + size > out.length) break   // the Nano keeps whole records, while they fit
+      const record = {}
+      if (times) {
+        record.ticks = out.readUInt32LE(at)
+        record.offset = out.readUInt16LE(at + 4)
+        at += 6
+      }
+      if (reads) {
+        const n = readsPer[e % sequences.length]
+        record.bytes = Buffer.from(out.subarray(at, at + n))
+        at += n
+      }
+      result.records.push(record)
+    }
+    return result
+  }
+
+  /**
+   * A PACED batch with a scanline handler served before and after it while
+   * /INT is low: IRQLINE moved on by `step` below `wrap`, and STAT1 read, on
+   * `pair` (whose STATSEL must select STAT1). Returns PACED's answer and the
+   * handlers served since the handler was set up, with the longest wait for
+   * one in nanoseconds.
+   */
+  async traffic(pairs, { step = 0, wrap = 256, pair = 1, extra = 0, retry = true } = {}) {
+    const body = Buffer.from(pairs)
+    if (!body.length || body.length & 1 || body.length > 2 * PACED_MAX) {
+      throw new NanoError(`traffic batch of ${body.length} bytes: 2 to ${2 * PACED_MAX}, in pairs`)
+    }
+    const out = await this.request(CMD.TRAFFIC, [step, wrap & 0xff, pair, extra, ...body], { retry })
+    const log = []
+    const logged = Math.min(out[0], 8)
+    for (let i = 0; i < logged; i++) log.push({ index: out[5 + 3 * i], expected: out[6 + 3 * i], got: out[7 + 3 * i] })
+    const at = 5 + 3 * logged
+    return { differed: out[0], ns: out.readUInt32LE(1) * TICK_NS, log, serviced: out.readUInt32LE(at), latencyNs: out.readUInt16LE(at + 4) * TICK_NS }
+  }
+
   async reset(microseconds = 100) {
     await this.request(CMD.RESET, [microseconds & 0xff, (microseconds >> 8) & 0xff])
   }
@@ -378,6 +457,12 @@ export class Nano {
     }
   }
 }
+
+/** The most accesses one PACED, INT_RUN or TRAFFIC carries (the Nano's RAM). */
+export const PACED_MAX = 100
+
+/** PACED's spacing, in Nano cycles, for an `extra`: 2 us at 0, 4 us at 11. */
+export const pacedCycles = (extra) => (extra ? 31 + 3 * extra : 32)
 
 /** READ_RUN's spacing, in Nano cycles, for an `extra`. */
 export const readRunCycles = (extra) => (extra ? 16 + 3 * extra : 18)

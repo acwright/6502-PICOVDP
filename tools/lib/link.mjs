@@ -67,11 +67,22 @@ export class Link {
     this.logs = []
     this.stream = new ReadStream(this.fd)
     this.stream.on('data', (chunk) => this.receive(chunk))
-    this.stream.on('error', (error) => this.fail(error))
+    // A reader that has stopped fails every request from then on, by name,
+    // rather than leaving each to time out.
+    this.stopped = null
+    const stop = (why) => {
+      if (this.closing || this.stopped) return
+      this.stopped = new LinkError(`the link's reader stopped: ${why}`)
+      this.fail(this.stopped)
+    }
+    this.stream.on('error', (error) => stop(error.message))
+    this.stream.on('end', () => stop('end of stream'))
+    this.stream.on('close', () => stop('closed'))
     this.ready = Promise.resolve()
   }
 
   close() {
+    this.closing = true
     this.fail(new LinkError('closed'))
     this.stream.destroy()
   }
@@ -82,6 +93,8 @@ export class Link {
   }
 
   receive(chunk) {
+    this.received = (this.received ?? 0) + chunk.length
+    this.receivedAt = Date.now()
     this.buffer = this.buffer.length ? Buffer.concat([this.buffer, chunk]) : chunk
     for (;;) {
       const start = this.buffer.indexOf('PV')
@@ -100,7 +113,18 @@ export class Link {
       const packet = this.buffer.subarray(0, HEADER + length + 4)
       this.buffer = this.buffer.subarray(HEADER + length + 4)
       const crc = packet.readUInt32LE(HEADER + length)
-      if (crc32(packet.subarray(2, HEADER + length)) !== crc) continue
+      if (crc32(packet.subarray(2, HEADER + length)) !== crc) {
+        // A damaged answer fails its request at once, rather than leaving it
+        // to time out as if none had come.
+        this.crcFailures = (this.crcFailures ?? 0) + 1
+        const waiter = this.waiting.get(packet[3])
+        if (waiter) {
+          this.waiting.delete(packet[3])
+          clearTimeout(waiter.timer)
+          waiter.reject(new LinkError(`the answer to command ${waiter.command} failed its CRC (${length} bytes)`))
+        }
+        continue
+      }
       const type = packet[2]
       const sequence = packet[3]
       const payload = Buffer.from(packet.subarray(HEADER, HEADER + length))
@@ -120,6 +144,7 @@ export class Link {
 
   /** Send a command; resolves with the response's payload. */
   request(command, payload = Buffer.alloc(0), timeout = 5000) {
+    if (this.stopped) return Promise.reject(this.stopped)
     const sequence = (this.sequence = (this.sequence + 1) & 0xff)
     const header = Buffer.alloc(HEADER)
     header.write('PV', 0, 'latin1')
@@ -257,7 +282,40 @@ export function decodeStats(payload) {
     s.bus = {}
     for (const name of BUS_COUNTS) s.bus[name] = r.u32()
   }
+  // Phase 13's block: what holds core 1's interrupts off, and the raster's
+  // timing on the shared timer, in cycles at clk_sys (docs/DEBUGLINK.md).
+  if (r.at < payload.length) {
+    const kinds = r.u8()
+    const masked = Array.from({ length: kinds }, () => r.u32())
+    s.masked = Object.fromEntries(MASKED_KINDS.map((name, i) => [name, masked[i]]))
+    s.bell = { max: r.u32(), mean: r.u32() }
+    s.flags = { rows: r.u32(), max: r.u32(), mean: r.u32() }
+    s.frame = { min: r.u32(), max: r.u32(), mean: r.u32() }
+    if (s.bus) s.bus.isrMean = r.u32()
+    s.lag = { count: r.u32(), max: r.u32(), mean: r.u32() }
+    const bins = r.u16()
+    s.lag.bin = r.u16()
+    s.lag.histogram = Array.from({ length: bins }, () => r.u16())
+    if (r.at < payload.length) {
+      const kept = r.u8()
+      s.staleKept = Array.from({ length: kept }, () => ({ port: r.u8(), served: r.u8(), held: r.u8(), staged: r.u32(), sinceStage: r.u32(), sinceEntry: r.u32() }))
+    }
+  }
   return s
+}
+
+/** What holds core 1's interrupts off, in STATS' order (firmware/renderer.h). */
+export const MASKED_KINDS = ['latch', 'copy', 'publish', 'thread']
+
+/** A histogram's `fraction` quantile, to the top of its bin. */
+export function quantile(histogram, bin, fraction) {
+  const total = histogram.reduce((a, b) => a + b, 0)
+  let below = 0
+  for (let i = 0; i < histogram.length; i++) {
+    below += histogram[i]
+    if (below >= total * fraction) return (i + 1) * bin - 1
+  }
+  return histogram.length * bin
 }
 
 /** STATS' bus block, in order (firmware/bus.h's bus_stats_t). */
@@ -333,14 +391,14 @@ export function u8(...values) {
   return Buffer.from(values)
 }
 
-export function packLoad({ busRate = 0, first = 0, last = 0, every = 1, cycles = 0, fonts = false } = {}) {
+export function packLoad({ busRate = 0, first = 0, last = 0, every = 1, cycles = 0, fonts = false, scenePairB = false } = {}) {
   const b = Buffer.alloc(15)
   b.writeUInt32LE(busRate, 0)
   b.writeUInt16LE(first, 4)
   b.writeUInt16LE(last, 6)
   b.writeUInt16LE(every, 8)
   b.writeUInt32LE(cycles, 10)
-  b[14] = fonts ? 1 : 0
+  b[14] = (fonts ? 1 : 0) | (scenePairB ? 2 : 0)
   return b
 }
 

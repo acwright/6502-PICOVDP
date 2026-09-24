@@ -69,6 +69,23 @@ TEST(hblank_is_the_platforms) {
     free(v);
 }
 
+// Phase 13: vdp_set_hblank says whether a port's answer moved, so the firmware
+// restages only then: a change of the bit, read by a port whose STATSEL names
+// STAT3. Either pair's.
+TEST(hblank_moves_an_answer_only_where_stat3_is_read) {
+    vdp_t *v = new_card();
+    CHECK(!vdp_set_hblank(v, true));      // STATSEL_A and _B both 0
+    CHECK(!vdp_set_hblank(v, false));
+    set_reg(v, STATSEL_B, 3);
+    CHECK(vdp_set_hblank(v, true));
+    CHECK(!vdp_set_hblank(v, true));      // no change
+    CHECK_EQ(0x02, vdp_read(v, 3) & 0x02);
+    set_reg(v, STATSEL_B, 2);
+    set_reg(v, STATSEL_A, 0x13);          // b3:0 is what selects
+    CHECK(vdp_set_hblank(v, false));
+    free(v);
+}
+
 TEST(a_change_of_height_renumbers_at_the_next_line_start) {
     vdp_t *v = card_in(0x0);
     run_to(v, 124);
@@ -406,6 +423,7 @@ TEST(a_snapshot_carries_status_and_the_line_as_numbered) {
 int main(void) {
     RUN(display_line_is_the_screen_line_less_the_top_border);
     RUN(hblank_is_the_platforms);
+    RUN(hblank_moves_an_answer_only_where_stat3_is_read);
     RUN(a_change_of_height_renumbers_at_the_next_line_start);
     RUN(vertical_blank_at_the_end_of_the_picture);
     RUN(f_sets_whatever_irqen_and_the_display_say);

@@ -1,0 +1,22 @@
+  back to back, 4 us: 12000 data reads 4.05 us apart: all right
+  back to back, 2 us: 12000 data reads 1.98 us apart: all right
+  back to back, flat out: 12000 data reads 1.16 us apart: 27 WRONG, the first trial 1, read 94 of port 0: expected $72, got $d6
+  6502-2mhz: script flip-flop, 31 accesses: ok
+  6502-2mhz: script prefetch, 38 accesses: ok
+  6502-2mhz: script read-orders, 126 accesses: ok
+  6502-2mhz: script registers, 274 accesses: ok
+  6502-2mhz: script status, 18 accesses: ok
+  6502-2mhz: script vbank-vinc, 108 accesses: ok
+  6502-2mhz: 1,000,000 accesses, 12,784 a second
+  6502-2mhz: 2,000,000 accesses, 12,994 a second
+  6502-2mhz: 3,000,000 accesses, 13,041 a second
+  6502-2mhz: 4,000,000 accesses, 13,089 a second
+  6502-2mhz: 5,000,000 accesses, 13,111 a second
+  6502-2mhz: 6,000,000 accesses, 13,140 a second
+  6502-2mhz: 7,000,000 accesses, 13,161 a second
+  6502-2mhz: 8,000,000 accesses, 13,182 a second
+  6502-2mhz: 9,000,000 accesses, 13,197 a second
+  6502-2mhz: 10,000,000 accesses, 13,198 a second
+6502-2mhz: 10,000,595 accesses (1,726,249 reads, 1,475,718 compared) in 758 s; 0 mismatching batches, 0 of 17 state checks differ
+  card: 8274346 writes, 1726249 reads, 0 stale data reads, 1441 stale status reads, 0 coincident, FIFO overruns 0/0, staging waits 0, resets 7, interrupt max 320 cycles
+wrote docs/results/phase-13/conformance-paced.json

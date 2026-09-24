@@ -24,6 +24,9 @@
 // - The sync buffers are one table of 525 lines, built once.
 // - Interrupt priorities are set explicitly: both VGA interrupts are the
 //   highest on core 0 (PLAN.md section 3).
+// - Phase 13: the sync program also marks each VGA line's front porch, and a
+//   third state machine, vga_hblank, times the blank out for STAT3 b1 (§6),
+//   with interrupts at either end for whichever core asks for them.
 //
 // The PIO programs (vga.pio) and the timing arithmetic are pico9918's.
 
@@ -41,6 +44,7 @@
 #define VGA_PIO pio0
 #define SYNC_SM 0
 #define RGB_SM 1
+#define HBLANK_SM 2
 
 // PIO interrupt flags the sync program raises: a screen line begins, and the
 // frame's first does. The RGB program waits on vga_rgb_RGB_IRQ (4).
@@ -77,6 +81,8 @@ static vga_line_start_fn line_start_fn;
 static int sync_channel, rgb_channel;
 static uint32_t pio_divider;
 static unsigned rgb_program_offset;
+static unsigned hblank_program_offset;
+static uint32_t hblank_ticks;             // the blank: front porch, sync and back porch
 
 // Written by the interrupts only.
 static uint16_t vga_line;                 // the VGA line the sync DMA last queued
@@ -107,6 +113,7 @@ static void build_sync_words(void) {
     const uint32_t nop = (uint32_t)pio_encode_nop() << vga_sync_WORD_EXEC_OFFSET;
     const uint32_t picture = (uint32_t)pio_encode_irq_set(false, vga_rgb_RGB_IRQ) << vga_sync_WORD_EXEC_OFFSET;
     const uint32_t line_flag = (uint32_t)pio_encode_irq_set(false, LINE_FLAG) << vga_sync_WORD_EXEC_OFFSET;
+    const uint32_t blank = (uint32_t)pio_encode_irq_set(false, vga_hblank_START_IRQ) << vga_sync_WORD_EXEC_OFFSET;
     const uint32_t frame_flag = (uint32_t)pio_encode_irq_set(false, FRAME_FLAG) << vga_sync_WORD_EXEC_OFFSET;
 
     const unsigned first_picture = V_SYNC + V_BACK_PORCH;
@@ -124,10 +131,12 @@ static void build_sync_words(void) {
         else if ((a & 1) && a <= 2 * SCREEN_LINES - 3) flag = line_flag;
 
         sync_words[line][0] = (active_line ? picture : nop) | h_off | v | active;
-        sync_words[line][1] = nop | h_off | v | front;
+        sync_words[line][1] = blank | h_off | v | front;
         sync_words[line][2] = nop | v | sync;
         sync_words[line][3] = flag | h_off | v | back;
     }
+    // Each segment is its delay and the program's overhead.
+    hblank_ticks = front + sync + back + 3 * vga_sync_SETUP_OVERHEAD;
 }
 
 // A screen line begins: which one, and the buffer its row sends.
@@ -231,10 +240,20 @@ static void init_rgb(void) {
     dma_channel_set_irq0_enabled(rgb_channel, true);
 }
 
+static void init_hblank(void) {
+    hblank_program_offset = pio_add_program(VGA_PIO, &vga_hblank_program);
+    pio_sm_config config = vga_hblank_program_get_default_config(hblank_program_offset);
+    sm_config_set_clkdiv(&config, (float)pio_divider);
+    pio_sm_init(VGA_PIO, HBLANK_SM, hblank_program_offset, &config);
+    // x runs y down to 0 and past: y + 1 loops of a tick.
+    pio_set_y(VGA_PIO, HBLANK_SM, hblank_ticks - vga_hblank_OVERHEAD - 1);
+}
+
 void vga_init(vga_line_start_fn line_start) {
     line_start_fn = line_start;
     init_sync();
     init_rgb();
+    init_hblank();
 
     irq_set_exclusive_handler(DMA_IRQ_0, dma_isr);
     irq_set_priority(DMA_IRQ_0, PICO_HIGHEST_IRQ_PRIORITY);
@@ -249,8 +268,23 @@ void vga_start(void) {
     irq_set_enabled(DMA_IRQ_0, true);
     irq_set_enabled(PIO0_IRQ_0, true);
     dma_channel_start(sync_channel);
+    pio_sm_set_enabled(VGA_PIO, HBLANK_SM, true);
     pio_sm_set_enabled(VGA_PIO, SYNC_SM, true);
     pio_sm_set_enabled(VGA_PIO, RGB_SM, true);
+}
+
+void vga_hblank_irq(void (*handler)(void), uint8_t priority) {
+    pio_interrupt_clear(VGA_PIO, vga_hblank_ON_FLAG);
+    pio_interrupt_clear(VGA_PIO, vga_hblank_OFF_FLAG);
+    irq_set_exclusive_handler(PIO0_IRQ_1, handler);
+    irq_set_priority(PIO0_IRQ_1, priority);
+    pio_set_irq1_source_mask_enabled(VGA_PIO, (1u << pis_interrupt2) | (1u << pis_interrupt3), true);
+    irq_set_enabled(PIO0_IRQ_1, true);
+}
+
+bool __time_critical_func(vga_hblank_acknowledge)(void) {
+    VGA_PIO->irq = (1u << vga_hblank_ON_FLAG) | (1u << vga_hblank_OFF_FLAG);
+    return pio_sm_get_pc(VGA_PIO, HBLANK_SM) == hblank_program_offset + vga_hblank_offset_blanking;
 }
 
 uint32_t vga_pio_divider(void) {

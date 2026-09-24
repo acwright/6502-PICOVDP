@@ -5,7 +5,7 @@
 // host (host/scene's vdp-scene): rows on time exactly, late rows as the row
 // they repeat.
 
-import { execFileSync } from 'node:child_process'
+import { execFile, execFileSync } from 'node:child_process'
 import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { REPO } from './emulator.mjs'
@@ -30,9 +30,31 @@ function hostFrame(name, n) {
   return frames.get(key)
 }
 
+/**
+ * The same frame without blocking the process: a caller also streaming a
+ * snapshot must go on reading its port, or the host's tty buffer overflows
+ * and bytes are lost (Phase 13's load run).
+ */
+const pending = new Map()
+export function hostFrameAsync(name, n) {
+  const key = `${name}/${n}`
+  if (frames.has(key)) return Promise.resolve(frames.get(key))
+  if (!pending.has(key)) {
+    pending.set(key, new Promise((resolve, reject) => {
+      execFile(VDP_SCENE, [name, '--frame', String(n)], { encoding: 'buffer', maxBuffer: 1 << 20 }, (error, out) => {
+        pending.delete(key)
+        if (error) return reject(error)
+        if (frames.size > 64) frames.clear()
+        frames.set(key, out)
+        resolve(out)
+      })
+    }))
+  }
+  return pending.get(key)
+}
+
 /** A snapshot against the host's frame: on-time rows exactly, late rows as the row they show. */
-export function checkSnapshot(name, snapshot) {
-  const expected = hostFrame(name, snapshot.state.sceneFrame)
+export function checkSnapshot(name, snapshot, expected = hostFrame(name, snapshot.state.sceneFrame)) {
   let wrong = 0
   let late = 0
   for (let row = 0; row < 240; row++) {
@@ -48,22 +70,42 @@ export function checkSnapshot(name, snapshot) {
   return { wrong, late, stateMatches: snapshot.stateMatches }
 }
 
-export async function runScenes({ seconds, only, bus, fonts, stream, out, profile }) {
+/**
+ * Run the worst-case scenes. `nano`, from Phase 13: the Nano's 2 MHz trials
+ * (tools/lib/twomhz.mjs) on port B while each scene runs, in place of Phase
+ * 1's stand-in — the real bus, a burst of 100 accesses 2 us apart, then a
+ * host round trip, over and over.
+ */
+export async function runScenes({ seconds, only, bus, fonts, stream, out, profile, nano = null }) {
   const names = sceneNames().filter((name) => !only || only.includes(name))
   const link = await Link.open()
+  const { Trials, prepare } = await import('./twomhz.mjs')
   const results = []
   let failures = 0
   try {
     await link.request(CMD.LOAD, packLoad({ busRate: bus, fonts }))
-    console.log(`${names.length} scenes, ${seconds} s each${bus ? `, bus stand-in at ${bus} Hz` : ''}${fonts ? ', FONT loads for both layers every frame' : ''}${stream ? ', snapshots streaming' : ''}`)
+    console.log(`${names.length} scenes, ${seconds} s each${bus ? `, bus stand-in at ${bus} Hz` : ''}${nano ? ', the Nano\'s 2 MHz traffic on port B' : ''}${fonts ? ', FONT loads for both layers every frame' : ''}${stream ? ', snapshots streaming' : ''}`)
     for (const name of names) {
       await link.request(CMD.SCENE, Buffer.from(name))
       await sleep(1500)  // set up at the next line 250, and settled
       let profiled = null
       if (profile) profiled = decodeProfile(await link.request(CMD.PROFILE, Buffer.from([101, 0, 100, 0, 0, 0]), 60000))
+      let trials = null
+      if (nano) {
+        trials = new Trials({ seed: 21, pairs: [1] })
+        await prepare(nano, trials)
+      }
       await link.request(CMD.STATS, u8(1))
       const started = Date.now()
       const snapshots = { taken: 0, wrong: 0, late: 0, stale: 0 }
+      const traffic = { batches: 0, wrong: 0 }
+      const trafficLoop = nano && (async () => {
+        while (Date.now() - started < seconds * 1000) {
+          const r = await nano.paced(trials.next().pairs)
+          traffic.batches++
+          traffic.wrong += r.differed
+        }
+      })()
       while (Date.now() - started < seconds * 1000) {
         if (!stream) {
           await sleep(Math.min(500, seconds * 1000 - (Date.now() - started)))
@@ -76,18 +118,20 @@ export async function runScenes({ seconds, only, bus, fonts, stream, out, profil
         snapshots.late += check.late
         if (!check.stateMatches) snapshots.stale++
       }
+      if (trafficLoop) await trafficLoop
       const stats = decodeStats(await link.request(CMD.STATS, u8(0)))
-      const result = { name, seconds: (Date.now() - started) / 1000, stats, snapshots, profile: profiled }
+      const result = { name, seconds: (Date.now() - started) / 1000, stats, snapshots, profile: profiled, traffic: nano ? { ...traffic, trials: trials.counts } : null }
       delete result.stats.histogram
       results.push(result)
       const spare = (((stats.budget - stats.latency.max) / stats.budget) * 100).toFixed(0)
-      const bad = stats.lateRows || stats.latchesMerged || snapshots.wrong
+      const bad = stats.lateRows || stats.latchesMerged || snapshots.wrong || traffic.wrong || (nano && stats.bus.staleData)
       if (bad) failures++
       console.log(
         `${bad ? 'LATE ' : 'ok   '} ${name.padEnd(22)} rows ${stats.rowsBuilt}, late ${stats.lateRows}, merged ${stats.latchesMerged}; ` +
           `latency max ${stats.latency.max} (${spare}% spare), 99.9% ${stats.latency.p999}, mean ${stats.latency.mean}; ` +
           `core 1 half ${stats.halfMax}, core 0 ${stats.core0HalfMax}, split ${stats.splitMean}; latch isr max ${stats.latchIsrMax}` +
-          (stream ? `; ${snapshots.taken} snapshots, ${snapshots.wrong} rows wrong, ${snapshots.late} late, ${snapshots.stale} stale state` : '')
+          (stream ? `; ${snapshots.taken} snapshots, ${snapshots.wrong} rows wrong, ${snapshots.late} late, ${snapshots.stale} stale state` : '') +
+          (nano ? `; ${traffic.batches} batches of 2 MHz accesses, ${traffic.wrong} reads wrong, ${stats.bus.staleData} stale, bus interrupt mean ${stats.bus.isrMean}` : '')
       )
     }
   } finally {

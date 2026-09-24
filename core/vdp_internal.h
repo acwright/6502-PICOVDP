@@ -10,10 +10,17 @@
 // Hot functions: in RAM on the RP2350 (PLAN.md section 3). The image is
 // copy_to_ram already, so this only names the section the SDK's linker script
 // keeps there, without including an SDK header (rule 5).
+//
+// The bus side's hottest code — what the bus interrupt and the latch run on
+// core 1 — goes further, into core 1's own scratch bank, which neither core 0
+// nor DMA fetches from: under a busy picture it runs in half the cycles, and
+// an access waits for it that much less (Phase 13).
 #ifdef PICOVDP_RP2350
 #define VDP_HOT(name) __attribute__((section(".time_critical." #name))) name
+#define VDP_BUS(name) __attribute__((section(".scratch_x." #name))) name
 #else
 #define VDP_HOT(name) name
+#define VDP_BUS(name) name
 #endif
 
 #define VDP_VRAM_MASK (VDP_VRAM_SIZE - 1)
@@ -195,13 +202,14 @@ typedef enum vdp_legacy_mode {
     VDP_LEGACY_MULTICOLOR,   // not supported: drawn as Graphics I
 } vdp_legacy_mode_t;
 
-typedef struct vdp_geometry {
+struct vdp_geometry {
     vdp_geometry_id_t id;
     uint8_t cols, rows;
     uint8_t cell_width;      // pixels of pattern a cell draws across: 6 in Text
     uint16_t width, lines;   // the picture
     uint16_t origin_x, origin_y;  // where it sits in the 320 x 240 frame (§3)
-} vdp_geometry_t;
+};
+typedef struct vdp_geometry vdp_geometry_t;
 
 // The geometry a register file selects, and the legacy mode behind it.
 const vdp_geometry_t *vdp_geometry(const uint8_t *reg, vdp_legacy_mode_t *legacy);
@@ -279,8 +287,9 @@ uint8_t vdp_sprites_evaluate(vdp_t *v);
 // §6, §14: a line dropped `slot` (sprites.c).
 void vdp_report_overflow(vdp_t *v, unsigned slot);
 
-// §6, §10, §14: what a half's sprites found colliding (sprites.c).
-void vdp_publish_collisions(vdp_t *v, const vdp_half_t *h);
+// §6, §10, §14: what a row's sprites found colliding, its halves' together
+// (sprites.c).
+void vdp_publish_collisions(vdp_t *v, uint64_t collisions);
 
 // Sprites over picture columns [x0, x1) of a half's line, after its layers,
 // each pixel where its level beats the layers' (§12); the collisions found
@@ -291,7 +300,9 @@ void vdp_draw_sprites(const vdp_t *v, vdp_half_t *h, int x0, int x1, uint8_t *pi
 
 // The events of a screen line's start: its display line, a frame's start,
 // vertical blank, the scanline compare, and the sprite events' new frame.
-void vdp_raster_line_start(vdp_t *v, uint16_t screen_line);
+// Returns the FONT loads that land at it, no longer pending (§7): bit n for
+// layer n.
+uint8_t vdp_raster_line_start(vdp_t *v, uint16_t screen_line);
 
 // A status register as a read on a port returns it, acknowledging what STAT0
 // and STAT1 acknowledge (§6).
@@ -307,9 +318,11 @@ void vdp_status_acknowledge(vdp_t *v, unsigned select, uint8_t served);
 // §15: flags, latches, and at power-on the frame's spent events.
 void vdp_status_reset(vdp_t *v, bool power_on);
 
-// §3: a screen line's display line in a geometry.
+// §3: a screen line's display line in a geometry. The screen line is below
+// 262 and the top border at most 24, so one subtraction wraps it.
 static inline uint16_t vdp_display_line_of(uint16_t screen_line, const vdp_geometry_t *g) {
-    return (uint16_t)((screen_line + VDP_SCREEN_LINES - g->origin_y) % VDP_SCREEN_LINES);
+    unsigned line = screen_line + VDP_SCREEN_LINES - g->origin_y;
+    return (uint16_t)(line >= VDP_SCREEN_LINES ? line - VDP_SCREEN_LINES : line);
 }
 
 // §14: latch a source in STAT1 if IRQEN enables it now. A disabled source
@@ -345,6 +358,26 @@ void vdp_poke(vdp_t *v, uint16_t address, uint8_t value);
 // must outlive the catch-up. The range does not wrap.
 void vdp_bulk_write(vdp_t *v, uint16_t address, const uint8_t *bytes, unsigned length);
 
+// Every FONT copy a latch left, to the end.
+void vdp_copies_finish(vdp_t *v);
+
+// One chunk of them (vdp.h's VDP_COPY_STEP).
+void vdp_copy_chunk(vdp_t *v, unsigned chunk);
+
+// Before the bus side touches VRAM at `address`: the chunk of a FONT copy a
+// latch left that holds it, if not yet copied, is copied first, so the access
+// finds the load whole (§7) and waits for one chunk at most. One test when no
+// copy is waiting, which is nearly always.
+static inline void vdp_copy_settle(vdp_t *v, uint16_t address) {
+    if (!v->copy_pending) return;
+    for (unsigned i = 0; i < v->copies; i++) {
+        const unsigned offset = (uint16_t)(address - v->copy[i].address);
+        if (offset >= v->copy[i].length) continue;
+        const unsigned chunk = i * VDP_COPY_CHUNKS + offset / VDP_COPY_STEP;
+        if (v->copy_pending & (UINT64_C(1) << chunk)) vdp_copy_chunk(v, chunk);
+    }
+}
+
 // ---- §7: the built-in font (font.c) ----
 
 #define VDP_FONT_LAYER1 0x80        // FONT b7: layer 1's pattern table, not layer 0's
@@ -359,8 +392,6 @@ extern const uint8_t vdp_font_cp437[VDP_FONT_BYTES];
 // A write to FONT: a load for vertical blank, or nothing for a reserved ID.
 void vdp_font_command(vdp_t *v, uint8_t value);
 
-// Carry out the pending loads, layer 0's first, as vertical blank fires.
-void vdp_font_complete(vdp_t *v);
 
 // A register write, from the command port or a debugger.
 void vdp_register_write(vdp_t *v, unsigned index, uint8_t value);

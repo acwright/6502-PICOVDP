@@ -40,29 +40,45 @@
 //                                        the wiring check: ping, status, and a VRAM readback
 //                                        that would show a reversed data bus at once.
 //                                        NAME is 6502-1mhz (default), 6502-2mhz or fastest
-//   vdpctl conformance [--timing NAME|all] [--ops N] [--seed N] [--scripts a,b|none]
-//                [--check-every N] [--out FILE.json] [--nano PATH]
+//   vdpctl conformance [--timing NAME|all | --paced] [--ops N] [--seed N] [--scripts a,b|none]
+//                [--check-every N] [--no-link] [--out FILE.json] [--nano PATH]
 //                                        Phase 11: tests/bench's scripts and N accesses of a seeded
 //                                        stream on all four ports, through the Nano, every read the
 //                                        reference can answer untimed compared with Video.ts, and the
-//                                        whole card compared over the debug link every N accesses
+//                                        whole card compared over the debug link every N accesses;
+//                                        --paced plays them exactly 2 us apart (Phase 13); --no-link, for a
+//                                        release build, reads VRAM back through the bus instead
 //   vdpctl reset-pin [--trials N] [--seed N] [--timing NAME] [--nano PATH]
 //                                        Phase 11: §15 through the RST pin, from a scrambled card with
 //                                        a FONT load pending, checked over the bus and the debug link
 //   vdpctl replay <fixture|all|trace> [checkpoint ...] [--timing NAME|all] [--out FILE.json]
-//                [--frames DIR] [--nano PATH]
+//                [--frames DIR] [--no-link [--device N]] [--nano PATH]
 //                                        Phase 12: a trace's operations through the Nano, untimed, from a
 //                                        cold start: data reads and STAT4-STAT6 compared on the Nano, the
 //                                        frame after each settle point and VRAM and registers at each
 //                                        checkpoint compared with the goldens (tools/lib/bus-replay.mjs);
-//                                        --frames keeps any frame that differs
+//                                        --frames keeps any frame that differs; --no-link, for a release build,
+//                                        cold-starts through the bus and judges each frame from the capture card
+//   vdpctl two-mhz [--batches N] [--pairs 0,1] [--seed N] [--out FILE.json] [--nano PATH]
+//                                        Phase 13: a 2 MHz 6502's tightest accesses, every one 2 us after the
+//                                        last: reads back to back, a read straight after its address command,
+//                                        writes back to back (tools/lib/twomhz.mjs)
+//   vdpctl latch [--geometry NAME] [--lines a,b|sweep] [--frames N] [--late] [--out FILE.json] [--nano PATH]
+//                                        Phase 13: §3's latch — a scanline handler changes COLOR and L0SCRX, and
+//                                        every snapshot must show it from line N + 2 (tools/lib/raster.mjs)
+//   vdpctl irq-raster [--geometry NAME|all] [--frames N] [--out FILE.json] [--nano PATH]
+//                                        Phase 13: the vertical blank period, and every IRQLINE's /INT against
+//                                        vertical blank's, the odd VGA line included
+//   vdpctl freshness [--geometry NAME] [--edges N] [--out FILE.json] [--nano PATH]
+//                                        Phase 13: STAT2 read from scanline handlers at delays across a line
 //   vdpctl profile [--row N] [--iterations N] [--json]   one row's stages, interrupts off
 //   vdpctl late [--scene NAME] [--handicap FIRST,LAST,EVERY,CYCLES] [--seconds N]
 //                                        §18's late line on purpose, checked against the host
-//   vdpctl scenes [--seconds N] [--minutes N] [--only a,b] [--bus HZ] [--fonts] [--stream] [--out FILE.json]
+//   vdpctl scenes [--seconds N] [--minutes N] [--only a,b] [--bus HZ | --nano-traffic] [--fonts] [--stream] [--out FILE.json]
 //                                        run the worst-case scenes: statistics for each, and with
 //                                        --stream every snapshot checked against vdp-scene; --fonts
-//                                        adds FONT loads for both layers every frame (§7)
+//                                        adds FONT loads for both layers every frame (§7); --nano-traffic
+//                                        runs the Nano's 2 MHz accesses on port B throughout (Phase 13)
 //
 // The port is PICOVDP_PORT or the first /dev/cu.usbmodem*; the image `flash`
 // sends with no path is build/$PICOVDP_PRESET/firmware/picovdp.uf2, the pico2
@@ -83,6 +99,7 @@ import {
   findPort,
   packLoad,
   packSnapshot,
+  quantile,
   u8,
 } from './lib/link.mjs'
 import { injectCheckpoints } from './lib/inject.mjs'
@@ -127,7 +144,7 @@ function options(args) {
     if (args[i].startsWith('--')) {
       const name = args[i].slice(2)
       const next = args[i + 1]
-      if (next !== undefined && !next.startsWith('--') && !['reset', 'json', 'power-on', 'bootsel', 'classes', 'stream', 'profile', 'fonts', 'capture'].includes(name)) {
+      if (next !== undefined && !next.startsWith('--') && !['reset', 'json', 'power-on', 'bootsel', 'classes', 'stream', 'profile', 'fonts', 'capture', 'paced', 'late', 'no-link', 'nano-traffic'].includes(name)) {
         flags.set(name, next)
         i++
       } else {
@@ -141,6 +158,19 @@ function options(args) {
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * IRQLINE values for the latch test: every sixth line from 0, and every line
+ * where the picture ends, the border ends, the odd VGA line falls and the top
+ * border begins, plus the last selectable (§3, §14).
+ */
+function latchSweep(g) {
+  const lines = new Set()
+  for (let n = 0; n <= 255; n += 6) lines.add(n)
+  const edges = [g.lines, 216 - g.top + (g.top ? 0 : 24), 238 - g.top, 261 - g.top, 255]
+  for (const e of edges) for (let d = -2; d <= 2; d++) if (e + d >= 0 && e + d <= 255) lines.add(e + d)
+  return [...lines].sort((a, b) => a - b)
+}
 
 /** Wait for the board to enumerate and answer INFO. */
 export async function waitForBoard(timeoutMs = 15000) {
@@ -216,7 +246,15 @@ export function printStats(s) {
   if (s.bus) {
     const b = s.bus
     console.log(`  bus: ${b.writes} writes, ${b.reads} reads, STALE DATA READS ${b.staleData}, stale status reads ${b.staleStatus}, coincident ${b.coincident}, resets ${b.resets}, /INT ${b.intLevel ? 'asserted' : 'released'}`)
-    console.log(`       FIFO OVERRUNS write ${b.writeOverruns} read ${b.readOverruns}, staging waits ${b.stagingWaits}, interrupt max ${b.isrMax} cycles`)
+    console.log(`       FIFO OVERRUNS write ${b.writeOverruns} read ${b.readOverruns}, staging waits ${b.stagingWaits}, interrupt max ${b.isrMax} cycles${b.isrMean !== undefined ? `, mean ${b.isrMean}` : ''}`)
+  }
+  if (s.masked) {
+    const m = s.masked
+    const us = (cycles) => `${((cycles / s.clockHz) * 1e6).toFixed(2)} us`
+    console.log(`  bus held off at most: latch ${m.latch}, FONT copy step ${m.copy}, publish ${m.publish}, thread ${m.thread} cycles`)
+    console.log(`  line start to latch: max ${s.bell.max}, mean ${s.bell.mean}; to status staged: max ${s.lag.max} (${us(s.lag.max)}), 99.9% ${quantile(s.lag.histogram, s.lag.bin, 0.999)}, mean ${s.lag.mean}, over ${s.lag.count} lines`)
+    console.log(`  OVF or COL published: ${s.flags.rows} rows, max ${s.flags.max} (${us(s.flags.max)}), mean ${s.flags.mean} after their latch's line start`)
+    console.log(`  frame, line 0 to line 0: ${s.frame.min}-${s.frame.max} cycles, mean ${s.frame.mean} (${((s.frame.mean / s.clockHz) * 1e3).toFixed(5)} ms by the card's clock)`)
   }
 }
 
@@ -340,7 +378,10 @@ async function main() {
       break
     case 'scenes': {
       const { runScenes } = await import('./lib/scenes.mjs')
+      const nano = flags.has('nano-traffic') ? await Nano.open(flags.get('nano') ?? null) : null
+      if (nano) await nano.profile('6502-2mhz')
       const failures = await runScenes({
+        nano,
         seconds: flags.has('minutes') ? Number(flags.get('minutes')) * 60 : Number(flags.get('seconds') ?? 10),
         only: flags.has('only') ? String(flags.get('only')).split(',') : null,
         bus: Number(flags.get('bus') ?? 0),
@@ -349,6 +390,10 @@ async function main() {
         out: flags.get('out'),
         profile: flags.has('profile'),
       })
+      if (nano) {
+        await nano.idle()
+        await nano.close()
+      }
       process.exit(failures ? 1 : 0)
     }
     case 'late': {
@@ -613,11 +658,12 @@ async function main() {
     }
     case 'conformance': {
       const { loadScripts, runConformance } = await import('./lib/conformance.mjs')
-      const timings = flags.get('timing') === 'all' ? Object.keys(PROFILES) : [timingOf(flags)]
+      const paced = flags.has('paced')
+      const timings = paced ? ['6502-2mhz'] : flags.get('timing') === 'all' ? Object.keys(PROFILES) : [timingOf(flags)]
       const only = flags.get('scripts')
       const scripts = only === 'none' ? [] : loadScripts(typeof only === 'string' ? only.split(',') : null)
       const nano = await Nano.open(flags.get('nano') ?? null)
-      const link = await Link.open()
+      const link = flags.has('no-link') ? null : await Link.open()
       let results
       try {
         results = await runConformance({
@@ -628,17 +674,18 @@ async function main() {
           seed: Number(flags.get('seed') ?? 1) >>> 0,
           scripts,
           checkEvery: Number(flags.get('check-every') ?? 1_000_000),
+          paced,
         })
         await nano.idle()
       } finally {
-        link.close()
+        link?.close()
         await nano.close()
       }
       if (flags.get('out')) {
         writeFileSync(String(flags.get('out')), JSON.stringify(results, null, 1) + '\n')
         console.log(`wrote ${flags.get('out')}`)
       }
-      const failed = results.some((r) => r.mismatches.length || r.stateFailures.length || r.backToBack.some((b) => b.required && b.wrong) || r.bus.writeOverruns || r.bus.readOverruns)
+      const failed = results.some((r) => r.mismatches.length || r.stateFailures.length || r.backToBack.some((b) => b.required && b.wrong) || r.bus?.writeOverruns || r.bus?.readOverruns)
       process.exit(failed ? 1 : 0)
     }
     case 'reset-pin': {
@@ -662,7 +709,7 @@ async function main() {
       const { replayTraces, replayFailed } = await import('./lib/bus-replay.mjs')
       const timings = flags.get('timing') === 'all' ? Object.keys(PROFILES) : [timingOf(flags)]
       const nano = await Nano.open(flags.get('nano') ?? null)
-      const link = await Link.open()
+      const link = flags.has('no-link') ? null : await Link.open()
       let results
       try {
         results = await replayTraces({
@@ -672,10 +719,11 @@ async function main() {
           names: positional.slice(1),
           timings,
           out: flags.get('frames') ?? null,
+          device: flags.get('device') ?? DEFAULT_DEVICE,
         })
         await nano.idle()
       } finally {
-        link.close()
+        link?.close()
         await nano.close()
       }
       if (flags.get('out')) {
@@ -687,6 +735,208 @@ async function main() {
       const played = results.reduce((n, r) => n + r.checkpoints.length, 0)
       console.log(failed ? `${played - exact} of ${played} checkpoint replays differ, or a read was wrong` : `all ${played} checkpoint replays exact through the bus, every read right`)
       process.exit(failed ? 1 : 0)
+    }
+    case 'two-mhz': {
+      const { Trials, prepare } = await import('./lib/twomhz.mjs')
+      const pairs = String(flags.get('pairs') ?? '0,1').split(',').map(Number)
+      const batches = Number(flags.get('batches') ?? 10000)
+      const nano = await Nano.open(flags.get('nano') ?? null)
+      const link = await Link.open()
+      let failed = false
+      try {
+        await nano.profile('6502-2mhz')
+        const trials = new Trials({ seed: Number(flags.get('seed') ?? 1) >>> 0, pairs })
+        await prepare(nano, trials)
+        const before = decodeStats(await link.request(CMD.STATS, u8(0)))
+        const wrong = { write: 0, read: 0, address: 0 }
+        let ns = 0, accesses = 0
+        const started = Date.now()
+        for (let i = 0; i < batches; i++) {
+          const b = trials.next()
+          const r = await nano.paced(b.pairs)
+          ns += r.ns
+          accesses += b.pairs.length / 2
+          if (r.differed) {
+            wrong[b.kind] += r.differed
+            console.log(`  ${b.kind} batch on pair ${b.pair ? 'B' : 'A'}: ${r.log.map((e) => `access ${e.index} read ${byte(e.got)} for ${byte(e.expected)}`).join(', ')}`)
+          }
+          if (i % 1000 === 999) process.stdout.write(`\r  ${i + 1} batches   `)
+        }
+        process.stdout.write('\r')
+        const after = decodeStats(await link.request(CMD.STATS, u8(0)))
+        const staleData = after.bus.staleData - before.bus.staleData
+        const result = { batches, pairs, seconds: (Date.now() - started) / 1000, spacingUs: ns / accesses / 1000, trials: trials.counts, wrong, staleData, card: after.bus }
+        console.log(`${batches} batches, ${accesses.toLocaleString()} accesses, ${result.spacingUs.toFixed(3)} us apart on average (2 us each, and the batch's ends)`)
+        console.log(`  back to back ${trials.counts.backToBack.toLocaleString()}, after an address command ${trials.counts.afterAddress.toLocaleString()}, writes ${trials.counts.writes.toLocaleString()}`)
+        console.log(`  reads wrong: ${wrong.read + wrong.address} (read runs ${wrong.read}, address batches ${wrong.address}); the card counted ${staleData} stale data reads`)
+        failed = wrong.read + wrong.address + staleData > 0
+        if (flags.get('out')) writeFileSync(String(flags.get('out')), JSON.stringify(result, null, 1) + '\n')
+        await nano.idle()
+      } finally {
+        link.close()
+        await nano.close()
+      }
+      process.exit(failed ? 1 : 0)
+    }
+    case 'latch': {
+      const { GEOMETRIES, runLatchTest } = await import('./lib/raster.mjs')
+      const geometry = GEOMETRIES[String(flags.get('geometry') ?? 'compact')]
+      if (!geometry) usage(`--geometry must be one of ${Object.keys(GEOMETRIES).join(', ')}`)
+      const spec = String(flags.get('lines') ?? 'sweep')
+      const lines = spec === 'sweep' ? latchSweep(geometry) : spec.split(',').map(Number)
+      const nano = await Nano.open(flags.get('nano') ?? null)
+      const link = await Link.open()
+      let results
+      try {
+        await nano.profile('6502-2mhz')
+        console.log(`§3's latch in ${flags.get('geometry') ?? 'compact'}: ${lines.length} IRQLINE values, ${flags.get('frames') ?? 100} snapshots each`)
+        // --late: the negative control. The handler waits past the next line's
+        // start, so its writes show from N + 3, and every trial must fail.
+        const delayTicks = flags.has('late') ? 1100 : 0
+        if (delayTicks) console.log('  negative control: every handler held 69 us, past the next line start')
+        results = await runLatchTest({ nano, link, geometry, lines, snapshotsPerLine: Number(flags.get('frames') ?? 100), delayTicks })
+        await nano.idle()
+      } finally {
+        link.close()
+        await nano.close()
+      }
+      const trials = results.reduce((n, r) => n + r.trials, 0)
+      const wrong = results.reduce((n, r) => n + r.wrongRows, 0)
+      const missed = results.filter((r) => r.timedOut).length
+      console.log(`${trials} trials over ${results.reduce((n, r) => n + r.snapshots, 0)} frames: ${wrong} rows wrong${missed ? `, ${missed} runs missed an edge` : ''}`)
+      if (flags.get('out')) writeFileSync(String(flags.get('out')), JSON.stringify(results, null, 1) + '\n')
+      process.exit(wrong || missed ? 1 : 0)
+    }
+    case 'irq-raster': {
+      const { GEOMETRIES, LINE_NS, measureScanlines, measureVblank } = await import('./lib/raster.mjs')
+      const which = String(flags.get('geometry') ?? 'all')
+      const names = which === 'all' ? Object.keys(GEOMETRIES) : [which]
+      const nano = await Nano.open(flags.get('nano') ?? null)
+      const out = { lineNs: LINE_NS, geometries: {} }
+      try {
+        await nano.profile('6502-2mhz')
+        const v = await measureVblank({ nano, frames: Number(flags.get('frames') ?? 600) })
+        out.vblank = v
+        console.log(`vertical blank: ${v.n} periods, mean ${(v.mean / 1e6).toFixed(5)} ms (${(1e9 / v.mean).toFixed(4)} Hz), sd ${(v.sd / 1000).toFixed(3)} us, ${(v.min / 1e6).toFixed(5)}-${(v.max / 1e6).toFixed(5)} ms`)
+        // The Nano's resonator is not the card's crystal: its intervals are
+        // taken in lines of the frame it measured, 262.5 display lines (§3).
+        const line = v.mean / 262.5
+        out.nanoLineNs = line
+        console.log(`  one display line by the Nano's clock ${(line / 1000).toFixed(4)} us; by the card's, ${(LINE_NS / 1000).toFixed(4)} us`)
+        for (const name of names) {
+          const g = GEOMETRIES[name]
+          const lines = Array.from({ length: 256 }, (_, i) => i)
+          const rows = await measureScanlines({ nano, geometry: g, lines, frames: Number(flags.get('scan-frames') ?? 3) })
+          out.geometries[name] = rows
+          const measured = rows.filter((r) => r.samples)
+          for (const r of measured) r.lines = r.meanNs / line
+          const off = measured.map((r) => ((r.lines - r.expected) * LINE_NS) / 1000)
+          const worst = Math.max(...off.map(Math.abs))
+          const spread = Math.max(...measured.map((r) => (r.maxNs - r.minNs) / 1000))
+          // Where the half line is: the steps from one IRQLINE to the next.
+          const halves = []
+          for (let i = 1; i < measured.length; i++) {
+            let d = measured[i].lines - measured[i - 1].lines
+            if (d < 0) d += 262.5
+            if (Math.abs(d - 1) > 0.25) halves.push(`${measured[i - 1].line}->${measured[i].line}: ${d.toFixed(3)} lines`)
+          }
+          console.log(`${name}: ${measured.length} of 256 IRQLINE values fired; each /INT within ${worst.toFixed(3)} us of where §3 puts its line against vertical blank's; ` +
+            `largest spread over its frames ${spread.toFixed(3)} us; steps other than one line: ${halves.join(', ') || 'none'}`)
+        }
+        await nano.idle()
+      } finally {
+        await nano.close()
+      }
+      if (flags.get('out')) writeFileSync(String(flags.get('out')), JSON.stringify(out, null, 1) + '\n')
+      break
+    }
+    case 'freshness': {
+      const { GEOMETRIES, REG, rasterCard, reg, sampleStat2, sampleStat3, statusRead } = await import('./lib/raster.mjs')
+      const geometry = GEOMETRIES[String(flags.get('geometry') ?? 'full')]
+      const edges = Number(flags.get('edges') ?? 10000)
+      const targets = [30, 90, 150, 210]
+      const nano = await Nano.open(flags.get('nano') ?? null)
+      const out = { targets, delays: [] }
+      let stale = 0
+      try {
+        await nano.profile('6502-2mhz')
+        await rasterCard(nano, geometry)
+        await nano.script([...reg(1, REG.STATSEL_A, 0x02), ...reg(1, REG.IRQLINE, targets[0]), ...reg(1, REG.IRQEN, 0x02), ...statusRead(1)])
+        // The handler's first read at once, then at delays across the line and
+        // either side of the next line's start, a Nano line (1,017 ticks) on.
+        const line = 1017
+        const delays = [0, 250, 500, 800, 950, 990, 1000, 1005, 1010, 1015, 1020, 1025, 1030, 1040, 1080, 1200]
+        for (const delay of delays) {
+          const n = delay === 0 ? edges : Math.max(400, Math.round(edges / 10))
+          const { samples, late } = await sampleStat2({ nano, targets, delayTicks: delay, edges: n })
+          const tally = {}
+          for (const s of samples) {
+            const d = ((s.stat2 - s.line) + 256) % 256
+            tally[d] = (tally[d] ?? 0) + 1
+          }
+          const at = samples.map((s) => s.ticks)
+          const span = [Math.min(...at), Math.max(...at)].map((t) => (t * 0.0625).toFixed(2))
+          out.delays.push({ delayTicks: delay, sampledUs: span.map(Number), samples: samples.length, servedLate: late, tally })
+          // Stale: a read the card served inside the handler's line, a
+          // microsecond clear of the next one's start, that did
+          // not show the handler's line.
+          stale += samples.filter((s) => s.ticks < line - 16 && s.stat2 !== s.line).length
+          console.log(`  STAT2 sampled ${span[0]}-${span[1]} us after /INT: ${samples.length} reads, ` +
+            Object.entries(tally).map(([d, c]) => `line + ${d}: ${c}`).join(', ') + (late ? ` (${late} edges served late, left out)` : ''))
+        }
+        // STAT3's horizontal blanking bit across the line, at a quarter of a
+        // microsecond: when it sets and clears against /INT.
+        const bins = await sampleStat3({ nano, line: 100, phases: [24, 28, 32, 36, 40, 44, 48, 52] })
+        const ticks = [...bins.keys()].sort((a, b) => a - b)
+        const windows = []
+        let open = null
+        for (const t of ticks) {
+          const e = bins.get(t)
+          const on = e.b1 * 2 > e.n
+          if (on && open === null) open = t
+          if (!on && open !== null) {
+            windows.push([open, t])
+            open = null
+          }
+        }
+        const mixed = ticks.filter((t) => bins.get(t).b1 && bins.get(t).b1 < bins.get(t).n)
+        out.stat3 = { windows: windows.map(([a, b]) => [a * 0.0625, b * 0.0625]), mixed: mixed.map((t) => [t * 0.0625, bins.get(t)]) }
+        console.log(`  STAT3 b1 set, against /INT: ${windows.map(([a, b]) => `${(a * 0.0625).toFixed(2)}-${(b * 0.0625).toFixed(2)} us (${((b - a) * 0.0625).toFixed(2)} us)`).join(', ')}; ` +
+          `${ticks.length} instants sampled, ${mixed.length} of them read both ways`)
+        await nano.idle()
+      } finally {
+        await nano.close()
+      }
+      console.log(stale ? `${stale} reads before the next line showed a line other than the handler's` : 'every read inside the line showed the handler\'s line')
+      if (flags.get('out')) writeFileSync(String(flags.get('out')), JSON.stringify(out, null, 1) + '\n')
+      process.exit(stale ? 1 : 0)
+    }
+    case 'load-run': {
+      const { runLoadRun } = await import('./lib/loadrun.mjs')
+      const scene = String(flags.get('scene') ?? 'full-4bpp-32-det-lim16')
+      const pair = String(flags.get('pair') ?? 'B').toUpperCase() === 'A' ? 0 : 1
+      const nano = await Nano.open(flags.get('nano') ?? null)
+      const link = await Link.open()
+      let r
+      try {
+        console.log(`the load run: ${scene} with FONT loads for both layers every frame, its program on port ${pair ? 'A' : 'B'}; ` +
+          `the Nano's 2 MHz trials and a scanline interrupt every eight lines on port ${pair ? 'B' : 'A'}; snapshots streaming; a capture every minute; ${flags.get('minutes') ?? 30} minutes`)
+        r = await runLoadRun({ nano, link, scene, minutes: Number(flags.get('minutes') ?? 30), nanoPair: pair, device: flags.get('device') ?? DEFAULT_DEVICE })
+        await nano.idle()
+      } finally {
+        link.close()
+        await nano.close()
+      }
+      const s = r.stats
+      const wrong = r.wrong.read + r.wrong.address
+      const captureProblems = r.captures.filter((c) => c.problems.length).length
+      console.log(`${r.minutes} minutes: late rows ${s.lateRows}, latches merged ${s.latchesMerged}, FIFO overruns ${s.bus.writeOverruns}/${s.bus.readOverruns}, stale data reads ${s.bus.staleData}`)
+      console.log(`  trials: back to back ${r.trials.backToBack.toLocaleString()}, after an address ${r.trials.afterAddress.toLocaleString()}, writes ${r.trials.writes.toLocaleString()}; ${wrong} reads wrong`)
+      console.log(`  ${r.handlers.toLocaleString()} scanline handlers, the longest wait for one ${(r.handlerWaitMaxNs / 1000).toFixed(1)} us; ${r.snapshots.taken} snapshots, ${r.snapshots.wrong} rows wrong, ${r.snapshots.late} late`)
+      if (r.relinked.length) console.log(`  the host's link reader had to be reopened ${r.relinked.length} time(s): ${r.relinked.map((x) => `${x.at.toFixed(0)} s, ${x.why}`).join('; ')}`)
+      console.log(`  ${r.captures.length} captures, ${captureProblems} out of tolerance; latch interrupt max ${s.latchIsrMax}, bus held off at most ${Math.max(...Object.values(s.masked))} cycles, status staged ${s.lag.max} cycles after its line start at most`)
+      if (flags.get('out')) writeFileSync(String(flags.get('out')), JSON.stringify(r, null, 1) + '\n')
+      process.exit(s.lateRows || s.bus.writeOverruns || s.bus.readOverruns || s.bus.staleData || wrong || r.snapshots.wrong || captureProblems ? 1 : 0)
     }
     case 'bus': {
       const name = timingOf(flags)

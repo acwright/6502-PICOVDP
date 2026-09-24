@@ -1,0 +1,1331 @@
+[
+ {
+  "fixture": "bios",
+  "timing": "6502-1mhz",
+  "operations": 6055,
+  "reads": 1837,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "ok",
+    "frame": 59,
+    "settle": 5027,
+    "at": 5027,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 4.572293377120963
+     },
+     "mae": 2.7888384140582665,
+     "settledRate": 1,
+     "settledCount": 243679
+    }
+   },
+   {
+    "name": "screenful",
+    "frame": 278,
+    "settle": 5555,
+    "at": 5555,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 4.897941981390257
+     },
+     "mae": 3.4383863963040433,
+     "settledRate": 1,
+     "settledCount": 217748
+    }
+   },
+   {
+    "name": "scroll",
+    "frame": 479,
+    "settle": 6055,
+    "at": 6055,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 4.757405582922824
+     },
+     "mae": 2.7902550370096697,
+     "settledRate": 1,
+     "settledCount": 222591
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [
+   {
+    "at": 1888,
+    "font": 0,
+    "written": 53,
+    "landed": null
+   }
+  ],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 9.258,
+  "bus": null
+ },
+ {
+  "fixture": "bios",
+  "timing": "6502-2mhz",
+  "operations": 6055,
+  "reads": 1837,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "ok",
+    "frame": 59,
+    "settle": 5027,
+    "at": 5027,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 4.675785440613027
+     },
+     "mae": 2.7396664135098034,
+     "settledRate": 1,
+     "settledCount": 243679
+    }
+   },
+   {
+    "name": "screenful",
+    "frame": 278,
+    "settle": 5555,
+    "at": 5555,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 4.9316912972085385
+     },
+     "mae": 3.4921358983319464,
+     "settledRate": 1,
+     "settledCount": 217748
+    }
+   },
+   {
+    "name": "scroll",
+    "frame": 479,
+    "settle": 6055,
+    "at": 6055,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 4.696617405582923
+     },
+     "mae": 2.7052988228829826,
+     "settledRate": 1,
+     "settledCount": 222591
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [
+   {
+    "at": 1888,
+    "font": 0,
+    "written": 53,
+    "landed": null
+   }
+  ],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 8.98,
+  "bus": null
+ },
+ {
+  "fixture": "bios",
+  "timing": "fastest",
+  "operations": 6055,
+  "reads": 1837,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "ok",
+    "frame": 59,
+    "settle": 5027,
+    "at": 5027,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 4.48488232074439
+     },
+     "mae": 2.67859247757176,
+     "settledRate": 1,
+     "settledCount": 243679
+    }
+   },
+   {
+    "name": "screenful",
+    "frame": 278,
+    "settle": 5555,
+    "at": 5555,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 4.885867542419266
+     },
+     "mae": 3.4064964203955403,
+     "settledRate": 1,
+     "settledCount": 217748
+    }
+   },
+   {
+    "name": "scroll",
+    "frame": 479,
+    "settle": 6055,
+    "at": 6055,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 4.798040503557745
+     },
+     "mae": 2.787013755685536,
+     "settledRate": 1,
+     "settledCount": 222591
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [
+   {
+    "at": 1888,
+    "font": 0,
+    "written": 53,
+    "landed": null
+   }
+  ],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 8.635,
+  "bus": null
+ },
+ {
+  "fixture": "wizardslab",
+  "timing": "6502-1mhz",
+  "operations": 1002238,
+  "reads": 997951,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "frame-60",
+    "frame": 59,
+    "settle": 91598,
+    "at": 93133,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 9.589020251778873
+     },
+     "mae": 18.4860617404386,
+     "settledRate": 1,
+     "settledCount": 119647
+    }
+   },
+   {
+    "name": "frame-180",
+    "frame": 179,
+    "settle": 293665,
+    "at": 295200,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 9.5896113847838
+     },
+     "mae": 18.461038474621816,
+     "settledRate": 1,
+     "settledCount": 119647
+    }
+   },
+   {
+    "name": "frame-300",
+    "frame": 299,
+    "settle": 495546,
+    "at": 497081,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 9.57311439518336
+     },
+     "mae": 18.473850323539864,
+     "settledRate": 1,
+     "settledCount": 119647
+    }
+   },
+   {
+    "name": "frame-600",
+    "frame": 599,
+    "settle": 1000323,
+    "at": 1002238,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 9.584006568144499
+     },
+     "mae": 18.455732618999807,
+     "settledRate": 1,
+     "settledCount": 119647
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 75.061,
+  "bus": null
+ },
+ {
+  "fixture": "wizardslab",
+  "timing": "6502-2mhz",
+  "operations": 1002238,
+  "reads": 997951,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "frame-60",
+    "frame": 59,
+    "settle": 91598,
+    "at": 93133,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 9.567662835249042
+     },
+     "mae": 18.44730941199571,
+     "settledRate": 1,
+     "settledCount": 119647
+    }
+   },
+   {
+    "name": "frame-180",
+    "frame": 179,
+    "settle": 293665,
+    "at": 295200,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 9.5744061302682
+     },
+     "mae": 18.466990249501237,
+     "settledRate": 1,
+     "settledCount": 119647
+    }
+   },
+   {
+    "name": "frame-300",
+    "frame": 299,
+    "settle": 495546,
+    "at": 497081,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 9.593628899835796
+     },
+     "mae": 18.49334920645114,
+     "settledRate": 1,
+     "settledCount": 119647
+    }
+   },
+   {
+    "name": "frame-600",
+    "frame": 599,
+    "settle": 1000323,
+    "at": 1002238,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 9.585484400656814
+     },
+     "mae": 18.448529485911333,
+     "settledRate": 0.9999916420804533,
+     "settledCount": 119647
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 73.489,
+  "bus": null
+ },
+ {
+  "fixture": "wizardslab",
+  "timing": "fastest",
+  "operations": 1002238,
+  "reads": 997951,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "frame-60",
+    "frame": 59,
+    "settle": 91598,
+    "at": 93133,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 9.578916256157635
+     },
+     "mae": 18.45212083008457,
+     "settledRate": 0.9999916420804533,
+     "settledCount": 119647
+    }
+   },
+   {
+    "name": "frame-180",
+    "frame": 179,
+    "settle": 293665,
+    "at": 295200,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 9.582594417077175
+     },
+     "mae": 18.478143765374636,
+     "settledRate": 1,
+     "settledCount": 119647
+    }
+   },
+   {
+    "name": "frame-300",
+    "frame": 299,
+    "settle": 495546,
+    "at": 497081,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 9.598117131910236
+     },
+     "mae": 18.47150414342682,
+     "settledRate": 1,
+     "settledCount": 119647
+    }
+   },
+   {
+    "name": "frame-600",
+    "frame": 599,
+    "settle": 1000323,
+    "at": 1002238,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 9.575106732348111
+     },
+     "mae": 18.479257655051725,
+     "settledRate": 0.9999916420804533,
+     "settledCount": 119647
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 72.841,
+  "bus": null
+ },
+ {
+  "fixture": "vdp-modes",
+  "timing": "6502-1mhz",
+  "operations": 393122,
+  "reads": 385262,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "text",
+    "frame": 35,
+    "settle": 60144,
+    "at": 62171,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 16.499649698960045
+     },
+     "mae": 25.46756218084129,
+     "settledRate": 0.9998428043700385,
+     "settledCount": 89061
+    }
+   },
+   {
+    "name": "compact",
+    "frame": 98,
+    "settle": 169284,
+    "at": 171311,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 12.743130815544609
+     },
+     "mae": 18.82062076038853,
+     "settledRate": 0.9999327124939441,
+     "settledCount": 74308
+    }
+   },
+   {
+    "name": "graphics",
+    "frame": 162,
+    "settle": 279882,
+    "at": 281909,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 13.498390804597701
+     },
+     "mae": 22.585454038729925,
+     "settledRate": 1,
+     "settledCount": 42504
+    }
+   },
+   {
+    "name": "full",
+    "frame": 226,
+    "settle": 391095,
+    "at": 393122,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 16.564411603721947
+     },
+     "mae": 29.352845638971576,
+     "settledRate": null,
+     "settledCount": 0
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [
+   {
+    "at": 1057,
+    "font": 0,
+    "written": 36,
+    "landed": null
+   }
+  ],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 35.504,
+  "bus": null
+ },
+ {
+  "fixture": "vdp-modes",
+  "timing": "6502-2mhz",
+  "operations": 393122,
+  "reads": 385262,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "text",
+    "frame": 35,
+    "settle": 60144,
+    "at": 62171,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 16.499835796387522
+     },
+     "mae": 25.460389192948863,
+     "settledRate": 0.9997978913329066,
+     "settledCount": 89061
+    }
+   },
+   {
+    "name": "compact",
+    "frame": 98,
+    "settle": 169284,
+    "at": 171311,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 12.756518883415435
+     },
+     "mae": 18.818274842988103,
+     "settledRate": 0.9999192549927329,
+     "settledCount": 74308
+    }
+   },
+   {
+    "name": "graphics",
+    "frame": 162,
+    "settle": 279882,
+    "at": 281909,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 13.50823207443897
+     },
+     "mae": 22.587213057598007,
+     "settledRate": 1,
+     "settledCount": 42504
+    }
+   },
+   {
+    "name": "full",
+    "frame": 226,
+    "settle": 391095,
+    "at": 393122,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 16.573716475095786
+     },
+     "mae": 29.35155322246706,
+     "settledRate": null,
+     "settledCount": 0
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [
+   {
+    "at": 1057,
+    "font": 0,
+    "written": 36,
+    "landed": null
+   }
+  ],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 34.917,
+  "bus": null
+ },
+ {
+  "fixture": "vdp-modes",
+  "timing": "fastest",
+  "operations": 393122,
+  "reads": 385262,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "text",
+    "frame": 35,
+    "settle": 60144,
+    "at": 62171,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 16.494898741105636
+     },
+     "mae": 25.455039789433993,
+     "settledRate": 0.9998428043700385,
+     "settledCount": 89061
+    }
+   },
+   {
+    "name": "compact",
+    "frame": 98,
+    "settle": 169284,
+    "at": 171311,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 12.735752599890532
+     },
+     "mae": 18.79438905788698,
+     "settledRate": 0.9999327124939441,
+     "settledCount": 74308
+    }
+   },
+   {
+    "name": "graphics",
+    "frame": 162,
+    "settle": 279882,
+    "at": 281909,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 13.52648056923919
+     },
+     "mae": 22.59770580722578,
+     "settledRate": 1,
+     "settledCount": 42504
+    }
+   },
+   {
+    "name": "full",
+    "frame": 226,
+    "settle": 391095,
+    "at": 393122,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 16.583481116584565
+     },
+     "mae": 29.353495745790227,
+     "settledRate": null,
+     "settledCount": 0
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [
+   {
+    "at": 1057,
+    "font": 0,
+    "written": 36,
+    "landed": null
+   }
+  ],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 34.367,
+  "bus": null
+ },
+ {
+  "fixture": "vdp-layers",
+  "timing": "6502-1mhz",
+  "operations": 509139,
+  "reads": 501231,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "parallax",
+    "frame": 89,
+    "settle": 121635,
+    "at": 123648,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 13.618697318007662
+     },
+     "mae": 11.63204352726508,
+     "settledRate": 0.9995066454853129,
+     "settledCount": 101347
+    }
+   },
+   {
+    "name": "scroll-bit8-l1",
+    "frame": 179,
+    "settle": 286842,
+    "at": 288854,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 13.337931034482759
+     },
+     "mae": 11.315923727130443,
+     "settledRate": 0.9991021036428938,
+     "settledCount": 93552
+    }
+   },
+   {
+    "name": "occluded",
+    "frame": 239,
+    "settle": 396991,
+    "at": 399002,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 14.010815544608649
+     },
+     "mae": 11.863983465083841,
+     "settledRate": 0.9998273741449626,
+     "settledCount": 92686
+    }
+   },
+   {
+    "name": "scroll-bit8-l0",
+    "frame": 299,
+    "settle": 507127,
+    "at": 509139,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 13.723240284619594
+     },
+     "mae": 11.228489072644452,
+     "settledRate": 0.9998099372793021,
+     "settledCount": 99967
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 43.018,
+  "bus": null
+ },
+ {
+  "fixture": "vdp-layers",
+  "timing": "6502-2mhz",
+  "operations": 509139,
+  "reads": 501231,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "parallax",
+    "frame": 89,
+    "settle": 121635,
+    "at": 123648,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 13.623470169677066
+     },
+     "mae": 11.638978199606404,
+     "settledRate": 0.9996250505688378,
+     "settledCount": 101347
+    }
+   },
+   {
+    "name": "scroll-bit8-l1",
+    "frame": 179,
+    "settle": 286842,
+    "at": 288854,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 13.343251231527093
+     },
+     "mae": 11.294836249626961,
+     "settledRate": 0.9998289721224559,
+     "settledCount": 93552
+    }
+   },
+   {
+    "name": "occluded",
+    "frame": 239,
+    "settle": 396991,
+    "at": 399002,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 14.034209085933224
+     },
+     "mae": 11.851923566663197,
+     "settledRate": 0.9998273741449626,
+     "settledCount": 92686
+    }
+   },
+   {
+    "name": "scroll-bit8-l0",
+    "frame": 299,
+    "settle": 507127,
+    "at": 509139,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 13.707958401751505
+     },
+     "mae": 11.235247964652205,
+     "settledRate": 0.999779927376034,
+     "settledCount": 99967
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 42.102,
+  "bus": null
+ },
+ {
+  "fixture": "vdp-layers",
+  "timing": "fastest",
+  "operations": 509139,
+  "reads": 501231,
+  "compared": {
+   "data": 0,
+   "stat4": 1,
+   "stat5": 1,
+   "stat6": 1
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "parallax",
+    "frame": 89,
+    "settle": 121635,
+    "at": 123648,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 13.604849480021894
+     },
+     "mae": 11.636596950839744,
+     "settledRate": 0.9995855822076628,
+     "settledCount": 101347
+    }
+   },
+   {
+    "name": "scroll-bit8-l1",
+    "frame": 179,
+    "settle": 286842,
+    "at": 288854,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 13.329972632731254
+     },
+     "mae": 11.318418305181142,
+     "settledRate": 0.9995296733367539,
+     "settledCount": 93552
+    }
+   },
+   {
+    "name": "occluded",
+    "frame": 239,
+    "settle": 396991,
+    "at": 399002,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 14.028593322386426
+     },
+     "mae": 11.873591910788667,
+     "settledRate": 0.9997194829855641,
+     "settledCount": 92686
+    }
+   },
+   {
+    "name": "scroll-bit8-l0",
+    "frame": 299,
+    "settle": 507127,
+    "at": 509139,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 4,
+      "dy": -1,
+      "mae": 13.704280240831965
+     },
+     "mae": 11.226197345121651,
+     "settledRate": 0.999779927376034,
+     "settledCount": 99967
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 41.453,
+  "bus": null
+ },
+ {
+  "fixture": "vdp-font",
+  "timing": "6502-1mhz",
+  "operations": 229219,
+  "reads": 219305,
+  "compared": {
+   "data": 0,
+   "stat4": 0,
+   "stat5": 0,
+   "stat6": 0
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "reset",
+    "frame": 32,
+    "settle": 53590,
+    "at": 55617,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 5.105002736726875
+     },
+     "mae": 8.59372368954587,
+     "settledRate": 0.9999880619821885,
+     "settledCount": 167532
+    }
+   },
+   {
+    "name": "loaded",
+    "frame": 96,
+    "settle": 166566,
+    "at": 168592,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 5.163470169677066
+     },
+     "mae": 8.626520184199535,
+     "settledRate": 0.9999880619821885,
+     "settledCount": 167532
+    }
+   },
+   {
+    "name": "relocated",
+    "frame": 160,
+    "settle": 229219,
+    "at": 229219,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 5.162495894909688
+     },
+     "mae": 8.651982104170619,
+     "settledRate": 0.9999880619821885,
+     "settledCount": 167532
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [
+   {
+    "at": 114317,
+    "font": 0,
+    "written": 112681,
+    "landed": null
+   },
+   {
+    "at": 227292,
+    "font": 0,
+    "written": 225659,
+    "landed": null
+   }
+  ],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 23.728,
+  "bus": null
+ },
+ {
+  "fixture": "vdp-font",
+  "timing": "6502-2mhz",
+  "operations": 229219,
+  "reads": 219305,
+  "compared": {
+   "data": 0,
+   "stat4": 0,
+   "stat5": 0,
+   "stat6": 0
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "reset",
+    "frame": 32,
+    "settle": 53590,
+    "at": 55617,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 5.106710454296661
+     },
+     "mae": 8.603216073433309,
+     "settledRate": 0.9999880619821885,
+     "settledCount": 167532
+    }
+   },
+   {
+    "name": "loaded",
+    "frame": 96,
+    "settle": 166566,
+    "at": 168592,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 5.173847837985769
+     },
+     "mae": 8.63275024657319,
+     "settledRate": 0.9999880619821885,
+     "settledCount": 167532
+    }
+   },
+   {
+    "name": "relocated",
+    "frame": 160,
+    "settle": 229219,
+    "at": 229219,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 5.14848385331144
+     },
+     "mae": 8.63471006850944,
+     "settledRate": 0.9999880619821885,
+     "settledCount": 167532
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [
+   {
+    "at": 114317,
+    "font": 0,
+    "written": 112681,
+    "landed": null
+   },
+   {
+    "at": 227292,
+    "font": 0,
+    "written": 225659,
+    "landed": null
+   }
+  ],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 23.117,
+  "bus": null
+ },
+ {
+  "fixture": "vdp-font",
+  "timing": "fastest",
+  "operations": 229219,
+  "reads": 219305,
+  "compared": {
+   "data": 0,
+   "stat4": 0,
+   "stat5": 0,
+   "stat6": 0
+  },
+  "mismatches": [],
+  "checkpoints": [
+   {
+    "name": "reset",
+    "frame": 32,
+    "settle": 53590,
+    "at": 55617,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 5.097613574165298
+     },
+     "mae": 8.588625791360869,
+     "settledRate": 0.9999880619821885,
+     "settledCount": 167532
+    }
+   },
+   {
+    "name": "loaded",
+    "frame": 96,
+    "settle": 166566,
+    "at": 168592,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 5.174406130268199
+     },
+     "mae": 8.643056720875773,
+     "settledRate": 0.9999880619821885,
+     "settledCount": 167532
+    }
+   },
+   {
+    "name": "relocated",
+    "frame": 160,
+    "settle": 229219,
+    "at": 229219,
+    "problems": [],
+    "capture": {
+     "offset": {
+      "dx": 3,
+      "dy": -1,
+      "mae": 5.152621784345922
+     },
+     "mae": 8.65344341126192,
+     "settledRate": 0.9999880619821885,
+     "settledCount": 167532
+    },
+    "busVramDiffering": 0
+   }
+  ],
+  "holds": [
+   {
+    "at": 114317,
+    "font": 0,
+    "written": 112681,
+    "landed": null
+   },
+   {
+    "at": 227292,
+    "font": 0,
+    "written": 225659,
+    "landed": null
+   }
+  ],
+  "dynamic": [],
+  "problems": [],
+  "lostAnswers": [],
+  "seconds": 22.695,
+  "bus": null
+ }
+]

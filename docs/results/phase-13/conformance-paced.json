@@ -1,0 +1,106 @@
+[
+ {
+  "timing": "paced 2 us",
+  "profile": {
+   "setup": 1,
+   "width": 0,
+   "hold": 1,
+   "gap": 2
+  },
+  "scripts": [
+   {
+    "name": "flip-flop",
+    "accesses": 31,
+    "ok": true
+   },
+   {
+    "name": "prefetch",
+    "accesses": 38,
+    "ok": true
+   },
+   {
+    "name": "read-orders",
+    "accesses": 126,
+    "ok": true
+   },
+   {
+    "name": "registers",
+    "accesses": 274,
+    "ok": true
+   },
+   {
+    "name": "status",
+    "accesses": 18,
+    "ok": true
+   },
+   {
+    "name": "vbank-vinc",
+    "accesses": 108,
+    "ok": true
+   }
+  ],
+  "accesses": 10000595,
+  "paced": 10000595,
+  "reads": 1726249,
+  "compared": 1475718,
+  "mismatches": [],
+  "stateChecks": 17,
+  "stateFailures": [],
+  "fontsRedirected": 2779,
+  "seconds": 757.955,
+  "bus": {
+   "writes": 8274346,
+   "reads": 1726249,
+   "staleData": 0,
+   "staleStatus": 1441,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 7,
+   "isrMax": 320,
+   "intLevel": 1,
+   "isrMean": 146
+  },
+  "busBefore": {
+   "writes": 21185468,
+   "reads": 13722812,
+   "staleData": 27,
+   "staleStatus": 409,
+   "coincident": 0,
+   "writeOverruns": 0,
+   "readOverruns": 0,
+   "stagingWaits": 0,
+   "resets": 73,
+   "isrMax": 316,
+   "intLevel": 0,
+   "isrMean": 152
+  },
+  "backToBack": [
+   {
+    "spacing": "4 us",
+    "required": true,
+    "periodNs": 4054,
+    "reads": 12000,
+    "wrong": 0,
+    "first": null
+   },
+   {
+    "spacing": "2 us",
+    "required": false,
+    "periodNs": 1976,
+    "reads": 12000,
+    "wrong": 0,
+    "first": null
+   },
+   {
+    "spacing": "flat out",
+    "required": false,
+    "periodNs": 1159,
+    "reads": 12000,
+    "wrong": 27,
+    "first": "trial 1, read 94 of port 0: expected $72, got $d6"
+   }
+  ]
+ }
+]

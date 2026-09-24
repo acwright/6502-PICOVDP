@@ -28,12 +28,21 @@
 // Each fixture starts from the trace's cold reset, which is RESET with
 // power-on over the debug link: the RST pin performs §15, which leaves VRAM as
 // it was, and a cold start's VRAM is zeroed (PLAN.md section 4).
+//
+// Phase 13's release parity runs it with no debug link at all, as a release
+// build has none (`link` null): the cold start is RST, 64 KB of zeros through
+// the bus and RST again, which puts the palette and the font back where a
+// cold start leaves them; each frame is judged from the capture card against
+// its golden (tools/lib/screen.mjs), as Phase 10 judged the injected ones;
+// VRAM is read back through the pins; and a FONT hold waits two frames.
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { REPO, loadVideo } from './emulator.mjs'
 import { ACCESS, BLOCK_MAX, NanoError, SCRIPT_MAX, scriptPort } from './nano.mjs'
 import { events, readTrace } from './trace.mjs'
+import { grab } from './capture.mjs'
+import { TOLERANCE, compareCapture } from './screen.mjs'
 
 const ORACLE = join(REPO, 'tests', 'oracle')
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -178,6 +187,23 @@ async function busVram(nano) {
   return { vram: out, lostAnswers }
 }
 
+/**
+ * A cold start through the bus alone: RST, all 64 KB zeroed through pair B,
+ * RST again. The second RST writes §11's palette and the built-in font over
+ * the zeros (§15), which is the VRAM a cold start leaves (PLAN.md section 4).
+ * A block written twice, after a lost answer, writes zeros past the end and
+ * wraps onto zeros: harmless.
+ */
+async function busColdStart(nano) {
+  await nano.reset(100)
+  await sleep(5)
+  await nano.script([0x00, 0x80 | VBANK, 0x01, 0x80 | VINC, 0x00, 0x40].flatMap((v) => [ACCESS.WRITE | scriptPort(3), v]))
+  const zeros = Buffer.alloc(BLOCK_MAX)
+  for (let at = 0; at < 0x10000; at += BLOCK_MAX) await nano.writeBlock(2, zeros.subarray(0, Math.min(BLOCK_MAX, 0x10000 - at)))
+  await nano.reset(100)
+  await sleep(20)
+}
+
 function differences(a, b) {
   let count = 0
   let first = -1
@@ -196,13 +222,14 @@ function differences(a, b) {
  * path; `names` picks checkpoints (all of them if empty). Returns the results,
  * one a fixture a profile.
  */
-export async function replayTraces({ nano, link, target, names = [], timings, out = null, log = console.log }) {
+export async function replayTraces({ nano, link, target, names = [], timings, out = null, version: releaseVersion = 0, device = '0', log = console.log }) {
   const { CMD, decodeInfo, decodeSnapshot, decodeStats, packSnapshot, u8 } = await import('./link.mjs')
   const manifest = JSON.parse(readFileSync(join(ORACLE, 'manifest.json'), 'utf8'))
   const fixtures = target === 'all' ? manifest.fixtures.map((f) => f.name) : [target]
-  const version = decodeInfo(await link.request(CMD.INFO)).version
+  // No link: a release build, whose STAT5 is the version it was built with.
+  const version = link ? decodeInfo(await link.request(CMD.INFO)).version : releaseVersion
   const snapshot = async () => decodeSnapshot(await link.request(CMD.SNAPSHOT, packSnapshot(0, 0, 3000), 5000))
-  const busStats = async (reset) => decodeStats(await link.request(CMD.STATS, u8(reset ? 1 : 0))).bus
+  const busStats = async (reset) => (link ? decodeStats(await link.request(CMD.STATS, u8(reset ? 1 : 0))).bus : null)
   if (out) mkdirSync(out, { recursive: true })
 
   const results = []
@@ -244,8 +271,12 @@ export async function replayTraces({ nano, link, target, names = [], timings, ou
       }
 
       // The cold reset (TRACE.md section 3), and nothing on the bus since.
-      await link.request(CMD.RESET, u8(1))
-      await sleep(20)
+      if (link) {
+        await link.request(CMD.RESET, u8(1))
+        await sleep(20)
+      } else {
+        await busColdStart(nano)
+      }
 
       let at = 0
       let taken = 0 // accesses the card has taken since its counts were cleared, as far as the replay knows
@@ -264,6 +295,7 @@ export async function replayTraces({ nano, link, target, names = [], timings, ou
           } catch (error) {
             if (!lost(error)) throw error
             await recover(nano)
+            if (!link) throw new Error(`${name}: the Nano's answer to operations ${at}-${at + count - 1} was lost, and with no debug link the card cannot say whether it took them`)
             const bus = await busStats(false)
             const done = bus.writes + bus.reads - taken
             if (done === 0) {
@@ -307,6 +339,11 @@ export async function replayTraces({ nano, link, target, names = [], timings, ou
         if (stop.kind === 'hold') {
           // A frame shown after the load was written has passed a vertical
           // blank, where the load lands (§7).
+          if (!link) {
+            await sleep(40)  // two vertical blanks
+            result.holds.push({ at: stop.at, font: stop.hold.font, written: stop.hold.written, landed: null })
+            continue
+          }
           await sleep(20)
           const s = await snapshot()
           const ok = s.state.fontPending === 0
@@ -315,7 +352,28 @@ export async function replayTraces({ nano, link, target, names = [], timings, ou
           continue
         }
         const record = records.get(stop.checkpoint.name)
-        if (stop.kind === 'frame') {
+        if (stop.kind === 'frame' && !link) {
+          // The picture on the monitor against the golden: the card holds
+          // the frame until more operations come.
+          await sleep(40)
+          const golden = readFileSync(join(directory, `${stop.checkpoint.name}.idx.bin`))
+          const goldenVram = readFileSync(join(directory, `${stop.checkpoint.name}.vram.bin`))
+          const json = JSON.parse(readFileSync(join(directory, `${stop.checkpoint.name}.json`), 'utf8'))
+          const seen = compareCapture({ indices: golden, vram: goldenVram, registers: json.registers }, grab({ device }), { tolerance: TOLERANCE })
+          record.capture = { offset: seen.offset, mae: seen.picture.mae, settledRate: seen.settled?.rate ?? null, settledCount: seen.settled?.count ?? 0 }
+          for (const p of seen.problems) record.problems.push(`capture: ${p}`)
+        } else if (stop.kind === 'state' && !link) {
+          // Registers are write-only: with no link, VRAM through the pins at
+          // the fixture's last checkpoint is what can be compared.
+          if (stop === stops.at(-1)) {
+            const goldenVram = readFileSync(join(directory, `${stop.checkpoint.name}.vram.bin`))
+            const { vram: read, lostAnswers } = await busVram(nano)
+            if (lostAnswers) result.lostAnswers.push({ readback: lostAnswers })
+            const r = differences(read, goldenVram)
+            record.busVramDiffering = r.count
+            if (r.count) record.problems.push(`VRAM read through the bus: ${r.count} bytes differ, the first at $${hex(r.first, 4)}: $${hex(read[r.first])}, the golden $${hex(goldenVram[r.first])}`)
+          }
+        } else if (stop.kind === 'frame') {
           // Wait out more than a line, so every row of the next frame to start
           // is latched after the last operation, then take it (§3).
           await sleep(20)
@@ -369,9 +427,12 @@ export async function replayTraces({ nano, link, target, names = [], timings, ou
 
       const b = result.bus
       for (const r of result.checkpoints) {
+        const what = link
+          ? `frame from operation ${r.settle.toLocaleString()}, raster frame ${r.rasterFrame}; VRAM and registers at operation ${r.at.toLocaleString()}`
+          : `the picture from operation ${r.settle.toLocaleString()} on the monitor, ${r.capture.mae.toFixed(1)} levels out` +
+            (r.capture.settledRate === null ? '' : `, ${(100 * r.capture.settledRate).toFixed(2)}% of ${r.capture.settledCount} settled pixels within ${TOLERANCE.settledLevels}`)
         log(
-          `  ${r.problems.length ? 'DIFFERS' : 'exact  '} ${name}/${r.name} (${timing}): frame from operation ${r.settle.toLocaleString()}, raster frame ${r.rasterFrame}; ` +
-            `VRAM and registers at operation ${r.at.toLocaleString()}` +
+          `  ${r.problems.length ? 'DIFFERS' : link ? 'exact  ' : 'ok     '} ${name}/${r.name} (${timing}): ${what}` +
             (r.busVramDiffering !== undefined ? ', and VRAM read back through the bus' : '') +
             (r.problems.length ? `\n          ${r.problems.slice(0, 12).join('\n          ')}` : '')
         )
@@ -382,7 +443,7 @@ export async function replayTraces({ nano, link, target, names = [], timings, ou
           `${c.data.toLocaleString()} data, ${c.stat4} STAT4, ${c.stat5} STAT5, ${c.stat6} STAT6: ` +
           `${result.mismatches.length} wrong; ${result.holds.length} FONT holds; ${result.seconds.toFixed(1)} s`
       )
-      log(`    card: ${b.writes} writes, ${b.reads} reads, ${b.staleData} stale data reads, ${b.staleStatus} stale status reads, ${b.coincident} coincident, FIFO overruns ${b.writeOverruns}/${b.readOverruns}, interrupt max ${b.isrMax} cycles`)
+      if (b) log(`    card: ${b.writes} writes, ${b.reads} reads, ${b.staleData} stale data reads, ${b.staleStatus} stale status reads, ${b.coincident} coincident, FIFO overruns ${b.writeOverruns}/${b.readOverruns}, interrupt max ${b.isrMax} cycles`)
       if (result.lostAnswers.length) log(`    the Nano lost ${result.lostAnswers.length} answer(s), each recovered without repeating an access: ${JSON.stringify(result.lostAnswers)}`)
       for (const p of result.problems) log(`    ${p}`)
     }
@@ -398,7 +459,7 @@ export async function replayTraces({ nano, link, target, names = [], timings, ou
 export function replayFailed(results) {
   return results.some(
     (r) =>
-      r.mismatches.length || r.problems.length || r.checkpoints.some((c) => c.problems.length) || r.bus.writeOverruns || r.bus.readOverruns ||
+      r.mismatches.length || r.problems.length || r.checkpoints.some((c) => c.problems.length) || r.bus?.writeOverruns || r.bus?.readOverruns ||
       r.lostAnswers.some((l) => l.unverified)
   )
 }

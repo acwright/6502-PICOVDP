@@ -25,7 +25,7 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { REPO, loadVideo } from './emulator.mjs'
-import { ACCESS, SCRIPT_MAX, opPort, scriptPort } from './nano.mjs'
+import { ACCESS, PACED_MAX, SCRIPT_MAX, opPort, scriptPort } from './nano.mjs'
 import { generate } from '../fuzz.mjs'
 
 export const SCRIPTS_DIR = join(REPO, 'tests', 'bench')
@@ -373,13 +373,13 @@ function pointAccesses(pair, address, write) {
  * reads from `reference()`, asked afresh for every access so a resynchronised
  * run carries on against its new reference.
  */
-export function* batches(reference, accesses) {
+export function* batches(reference, accesses, size = SCRIPT_MAX) {
   let pairs = []
   let held = []
   for (const access of accesses) {
     pairs.push(...reference().pair(access))
     held.push(access)
-    if (held.length === SCRIPT_MAX) {
+    if (held.length === size) {
       yield { pairs, accesses: held }
       pairs = []
       held = []
@@ -408,12 +408,30 @@ export function describe(access, pair) {
  * happened to see. A mismatch is reported and the run resynchronised from a
  * fresh RST, so one fault is not counted many times.
  */
-export async function runConformance({ nano, link, timings, ops, seed, scripts, checkEvery, log = console.log }) {
+export async function runConformance({ nano, link, timings, ops, seed, scripts, checkEvery, paced = false, log = console.log }) {
   const { CMD, decodeSnapshot, decodeStats, packSnapshot, u8 } = await import('./link.mjs')
 
+  // Phase 13's release parity: no debug link. The card's VRAM comes through
+  // the pins instead — read between two RST pulses, which leave it as it was
+  // but for the palette and the font (§15) — and a whole-card check is all 64
+  // KB read back through the pins, compared against Video.ts as the stream's
+  // own reads are. The registers are write-only, and are not checked.
+  const busVram = async () => {
+    const point = [0x00, 0x80 | VBANK, 0x01, 0x80 | 0x09, 0x00, 0x00].flatMap((v) => [ACCESS.WRITE | scriptPort(3), v])
+    await nano.script(point)
+    const out = Buffer.alloc(0x10000)
+    for (let at = 0; at < out.length; at += 240) (await nano.readBlock(2, Math.min(240, out.length - at), { retry: false })).copy(out, at)
+    return out
+  }
   const start = async () => {
     await nano.reset(100)
     await new Promise((resolve) => setTimeout(resolve, 20))
+    if (!link) {
+      const vram = await busVram()
+      await nano.reset(100)
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      return new Reference(vram)
+    }
     return new Reference(await link.request(CMD.VRAM, undefined, 10000))
   }
   const cardState = async () => {
@@ -421,13 +439,13 @@ export async function runConformance({ nano, link, timings, ops, seed, scripts, 
     const snapshot = decodeSnapshot(await link.request(CMD.SNAPSHOT, packSnapshot(0, 0, 3000), 5000))
     return { vram, state: snapshot.state }
   }
-  const busStats = async (reset) => decodeStats(await link.request(CMD.STATS, u8(reset ? 1 : 0))).bus
+  const busStats = async (reset) => (link ? decodeStats(await link.request(CMD.STATS, u8(reset ? 1 : 0))).bus : null)
 
   const results = []
   const backToBack = await runBackToBack({ nano, start, seed, log })
   for (const timing of timings) {
     const profile = await nano.profile(timing)
-    const result = { timing, profile, scripts: [], accesses: 0, reads: 0, compared: 0, mismatches: [], stateChecks: 0, stateFailures: [], fontsRedirected: 0 }
+    const result = { timing: paced ? 'paced 2 us' : timing, profile, scripts: [], accesses: 0, paced: 0, reads: 0, compared: 0, mismatches: [], stateChecks: 0, stateFailures: [], fontsRedirected: 0 }
     const before = await busStats(true)
     const began = Date.now()
 
@@ -438,8 +456,13 @@ export async function runConformance({ nano, link, timings, ops, seed, scripts, 
       let ok = true
       let batchIndex = 0
       const window = []
-      for (const batch of batches(() => reference, accesses)) {
-        const answer = await nano.script(batch.pairs)
+      // Phase 13: PACED plays each batch's accesses exactly 2 us apart, as a
+      // 2 MHz 6502's back-to-back instructions would; a batch with a control
+      // in it (a reset or a wait) goes by SCRIPT.
+      for (const batch of batches(() => reference, accesses, paced ? PACED_MAX : SCRIPT_MAX)) {
+        const control = batch.pairs.some((v, i) => i % 2 === 0 && (v & 0xc0) === 0xc0)
+        const answer = paced && !control ? await nano.paced(batch.pairs) : await nano.script(batch.pairs)
+        if (paced) result.paced += control ? 0 : batch.accesses.length
         result.accesses += batch.accesses.length
         for (let i = 0; i < batch.pairs.length; i += 2) {
           if ((batch.pairs[i] & 0xc0) !== ACCESS.WRITE) result.reads++
@@ -482,6 +505,18 @@ export async function runConformance({ nano, link, timings, ops, seed, scripts, 
     }
     const check = async (label, reference) => {
       result.stateChecks++
+      if (!link) {
+        // The readback as accesses of the stream's own: Video.ts takes them
+        // too, so the stream carries on in step after it.
+        const accesses = [{ w: 3, v: 0x00 }, { w: 3, v: 0x80 | VBANK }, { w: 3, v: 0x01 }, { w: 3, v: 0x89 }, { w: 3, v: 0x00 }, { w: 3, v: 0x00 }]
+        for (let i = 0; i < 0x10000; i++) accesses.push({ r: 2 })
+        let differed = 0
+        for (const batch of batches(() => reference, accesses)) differed += (await nano.script(batch.pairs)).differed
+        if (!differed) return true
+        result.stateFailures.push({ where: `${label}, after ${result.accesses} accesses`, differences: [`VRAM read through the bus: ${differed} bytes differ from Video.ts`] })
+        log(`  STATE DIFFERS ${label}: ${differed} bytes of VRAM read through the bus`)
+        return false
+      }
       const { vram, state } = await cardState()
       const differences = stateDifferences(reference, vram, state)
       if (!differences.length) return true
@@ -521,7 +556,7 @@ export async function runConformance({ nano, link, timings, ops, seed, scripts, 
       `${timing}: ${result.accesses.toLocaleString()} accesses (${result.reads.toLocaleString()} reads, ${result.compared.toLocaleString()} compared) in ${result.seconds.toFixed(0)} s; ` +
         `${result.mismatches.length} mismatching batches, ${result.stateFailures.length} of ${result.stateChecks} state checks differ`
     )
-    log(`  card: ${b.writes} writes, ${b.reads} reads, ${b.staleData} stale data reads, ${b.staleStatus} stale status reads, ${b.coincident} coincident, FIFO overruns ${b.writeOverruns}/${b.readOverruns}, staging waits ${b.stagingWaits}, resets ${b.resets}, interrupt max ${b.isrMax} cycles`)
+    if (b) log(`  card: ${b.writes} writes, ${b.reads} reads, ${b.staleData} stale data reads, ${b.staleStatus} stale status reads, ${b.coincident} coincident, FIFO overruns ${b.writeOverruns}/${b.readOverruns}, staging waits ${b.stagingWaits}, resets ${b.resets}, interrupt max ${b.isrMax} cycles`)
   }
   return results
 }

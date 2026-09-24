@@ -6,6 +6,7 @@
 
 #include "hardware/irq.h"
 #include "hardware/structs/m33.h"
+#include "hardware/structs/sio.h"
 #include "hardware/sync.h"
 #include "pico/multicore.h"
 #include "pico/stdlib.h"
@@ -55,10 +56,16 @@ static volatile uint8_t shown;      // the buffer core 0 is sending
 #define EVENTS 256
 typedef struct line_event {
     uint32_t frame;
+    uint32_t began;         // the shared timer as core 0 took the line start (timer_now)
     uint16_t screen_line;
 } line_event_t;
 
 static line_event_t events[EVENTS];
+
+// Core 1's latch interrupt is below the bus's, which is the highest (bus.h),
+// and horizontal blanking's between them.
+#define LATCH_PRIORITY 0x40
+#define HBLANK_PRIORITY 0x20
 static uint32_t latch_cycles[EVENTS];   // core 1's DWT count as each latch was taken
 static volatile uint32_t events_begun;  // core 0's
 static uint32_t events_latched;         // core 1's latch interrupt's
@@ -84,6 +91,12 @@ static inline uint32_t cycles(void) {
     return m33_hw->dwt_cyccnt;
 }
 
+// SIO's 64-bit RISC-V timer, which both cores read, running at clk_sys
+// (renderer_init): cycles between a moment on one core and one on the other.
+static inline uint32_t timer_now(void) {
+    return sio_hw->mtime;
+}
+
 static void cycle_counter_start(void) {  // each core's DWT is its own
     m33_hw->demcr |= M33_DEMCR_TRCENA_BITS;
     m33_hw->dwt_cyccnt = 0;
@@ -103,6 +116,19 @@ typedef struct stats_raw {
     uint32_t latch_isr_max, line_isr_max, bus_standins;
     uint32_t merged_base, overflows_base, slips_base;
     uint16_t histogram[RENDERER_HISTOGRAM_BINS];
+    // Phase 13. What held core 1's interrupts off, and so the bus, longest.
+    uint32_t masked_max[RENDERER_MASKED_KINDS];
+    // Core 0's line start to core 1's latch interrupt, on the shared timer.
+    uint32_t bell_max;
+    uint64_t bell_sum;
+    uint32_t bells;
+    // Rows whose publication set OVF or COL (§6): the line start of their
+    // latch to the flag, on the shared timer.
+    uint32_t flag_rows, flag_max;
+    uint64_t flag_sum;
+    // Screen line 0 to screen line 0, on the shared timer: the frame (§3).
+    uint32_t frame_began, frame_min, frame_max, frame_count;
+    uint64_t frame_sum;
 } stats_raw_t;
 
 static stats_raw_t stats;
@@ -110,6 +136,13 @@ static volatile bool stats_reset_request;
 
 static inline void maximum(uint32_t *max, uint32_t value) {
     if (value > *max) *max = value;
+}
+
+// Interrupts back on after a masked section begun at t0.
+static inline void unmask(uint32_t irq, uint32_t t0, unsigned kind) {
+    const uint32_t t = cycles();
+    restore_interrupts(irq);
+    maximum(&stats.masked_max[kind], t - t0);
 }
 
 // ---- snapshots ----
@@ -158,6 +191,16 @@ static uint32_t bus_writes;
 
 #endif
 
+// Core 1's interrupts held off, and so the bus's (bus.h), for what an access
+// must not interleave with. Kept short: an access waits for the longest.
+#if PICOVDP_DEBUG
+#define MASK_BEGIN() const uint32_t mask_irq = save_and_disable_interrupts(), mask_t0 = cycles()
+#define MASK_END(kind) unmask(mask_irq, mask_t0, kind)
+#else
+#define MASK_BEGIN() const uint32_t mask_irq = save_and_disable_interrupts()
+#define MASK_END(kind) restore_interrupts(mask_irq)
+#endif
+
 // ============================================================================
 // Core 0
 
@@ -176,7 +219,21 @@ static const uint32_t *__time_critical_func(line_start)(uint16_t screen_line) {
     }
 #endif
     const uint32_t n = events_begun;
-    events[n & (EVENTS - 1)] = (line_event_t){frames, screen_line};
+    const uint32_t began = timer_now();
+    events[n & (EVENTS - 1)] = (line_event_t){frames, began, screen_line};
+    __dmb();  // the event whole before core 1 can count it
+#if PICOVDP_DEBUG
+    if (screen_line == 0) {
+        const uint32_t frame = began - stats.frame_began;
+        if (stats.frame_began) {
+            if (!stats.frame_count || frame < stats.frame_min) stats.frame_min = frame;
+            maximum(&stats.frame_max, frame);
+            stats.frame_sum += frame;
+            stats.frame_count++;
+        }
+        stats.frame_began = began;
+    }
+#endif
     events_begun = n + 1;
     multicore_doorbell_set_other_core((uint)bell);
 
@@ -225,29 +282,58 @@ static void __isr __time_critical_func(half_job_isr)(void) {
 // ============================================================================
 // Core 1
 
-// §3's latch: every line begun since the last, in order.
-static void __isr __time_critical_func(latch_isr)(void) {
+// §3's latch: every line begun since the last, in order. Below the bus (bus.h):
+// its one moment — the line's events, and where the journals end — is taken
+// with the bus held off (vdp_latch_take), then the record is built from it
+// (vdp_latch_record). The bus's restage for the new line runs as soon as the
+// moment is taken. A FONT load's copy is the renderer's (fonts_copy).
+static void __isr __scratch_x("latch_isr") latch_isr(void) {
     const uint32_t now = cycles();
     multicore_doorbell_clear_current_core((uint)bell);
     const uint32_t begun = events_begun;
 #if PICOVDP_DEBUG
     if (begun - events_latched > 1) stats.missed_bells++;
     const bool thread_latches = inject_active();
+    const uint32_t bell_cycles = timer_now() - events[(begun - 1) & (EVENTS - 1)].began;
+    maximum(&stats.bell_max, bell_cycles);
+    stats.bell_sum += bell_cycles;
+    stats.bells++;
 #else
     const bool thread_latches = false;
 #endif
+    uint32_t began = 0;
+    bool staged = false;
     while (events_latched != begun) {
         const uint32_t n = events_latched++;
         latch_cycles[n & (EVENTS - 1)] = now;
-        if (!thread_latches) vdp_latch(&card, events[n & (EVENTS - 1)].screen_line, n);
+        began = events[n & (EVENTS - 1)].began;
+        if (thread_latches) continue;
+        vdp_latch_take_t taken;
+        {
+            MASK_BEGIN();
+            vdp_latch_take(&card, events[n & (EVENTS - 1)].screen_line, &taken);
+            MASK_END(RENDERER_MASKED_LATCH);
+        }
+        // The latch may have changed what a status port reads; and whatever
+        // the thread did through the card since the last line is staged by
+        // now at the latest (bus.h).
+        if (events_latched == begun) {
+            bus_line(began);
+            staged = true;
+        }
+        vdp_latch_record(&card, &taken, n);
     }
-    // The latch may have changed what a status port reads; and whatever the
-    // thread did through the card since the last line is staged by now at the
-    // latest (bus.h).
-    bus_line();
+    if (!staged) bus_line(began);
 #if PICOVDP_DEBUG
     maximum(&stats.latch_isr_max, cycles() - now);
 #endif
+}
+
+// §6's STAT3 b1: horizontal blanking, from the VGA timing (vga.h), as each
+// VGA line's blank begins and ends. Between the bus and the latch, so a FONT
+// copy's steps do not hold it; restaged only when a port reads STAT3.
+static void __isr __time_critical_func(hblank_isr)(void) {
+    if (vdp_set_hblank(&card, vga_hblank_acknowledge())) bus_restage();
 }
 
 // A buffer no line start can be sending or about to send.
@@ -284,11 +370,12 @@ static void scene_line(void);
 static void pad_build(uint16_t row, uint32_t t0);
 
 static void save_state(uint32_t frame) {
-    state_sequence++;
-    const uint32_t irq = save_and_disable_interrupts();
+    state_sequence++;  // odd: being written
+    __dmb();
+    MASK_BEGIN();
     // vdp_debug_save copies VRAM too; the state carries none, so take the fields.
     vdp_snapshot_t *s = &state_at_239.card;
-    for (unsigned i = 0; i < VDP_REGISTERS; i++) s->registers[i] = card.reg[i];
+    memcpy(s->registers, card.reg, VDP_REGISTERS);
     s->port[0] = card.port[0];
     s->port[1] = card.port[1];
     s->screen_line = card.screen_line;
@@ -302,9 +389,10 @@ static void save_state(uint32_t frame) {
     memcpy(s->font_id, card.font_id, sizeof s->font_id);
     memcpy(s->font_base, card.font_base, sizeof s->font_base);
     state_at_239.interrupt = vdp_int_asserted(&card);
-    restore_interrupts(irq);
+    MASK_END(RENDERER_MASKED_THREAD);
     state_at_239.frame = frame;
     state_at_239.scene_frame = scene_frame_count;
+    __dmb();
     state_sequence++;
 }
 
@@ -358,14 +446,28 @@ static void __time_critical_func(render_line)(uint32_t n) {
 #endif
     }
 
-    uint32_t irq = save_and_disable_interrupts();
-    vdp_publish(&card, posted ? &core0_half : NULL, row < PICTURE_ROWS ? &card.half : NULL);
-    bus_sync();
-    restore_interrupts(irq);
+    {
+#if PICOVDP_DEBUG
+        const uint8_t flags = card.stat0 & 0x60;  // OVF, COL
+#endif
+        MASK_BEGIN();
+        vdp_publish(&card, posted ? &core0_half : NULL, row < PICTURE_ROWS ? &card.half : NULL);
+        MASK_END(RENDERER_MASKED_PUBLISH);
+        bus_restage();
+#if PICOVDP_DEBUG
+        if ((card.stat0 & 0x60) & ~flags) {
+            const uint32_t delay = timer_now() - events[n & (EVENTS - 1)].began;
+            stats.flag_rows++;
+            stats.flag_sum += delay;
+            maximum(&stats.flag_max, delay);
+        }
+#endif
+    }
     const uint32_t t_publish = cycles();
 
     if (row < PICTURE_ROWS) {
         previous_ready = ready;
+        __dmb();  // the row's buffer whole before core 0 may send it
         ready = READY | (uint32_t)row << 8 | b;
     }
     const uint32_t t_done = cycles();
@@ -397,11 +499,25 @@ static void __time_critical_func(render_line)(uint32_t n) {
 #endif
 }
 
+// The bus copy's part of a FONT load the latch has begun (§7), a chunk at a
+// time with the bus held off for each, in the renderer's own time: the load
+// lands at vertical blank, whose lines build nothing. An access that reaches a
+// chunk first copies it itself (vdp_latch_copy). In the latch's interrupt the
+// copying outlasted a line under 2 MHz traffic, and held the next latch back.
+static void __time_critical_func(fonts_copy)(void) {
+    for (bool more = card.copy_pending != 0; more;) {
+        MASK_BEGIN();
+        more = vdp_latch_copy(&card);
+        MASK_END(RENDERER_MASKED_COPY);
+    }
+}
+
 static void __time_critical_func(core1_main)(void) {
     cycle_counter_start();
     irq_set_exclusive_handler(SIO_IRQ_BELL, latch_isr);
-    irq_set_priority(SIO_IRQ_BELL, PICO_HIGHEST_IRQ_PRIORITY);
+    irq_set_priority(SIO_IRQ_BELL, LATCH_PRIORITY);  // under the bus (bus.h)
     irq_set_enabled(SIO_IRQ_BELL, true);
+    vga_hblank_irq(hblank_isr, HBLANK_PRIORITY);
     bus_start(&card);
     core1_ready = true;
 
@@ -445,6 +561,7 @@ static void __time_critical_func(core1_main)(void) {
             continue;
         }
 #endif
+        fonts_copy();
         const uint32_t t0 = cycles();
         if (!vdp_catch_up(&card)) continue;
 #if PICOVDP_DEBUG
@@ -464,6 +581,8 @@ static void __time_critical_func(core1_main)(void) {
 // Setting up
 
 void renderer_init(void) {
+    // The shared timer at clk_sys, for timer_now.
+    hw_set_bits(&sio_hw->mtime_ctrl, SIO_MTIME_CTRL_EN_BITS | SIO_MTIME_CTRL_FULLSPEED_BITS);
     vdp_init(&card, PICOVDP_VERSION_BCD);
     for (unsigned b = 0; b < BUFFERS; b++) memset(buffers[b].indices, 0, VDP_WIDTH);
     bell = multicore_doorbell_claim_unused((1u << 0) | (1u << 1), true);
@@ -549,6 +668,15 @@ void renderer_stats(renderer_stats_t *out, bool reset) {
     out->line_isr_max = s.line_isr_max;
     out->bus_standins = s.bus_standins;
     memcpy(out->histogram, s.histogram, sizeof out->histogram);
+    memcpy(out->masked_max, s.masked_max, sizeof out->masked_max);
+    out->bell_max = s.bell_max;
+    out->bell_mean = s.bells ? (uint32_t)(s.bell_sum / s.bells) : 0;
+    out->flag_rows = s.flag_rows;
+    out->flag_max = s.flag_max;
+    out->flag_mean = s.flag_rows ? (uint32_t)(s.flag_sum / s.flag_rows) : 0;
+    out->frame_min = s.frame_min;
+    out->frame_max = s.frame_max;
+    out->frame_mean = s.frame_count ? (uint32_t)(s.frame_sum / s.frame_count) : 0;
     if (reset) stats_reset_request = true;
 }
 
@@ -568,7 +696,9 @@ const renderer_snapshot_t *renderer_capture_wait(uint32_t timeout_ms) {
     for (;;) {
         const uint32_t sequence = state_sequence;
         if (!(sequence & 1)) {
+            __dmb();
             capture->state = state_at_239;
+            __dmb();
             if (state_sequence == sequence && capture->state.frame >= capture->frame) break;
         }
         if (time_reached(until)) break;
@@ -582,9 +712,13 @@ void renderer_capture_release(void) {
     if (capture_state == CAPTURE_DONE) capture_state = CAPTURE_IDLE;
 }
 
+// The request is whole before its sequence number says so: the struct is not
+// volatile, so without the barrier the compiler may store the number first,
+// and core 1 act on half a request (Phase 13 found one NULL VRAM pointer so).
 static bool submit(const request_t *r, uint32_t timeout_ms) {
     request = *r;
     const uint32_t sequence = request_sequence + 1;
+    __dmb();
     request_sequence = sequence;
     const absolute_time_t until = make_timeout_time_ms(timeout_ms);
     while (request_done != sequence) {
@@ -629,20 +763,43 @@ unsigned renderer_scene_log(renderer_scene_frame_t *out, unsigned max) {
 
 // ---- on core 1 ----
 
+// LOAD's scene_pair_b: the scene's program on port B, as an interrupt handler's
+// would be, so the bus can have port A (§4). Its STATSEL_A writes become
+// STATSEL_B's, which is what port B's status reads through: the program's own
+// flip-flop tells a command byte from a payload.
+static bool scene_second;
+
+static unsigned scene_port(unsigned port, uint8_t *value, bool write) {
+    if (!load.scene_pair_b) return port;
+    if (port == 1 && write) {
+        if (scene_second && *value == (0x80 | 0x0f)) *value = 0x80 | 0x0e;
+        scene_second = !scene_second;
+    } else {
+        scene_second = false;
+    }
+    return port ^ 2;
+}
+
+static void card_write(unsigned port, uint8_t value) {
+    MASK_BEGIN();
+    vdp_write(&card, port, value);
+    MASK_END(RENDERER_MASKED_THREAD);
+    bus_restage();
+}
+
 static void port_write(void *context, unsigned port, uint8_t value) {
     (void)context;
-    const uint32_t irq = save_and_disable_interrupts();
-    vdp_write(&card, port, value);
-    bus_sync();
-    restore_interrupts(irq);
+    port = scene_port(port, &value, true);
+    card_write(port, value);
 }
 
 static uint8_t port_read(void *context, unsigned port) {
     (void)context;
-    const uint32_t irq = save_and_disable_interrupts();
+    port = scene_port(port, NULL, false);
+    MASK_BEGIN();
     const uint8_t value = vdp_read(&card, port);
-    bus_sync();
-    restore_interrupts(irq);
+    MASK_END(RENDERER_MASKED_THREAD);
+    bus_restage();
     return value;
 }
 
@@ -659,7 +816,7 @@ static void __isr __time_critical_func(bus_standin_isr)(void) {
         vdp_write(&card, 3, (uint8_t)(0x40 | ((base >> 8) & 0x3f)));
     }
     vdp_write(&card, 2, card.vram[card.port[1].pointer]);
-    bus_sync();
+    bus_restage();
     stats.bus_standins++;
 }
 
@@ -670,8 +827,8 @@ static void bus_standin(uint32_t rate) {
     pwm_clear_irq(BUS_SLICE);
     if (!rate) return;
     // VBANK for the window, as a program would set it.
-    port_write(NULL, 3, (uint8_t)(card.reg[0x0c] >> 4 & 0x03));
-    port_write(NULL, 3, 0x88);
+    card_write(3, (uint8_t)(card.reg[0x0c] >> 4 & 0x03));
+    card_write(3, 0x88);
     pwm_config config = pwm_get_default_config();
     pwm_config_set_clkdiv_int(&config, 1);
     pwm_config_set_wrap(&config, (uint16_t)(clock_get_hz(clk_sys) / rate - 1));
@@ -696,8 +853,8 @@ static void scene_program(void) {
         scene_pending = false;
         uint32_t irq = save_and_disable_interrupts();
         vdp_reset(&card, true);
-        bus_sync();
         restore_interrupts(irq);
+        bus_restage();
         scene_setup(scene_at((unsigned)scene), &card_port);
         scene_frame_count = 0;
         return;
@@ -729,13 +886,14 @@ static void scene_line(void) {
 
 static void apply_request(void) {
     const uint32_t sequence = request_sequence;
+    __dmb();  // the request as submit left it
     uint32_t irq;
     switch (request.kind) {
     case REQUEST_RESET:
         irq = save_and_disable_interrupts();
         vdp_reset(&card, request.power_on);
-        bus_sync();
         restore_interrupts(irq);
+        bus_restage();
         scene = -1;
         break;
     case REQUEST_VRAM:
@@ -753,6 +911,7 @@ static void apply_request(void) {
         bus_standin(load.bus_rate_hz);
         break;
     case REQUEST_FAULT:
+        __dmb();
         request_done = sequence;
         fault_raise(request.fault);
         break;
@@ -760,6 +919,7 @@ static void apply_request(void) {
         profile_row(&card, request.row, request.iterations, request.profile);
         break;
     }
+    __dmb();  // what the request produced, before core 0 is told
     request_done = sequence;
 }
 

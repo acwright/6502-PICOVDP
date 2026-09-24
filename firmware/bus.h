@@ -5,13 +5,19 @@
 // tmsRead answers every read at once, from a word staged ahead of it that holds
 // what each of the four ports reads now (vdp_staged), and then tells core 1
 // which port it answered and with what. Core 1 applies the access to the card
-// (vdp_write, vdp_read_served) in one interrupt at the latch's priority, so the
-// two never preempt each other, and restages.
+// (vdp_write, vdp_read_served) in its highest-priority interrupt, and restages.
 //
-// Restaging is bus_sync: whatever changes what a port would read — an access,
-// a latch, a row's publication, a reset, the debug link's own writes — calls it
-// on core 1 with interrupts held off or from an interrupt at the bus's priority,
-// and it also drives /INT on GPIO 22. RST on GPIO 23 performs §15.
+// Phase 13: nothing on core 1 holds the bus interrupt off for long. It is above
+// the latch, which masks it only for its moment (vdp_latch_take); the renderer
+// masks it for each 64-byte step of a FONT copy and for a row's publication, a
+// hundred cycles or so each. So an access's restage is done well inside the 2 us a 2 MHz 6502
+// leaves before its next access (docs/results/phase-13.md).
+//
+// Restaging — staging the word, and driving /INT on GPIO 22 to match the card
+// — happens in the bus interrupt only, so the staging FIFO has one writer.
+// Whatever else changes what a port would read — a latch, a row's publication,
+// a reset, the debug link's own writes — asks for it with bus_restage. RST on
+// GPIO 23 performs §15.
 
 #pragma once
 
@@ -20,19 +26,25 @@
 
 #include "vdp.h"
 
-// Core 1, once, before anything that calls bus_sync: pins, programs and the
+// Core 1, once, before anything that calls bus_restage: pins, programs and the
 // interrupts, on core 1's NVIC. The card is the renderer's. Only on the PRO: on
-// a Pico 2 the bus is not started and bus_sync does nothing.
+// a Pico 2 the bus is not started and bus_restage does nothing.
 void bus_start(vdp_t *card);
 
-// Core 1, interrupts off or at the bus's priority: stage what each port reads
-// now, and drive /INT to match the card.
-void bus_sync(void);
+// Core 1, anywhere, after the card has changed: the bus interrupt restages as
+// soon as nothing masks it — at once from the latch or the thread.
+void bus_restage(void);
 
-// Core 1, from the latch interrupt: note what the PIO's FIFOs have seen since.
-void bus_line(void);
+// Core 1, from the latch interrupt once its own part is done: note what the
+// PIO's FIFOs have seen since the last, and restage. `line_start` is the
+// shared timer's count as core 0 began the line (debug builds' status lag).
+void bus_line(uint32_t line_start);
 
 #if PICOVDP_DEBUG
+
+#define BUS_LAG_BINS 64
+#define BUS_STALE_KEPT 4
+#define BUS_LAG_BIN 64
 
 typedef struct bus_stats {
     uint32_t writes;            // accesses taken
@@ -46,6 +58,21 @@ typedef struct bus_stats {
     uint32_t resets;            // RST's falling edges
     uint32_t isr_max;           // cycles, the bus interrupt
     uint32_t int_level;         // /INT as driven now: 1 asserted
+    // Phase 13: how long after a line began its status was staged and /INT
+    // driven to match — core 0's line start to the bus interrupt's restage for
+    // that latch, on the shared timer (cycles at clk_sys).
+    uint32_t isr_mean;          // cycles, the bus interrupt, over every run of it
+    uint32_t lag_count;
+    uint32_t lag_max;
+    uint32_t lag_mean;
+    uint16_t lag_histogram[BUS_LAG_BINS];   // BUS_LAG_BIN cycles a bin, saturating; the last holds the rest
+    // The last BUS_STALE_KEPT stale data reads, for their story: the port, the
+    // byte served and the prefetch the card held, the word last staged, and
+    // the cycles from that staging and from the interrupt's entry to the read.
+    struct {
+        uint8_t port, served, held;
+        uint32_t staged, since_stage, since_entry;
+    } stale[BUS_STALE_KEPT];
 } bus_stats_t;
 
 // Any core: the counts, reset once read if asked.

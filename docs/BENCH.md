@@ -43,7 +43,7 @@ Contents
 | 8 × 220 Ω resistors | needed |
 | 2 × 10 kΩ resistors | needed |
 | Breadboard or DIP-40 socket, jumper wires | needed |
-| 74AHCT125 (or another 74HCT-family gate) and a 100 nF cap | optional, Phase 13 |
+| 74AHCT125 (or another 74HCT-family gate) and a 100 nF cap | optional; Phase 13 did without |
 
 Two USB cables, both to the Mac: USB-C to the PRO, USB-B to the Nano.
 
@@ -108,7 +108,7 @@ stand for.
 | MDE1 | 11 (fitted pin) | MODE1 = CPU A1 | A3 | PC3 | — |
 | RST | 34 | `/RESET` | A4 | PC4 | — |
 | INT | 16 | `/INT` (10 k pull-up on the PRO) | D8 | PB0 = ICP1 | — |
-| — | — | frame sync (optional, Phase 13) | A5 | PC5 = PCINT13 | 74AHCT125 |
+| — | — | frame sync (optional; not fitted, section 4) | A5 | PC5 = PCINT13 | 74AHCT125 |
 | GND | 12 | ground | GND | — | — |
 | +5V | 33 | **leave unconnected** | — | — | — |
 
@@ -161,13 +161,25 @@ marginal: the AVR's `VIH` is 0.6 × VCC = 3.0 V. An HCT-family input threshold i
 2.0 V, which makes 3.3 V an unambiguous high. Where that 3.3 V source comes from
 is open — see below.
 
-### The frame-sync tap is optional and its source is undecided
+### The frame-sync tap is not fitted
 
-It was to be the VGA dongle's `VSYNC` pin. The HDMI dongle has no analogue sync
-to clip onto, so if Phase 13 wants a raster reference independent of `/INT`,
-this repo's firmware must bring one out on a spare PRO GPIO. Phase 13's latch
-and interrupt measurements are all relative to `/INT`, which the input capture
-already timestamps, so the tap may simply not be fitted. Decided in Phase 13.
+It was to be the VGA dongle's `VSYNC` pin, which the HDMI dongle does not have.
+Phase 13 decided to do without it. The raster needs no reference outside the
+card to be measured:
+
+- every interval the Nano takes is between `/INT` edges, timestamped by input
+  capture to 62.5 ns — vertical blank against vertical blank, each `IRQLINE`
+  against vertical blank, and so where the odd VGA line falls;
+- where `/INT` falls against the raster itself is the card's own to measure, on
+  a timer both its cores share, from core 0's line start to the restage that
+  drives `/INT` (docs/DEBUGLINK.md's STATS);
+- and the line start is at a fixed place in the VGA line: the start of the back
+  porch before the screen line's first VGA line, which the sync program raises.
+
+If a raster reference is ever wanted outside the card, the PRO's `GROMCLK` and
+`CPUCLK` pins (TMS9918 pins 37 and 38, GPIO 25 and 24) are driven by the card
+through its 5 V buffer and are unused by this firmware: either could carry a
+frame pulse straight to `A5`, with no HCT gate.
 
 ---
 
@@ -278,8 +290,12 @@ sustained load.
 | `$0A` | INT_PERIOD | count(1), budget(1) | edges(1), first(4), last(4) |
 | `$0B` | SCRIPT | (op(1), value(1)) × 1–120 | differed(1), ticks(4), (index(1), expected(1), got(1)) × up to 8 |
 | `$0C` | READ_RUN | port(1), count(1), extra(1) | ticks(4), bytes(count) |
+| `$0D` | PACED | extra(1), (op(1), value(1)) × 1–100 | differed(1), ticks(4), log or bytes |
+| `$0E` | INT_RUN | edges(2), timeout(1), flags(1), delay(2), extra(1), sequences(1), then each: count(1), pairs | edges(2), timed out(1), differed(2), records |
+| `$0F` | TRAFFIC | step(1), wrap(1), pair(1), extra(1), (op(1), value(1)) × 1–100 | as PACED, then handlers(4), longest wait(2) |
 
-PING answers firmware 2, protocol 2 since Phase 11 added `$0B` and `$0C`.
+PING answers firmware 3, protocol 3 since Phase 13 added `$0D`–`$0F`; firmware
+2, protocol 2 after Phase 11's `$0B` and `$0C`.
 
 `port` is `MODE1:MODE`, which is the CPU's `A1:A0` — the port decode in section
 3. INT's `ticks` is Timer 1's count at the last falling edge, and Timer 1 runs
@@ -342,12 +358,54 @@ at 5 or 6, 4 µs exactly at 16. `/CSR` is low for 5 cycles and sampled 3 cycles
 after it falls. It exists for §4's tightest case, reads back to back on one
 port (PLAN.md risk 5), at the spacing a 1 MHz and a 2 MHz 6502 give them.
 
-The general script runner's remaining parts — wait for `/INT`, record a
-timestamp, loop — are `$0D` onward and arrive with Phase 13's timing work.
+`$0D` PACED (Phase 13) plays up to 100 accesses — SCRIPT's ops, less its
+controls — each an exact number of cycles after the last, whatever the mix of
+reads and writes: 32 cycles, **2 µs**, with `extra` 0, and 31 + 3 × `extra`
+otherwise, so 4 µs at 11. Every access is precomputed into the six port values
+it needs, and one loop does the same instructions for a read as for a write:
+the data ports, their directions, then `PORTC` with the strobe's port bits,
+the strobe low for 6 cycles and the data sampled 3 cycles after it falls, as
+READ_RUN's. So a read's `/CSR` rises 1.625 µs before the next access's strobe
+falls, which leaves the card 125 ns less than a 2 MHz 6502 does. Interrupts
+are off while it runs, so no gap stretches. With `extra` b7 set the answer is
+every read's byte instead of the log. A read straight after the address
+command that sets it, writes back to back, and reads back to back are all
+PACED batches (`tools/lib/twomhz.mjs`).
+
+`$0E` INT_RUN waits for a falling edge of `/INT` — Timer 1's input capture,
+with interrupts off, overflows counted by hand — and plays the next of up to
+four sequences at PACED's spacing, `delay` ticks after the edge; then waits for
+the next, `edges` times (up to 65,535), or until a wait passes `timeout`
+overflows of 4.096 ms. flags b0 answers each edge's time (4) and the ticks from
+it to the run (2); b1 each run's read bytes. The Nano keeps whole records only,
+while they fit in the answer. A `/INT` already low when it starts is taken as
+the first edge, at the time the capture interrupt recorded it: its handler
+then runs late, and the host can tell from the ticks. From its timestamp to the
+first access's strobe is 76 cycles (48 setting up the call, 10 in `pacedRun`'s
+prologue, 18 into its loop), counted from firmware 3's compiled code. This is
+what scanline handlers are made of: the latch test, interrupt timing and
+status freshness (`tools/lib/raster.mjs`).
+
+`$0F` TRAFFIC is a PACED batch with a scanline handler armed beside it: on
+`/INT` it moves `IRQLINE` on by `step`, wrapping below `wrap` (0 for 256), and
+reads `STAT1` to acknowledge, on `pair`, whose `STATSEL` the host sets to 1.
+Once armed, the handler runs whenever `/INT` is low and the Nano is between
+anything else — before and after the batch, between the batch's entries as it
+prepares them and its reads as it compares them, while a packet arrives and its
+CRC is checked, and while it waits for the host — because a host round trip is
+dozens of lines and an interrupt every eight lines leaves 508 µs. IDLE disarms
+it. The answer adds how many handlers have run and the longest from an edge to
+its handler. The load run is TRAFFIC (`tools/lib/loadrun.mjs`).
+
+The Nano's RAM is the limit on all three: 100 accesses of six precomputed
+bytes, their samples, and one answer buffer, built in place rather than on a
+stack that has 270 bytes left.
 
 **The host side** is `tools/lib/nano.mjs`, `vdpctl bus` and, from Phase 11,
 `tools/lib/conformance.mjs` behind `vdpctl conformance` and `vdpctl reset-pin`,
-and from Phase 12 `tools/lib/bus-replay.mjs` behind `vdpctl replay`.
+from Phase 12 `tools/lib/bus-replay.mjs` behind `vdpctl replay`, and from Phase
+13 `tools/lib/twomhz.mjs`, `raster.mjs` and `loadrun.mjs` behind `vdpctl
+two-mhz`, `latch`, `irq-raster`, `freshness` and `load-run`.
 
 ### Port conformance (Phase 11)
 
@@ -540,6 +598,22 @@ Phase 12 plays the oracle through the bus.
 18. `vdpctl replay all --timing all` — every fixture's trace through the Nano
     at each profile, each static checkpoint against its golden.
 
+Phase 13 times the raster and loads the card.
+
+19. Upload the harness again: PACED, INT_RUN and TRAFFIC are new (firmware 3).
+20. `vdpctl two-mhz` — a 2 MHz 6502's tightest accesses, every one 2 µs apart.
+21. `vdpctl latch`, `vdpctl irq-raster`, `vdpctl freshness` — §3's latch, the
+    interrupts' timing, and how fresh status is.
+22. `vdpctl load-run --pair B` and `--pair A` — thirty minutes each of the worst
+    scene, FONT loads, 2 MHz traffic, a scanline interrupt every eight lines,
+    snapshots and captures.
+23. `vdpctl conformance --paced --ops 10000000` — Phase 11's stream at 2 µs.
+24. Release parity: `pro-release`, flashed from the debug build with no button,
+    then `vdpctl conformance --no-link`, with and without `--paced`, and
+    `vdpctl replay all --no-link`. A
+    release build has no USB, so going back to `pro-debug` needs the BOOT
+    button and a replug.
+
 ---
 
 8. What Phase 9 Proved
@@ -594,6 +668,25 @@ All criteria passed on 2026-09-23 (`docs/results/phase-12.md`):
 The harness lost one answer in the first full run, and the host's retry read a
 block twice. The replay now asks the card what it took rather than retrying
 blindly.
+
+### Phase 13
+
+All criteria passed on 2026-09-23 (`docs/results/phase-13.md`):
+
+| Criterion | Result |
+|---|---|
+| §3's latch: a handler's writes show from line N + 2 | **11,800 of 11,800** trials, N through picture, border and blanking |
+| 2 MHz, under the load run, each pair | 14.2 million back-to-back reads, 5.0 million reads straight after an address command, 14.4 million writes, all 2 µs apart: **0 wrong**, 0 stale |
+| Phase 11's stream at 2 µs | 10,000,595 accesses, **0 wrong** |
+| The load run, thirty minutes a pair | **0** late lines, **0** FIFO overruns, 60 of 60 captures stable |
+| The release build, through the pins only | Phase 11's stream at each profile and at 2 µs, **0 wrong**; Phase 12's replays, **54 of 54** exact |
+
+One thing about the harness itself is worth carrying forward. When the Nano
+turns its data bus round, from a read to the write after it, eight outputs
+switch at once, and about once in 2.5 million times that pulls its `/CSR` low
+for longer than the read program's first 23 ns check. The card now checks
+again about 120 ns in and ignores such a strobe; before it did, each was a
+read the Nano never made. A real bus can glitch the same way.
 
 ---
 

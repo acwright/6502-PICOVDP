@@ -26,8 +26,17 @@
 ;
 ;           The table is why the program sits at offset 0: `mov pc, isr` jumps
 ;           to the port's number. /CSR falling to CD0-7 driven is 15 cycles for
-;           ports 0 and 3 and 17 for 1 and 2, 43-48 ns at 352 MHz, the debounce
-;           of at least 8 cycles included (docs/results/phase-11.md).
+;           port 0, 16 for 1 and 17 for 2 and 3, 43-48 ns at 352 MHz, the
+;           debounce of at least 8 cycles included (docs/results/phase-11.md).
+;
+;           A strobe must still be low about 120 ns after it fell to be a read
+;           (Phase 13). Shorter, it is a glitch: the bus is released and the
+;           handler is not told, so no port moves on. A 6502 at 2 MHz holds
+;           /CSR low for most of its 250 ns phi2. The harness once in about 2.5
+;           million turnarounds of its data bus, from a read to a write, pulled
+;           /CSR low for longer than the first check's 23 ns: a read the CPU
+;           never made, which moved the port's pointer on
+;           (docs/results/phase-13.md).
 ;
 ; fifo osr  0b|status B|data B  |status A|data A  |
 ;             |port 3  |port 2  |port 1  |port 0  |
@@ -47,13 +56,18 @@
   jmp port0             ; 0: data A, the low byte
   jmp port1             ; 1: status A
   jmp port2             ; 2: data B
-  out null, 24          ; 3: status B, the high byte, and on into port0
+  out null, 8           ; 3: status B, the high byte: on through port2 and port1
+port2:
+  out null, 8
+port1:
+  out null, 8
 port0:
   in osr, 8             ; the byte served, beside its port, for the handler
   out pins, 8           ; latched on CD0-7, not yet driven
   nop               [2] ; /CSR has been low 8 cycles here, ~23 ns
   jmp pin bounced       ; high again: a glitch, not a read
-  mov pindirs, ~null    ; drive CD0-7
+  mov pindirs, ~null [24] ; drive CD0-7
+  jmp pin glitch        ; high again ~120 ns in: a glitch too, and not told
   wait 1 gpio CSR_PIN   ; until the read ends
   mov pindirs, null     ; release the bus
   push block            ; and tell the handler (which may stall here, counted)
@@ -63,12 +77,8 @@ idle:
   jmp pin idle          ; /CSR high: wait on
   in pins, 2            ; MODE, MODE1: the port
   mov pc, isr           ; to its slot above
-port1:
-  out null, 8
-  jmp port0
-port2:
-  out null, 16
-  jmp port0
+glitch:
+  mov pindirs, null     ; release the bus
 bounced:
   mov isr, null
   jmp idle

@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #define VGA_SYNC_PINS_START 0
@@ -53,3 +54,10 @@ uint32_t vga_display_line_cycles(void);
 // Line starts whose predecessor was not the line before it: the raster slipped
 // because the line-start interrupt was held off for more than a line.
 uint32_t vga_raster_slips(void);
+
+// Horizontal blanking (Phase 13, STAT3 b1): an interrupt as each VGA line's
+// blank begins and ends, on the core that calls this, at `priority`. The
+// handler calls vga_hblank_acknowledge, which clears both and says whether the
+// line is blanking now — so a handler held off past both still reads true.
+void vga_hblank_irq(void (*handler)(void), uint8_t priority);
+bool vga_hblank_acknowledge(void);

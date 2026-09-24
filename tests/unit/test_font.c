@@ -280,6 +280,109 @@ TEST(cancelled_by_reset) {
     free(v);
 }
 
+// Phase 13: the latch's own part leaves the bus copy's bytes for its steps, of
+// VDP_COPY_STEP at most, layer 0's first. The render side has both from the
+// latch, and the two copies agree once the steps are done.
+static vdp_t *begun_with_both(void) {
+    vdp_t *v = card_with(0x1000, 0xff);
+    fill(v, 0x2000, 0xff);
+    lines(v, 11, 11);
+    set_reg(v, L0PAT, 0x02);
+    set_reg(v, L1PAT, 0x04);
+    set_reg(v, FONT, 0x00);
+    set_reg(v, FONT, 0x80);
+    lines(v, 12, VBLANK_LINE - 1);
+    vdp_latch_begin(v, VBLANK_LINE, 0);
+    return v;
+}
+
+TEST(copied_after_the_latch_a_step_at_a_time) {
+    vdp_t *v = begun_with_both();
+    CHECK_EQ(0x80, vdp_debug_status(v, 0) & 0x80);
+    CHECK_EQ(0, v->font_pending);
+    CHECK_EQ(2, v->copies);
+    CHECK_EQ(~UINT64_C(0), v->copy_pending);
+    CHECK(holds(v->vram, 0x1000, 0xff));
+    CHECK(holds(v->vram, 0x2000, 0xff));
+
+    unsigned steps = 1;
+    CHECK(vdp_latch_copy(v));
+    CHECK(memcmp(v->vram + 0x1000, font, VDP_COPY_STEP) == 0);
+    CHECK_EQ(0xff, v->vram[0x1000 + VDP_COPY_STEP]);
+    while (vdp_latch_copy(v)) steps++;
+    CHECK_EQ(2 * VDP_FONT_BYTES / VDP_COPY_STEP, steps + 1);
+    CHECK_EQ(0, v->copies);
+    CHECK(holds_font(v->vram, 0x1000));
+    CHECK(holds_font(v->vram, 0x2000));
+
+    CHECK(vdp_catch_up(v));
+    vdp_publish(v, NULL, NULL);
+    CHECK(memcmp(v->render_vram, v->vram, sizeof v->vram) == 0);
+    free(v);
+}
+
+// An access that reaches a chunk not yet copied copies that chunk first, and
+// no more: a read finds the font, and a write stays written, after every step,
+// on both sides.
+TEST(an_access_that_reaches_it_copies_its_chunk) {
+    vdp_t *v = begun_with_both();
+    CHECK(vdp_latch_copy(v));
+    point_at(v, 1, 0x1100, false);      // chunk 4 of layer 0's
+    CHECK_EQ(2, v->copies);
+    CHECK_EQ(~UINT64_C(0) & ~UINT64_C(0x11), v->copy_pending);
+    CHECK(memcmp(v->vram + 0x1100, font + 0x100, VDP_COPY_STEP) == 0);
+    CHECK_EQ(0xff, v->vram[0x1100 + VDP_COPY_STEP]);
+    CHECK_EQ(font[0x100], vdp_read(v, 2));
+    CHECK_EQ(font[0x101], vdp_read(v, 2));
+    vdp_copies_finish(v);
+    CHECK(holds_font(v->vram, 0x1000));
+    CHECK(holds_font(v->vram, 0x2000));
+    free(v);
+
+    v = begun_with_both();
+    uint8_t byte = (uint8_t)~font[0x10];
+    store(v, 0x2010, &byte, 1);         // chunk 0 of layer 1's
+    CHECK_EQ(~UINT64_C(0) & ~(UINT64_C(1) << VDP_COPY_CHUNKS), v->copy_pending);
+    while (vdp_latch_copy(v)) {
+    }
+    CHECK_EQ(0, v->copies);
+    CHECK_EQ(byte, vdp_debug_vram(v, 0x2010));
+    lines(v, VBLANK_LINE + 1, VBLANK_LINE + 2);
+    CHECK_EQ(byte, v->render_vram[0x2010]);
+    CHECK(memcmp(v->render_vram, v->vram, sizeof v->vram) == 0);
+    free(v);
+}
+
+// One elsewhere does not wait for it, and neither does status.
+TEST(an_access_elsewhere_does_not) {
+    vdp_t *v = begun_with_both();
+    CHECK(vdp_latch_copy(v));
+    uint8_t byte = 0x42;
+    store(v, 0x3000, &byte, 1);
+    point_at(v, 1, 0x3000, false);
+    CHECK_EQ(0x42, vdp_read(v, 2));
+    CHECK_EQ(0x80, vdp_read(v, 1) & 0x80);
+    CHECK_EQ(2, v->copies);
+    CHECK_EQ(~UINT64_C(0) & ~UINT64_C(1), v->copy_pending);
+    vdp_copies_finish(v);
+    CHECK(holds_font(v->vram, 0x1000));
+    CHECK(holds_font(v->vram, 0x2000));
+    free(v);
+}
+
+// A load the latch has begun came before a reset that follows it: RST finishes
+// it rather than cancelling it (§15 cancels loads still pending).
+TEST(a_reset_after_the_latch_finishes_it) {
+    vdp_t *v = begun_with_both();
+    vdp_reset(v, false);
+    CHECK_EQ(0, v->copies);
+    CHECK(holds_font(v->vram, 0x1000));
+    CHECK(holds_font(v->vram, 0x2000));
+    lines(v, VBLANK_LINE + 1, VBLANK_LINE + 2);
+    CHECK(memcmp(v->render_vram, v->vram, sizeof v->vram) == 0);
+    free(v);
+}
+
 // Video.ts's setRegister is a command too, so a debugger's write loads.
 TEST(a_debuggers_write) {
     vdp_t *v = card_with(0x1000, 0xff);
@@ -333,6 +436,10 @@ int main(int argc, char **argv) {
     RUN(ports_untouched);
     RUN(over_the_palette_window);
     RUN(cancelled_by_reset);
+    RUN(copied_after_the_latch_a_step_at_a_time);
+    RUN(an_access_that_reaches_it_copies_its_chunk);
+    RUN(an_access_elsewhere_does_not);
+    RUN(a_reset_after_the_latch_finishes_it);
     RUN(a_debuggers_write);
     RUN(in_a_snapshot);
     return TEST_RESULT();

@@ -18,11 +18,17 @@ package).
   and `vdpctl`.
 - `docs/results/` — what each phase measured and checked.
 
-Status: Phase 12 (traces through the bus) done. Every golden checkpoint the
-emulator holds, all eighteen, reproduces exactly with its fixture's trace
-played through the PRO's pins by the Nano, untimed, at each of three timing
-profiles: each index frame from its settle point, and VRAM and registers at the
-checkpoint. See `docs/results/phase-12.md`. Phase 11 (the bus) before it: all
+Status: Phase 13 (raster timing, interrupts and load) done. A 2 MHz 6502's
+accesses work: 33.6 million trials of reads and writes exactly 2 µs apart, on
+both pairs, all right under an hour of the heaviest load — the worst reset-state
+scene with `FONT` loads for both layers every frame, a scanline interrupt every
+eight lines and snapshots streaming — with no late line, no FIFO overrun and
+every capture stable. §3's latch holds on the pins, every scanline compare fires
+within 0.1 µs of its line, status is restaged within 3.2 µs of each line start,
+and the release build matches. See `docs/results/phase-13.md`. Phase 12 before
+it: every golden checkpoint the emulator holds, all eighteen, reproduces
+exactly with its fixture's trace played through the PRO's pins by the Nano.
+See `docs/results/phase-12.md`. Phase 11 (the bus) before it: all
 four ports work through the PRO's pins,
 driven by an Arduino Nano: 10⁷ random accesses at each of three timing profiles
 with no read wrong against the emulator's `Video.ts`, back-to-back reads 4 µs

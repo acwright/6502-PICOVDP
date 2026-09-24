@@ -5,7 +5,7 @@
 // fail. The first run also triggers macOS's camera permission prompt for
 // whatever is calling ffmpeg.
 
-import { execFileSync } from 'node:child_process'
+import { execFile, execFileSync } from 'node:child_process'
 
 export const DEFAULT_DEVICE = '0'
 export const WIDTH = 640
@@ -35,6 +35,30 @@ export function grab({ device = DEFAULT_DEVICE, width = WIDTH, height = HEIGHT, 
   }
   if (out.length < frame) throw new Error(`ffmpeg returned ${out.length} bytes, expected at least ${frame}`)
   return { width, height, rgb: out.subarray(out.length - frame) }
+}
+
+/**
+ * The same without blocking the process, so a serial port it is also serving
+ * goes on being read while ffmpeg runs (Phase 13's load run).
+ */
+export function grabAsync({ device = DEFAULT_DEVICE, width = WIDTH, height = HEIGHT, skip = 8 } = {}) {
+  const frame = width * height * 3
+  return new Promise((resolve, reject) => {
+    execFile('ffmpeg', [
+      '-hide_banner', '-loglevel', 'error',
+      '-f', 'avfoundation',
+      '-framerate', '30',
+      '-video_size', `${width}x${height}`,
+      '-i', String(device),
+      '-frames:v', String(skip),
+      '-pix_fmt', 'rgb24',
+      '-f', 'rawvideo', '-',
+    ], { encoding: 'buffer', maxBuffer: frame * (skip + 2) }, (error, out, err) => {
+      if (error) return reject(new Error(`ffmpeg could not read the capture card: ${(err?.toString() ?? '').trim().split('\n').slice(-3).join('; ') || error.message}`))
+      if (out.length < frame) return reject(new Error(`ffmpeg returned ${out.length} bytes, expected at least ${frame}`))
+      resolve({ width, height, rgb: out.subarray(out.length - frame) })
+    })
+  })
 }
 
 /** Threshold to ink/paper on luminance. */

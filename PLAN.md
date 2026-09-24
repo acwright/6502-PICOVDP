@@ -59,8 +59,18 @@ Phase 12 played the oracle through the pins: every fixture's trace, untimed,
 through the Nano at each of its three profiles, and all eighteen checkpoints
 reproduce exactly — each index frame from its settle point, VRAM and registers
 at the checkpoint, and VRAM read back through the bus — with every compared
-read right and every access the Nano made taken once. **Phase 13, raster timing,
-interrupts and load, is next.**
+read right and every access the Nano made taken once. Phase 13 measured the
+raster through the pins and made the 2 MHz bus work: the bus interrupt above
+the latch, the latch's moment cut to under 250 cycles, `FONT` copies in 64-byte
+chunks, and a second glitch check in the read program. Under an hour's load —
+the worst reset-state scene, `FONT` loads for both layers every frame, the
+Nano's 2 µs bursts and a scanline interrupt every eight lines on each pair in
+turn, snapshots streaming — 33.6 million trials of accesses 2 µs apart were all
+right, with no late line, no FIFO overrun, no stale read and every capture
+stable. §3's latch held on 11,800 trials across picture, border and blanking;
+every `IRQLINE` fires within 0.1 µs of its line in every geometry; status is
+restaged within 3.2 µs of each line start; and the release build matches.
+**Part C, the machine, is next: Phase 14 puts the card in the AC6502.**
 
 ---
 
@@ -216,8 +226,11 @@ uint8_t vdp_read(vdp_t *v, unsigned port);                  // port = A1:A0, §4
 void    vdp_write(vdp_t *v, unsigned port, uint8_t value);  // §4
 void    vdp_line_start(vdp_t *v, uint16_t screen_line);     // a screen line begins, §3: latch, catch up, publish (host)
 void    vdp_latch(vdp_t *v, uint16_t screen_line, uint32_t tag); // its bus side, as the line begins
+void    vdp_latch_take(vdp_t *v, uint16_t screen_line, vdp_latch_take_t *t); // ... its one moment (Phase 13)
+void    vdp_latch_record(vdp_t *v, const vdp_latch_take_t *t, uint32_t tag); // ... and its record, interruptible
+bool    vdp_latch_copy(vdp_t *v);                           // a step of the FONT copies a latch began (Phase 13)
 bool    vdp_catch_up(vdp_t *v);                             // its render side, when the renderer is ready
-void    vdp_set_hblank(vdp_t *v, bool hblank);              // STAT3 b1, from the platform, §6
+bool    vdp_set_hblank(vdp_t *v, bool hblank);              // STAT3 b1, from the platform, §6; true if a port's answer moved
 int     vdp_split_choose(const vdp_t *v);                   // the column the cores divide this row at
 void    vdp_build_half(const vdp_t *v, vdp_half_t *h, int x0, int x1); // columns [x0, x1): layers, sprites; no status
 void    vdp_expand_half(const vdp_t *v, const vdp_half_t *h, uint16_t *rgb);   // its columns, 12-bit 0x0BGR, ×2
@@ -255,14 +268,26 @@ Instead:
   profile might — falls back to copying dirty 1 KB pages, and counts that it did.
   128 KB of VRAM is comfortable in 520 KB of SRAM.
 - **The latch comes in two halves** (Phase 8). `vdp_latch` runs in core 1's
-  interrupt as the line begins: the line's events (§14), and a record of the
-  register file and the journal's end. `vdp_catch_up` runs in the renderer when
-  it is ready for the line, which after a late line is later (§18), and brings
-  the render side to exactly that record. Records wait in a ring of 8; a latch
-  that finds it full is merged into the newest, and the line it held is never
-  built.
-- **Registers are snapshotted** by the latch, with the derived per-line state
-  (geometry, bases, scroll, palette base) recomputed from them.
+  interrupt as the line begins: the line's events (§14), and a record of where
+  the journals end. `vdp_catch_up` runs in the renderer when it is ready for the
+  line, which after a late line is later (§18), and brings the render side to
+  exactly that record. Records wait in a ring of 8; a latch that finds it full
+  is merged into the newest, and the line it held is never built. Since Phase 13
+  its bus side is itself in parts: `vdp_latch_take`, the one moment the bus
+  must not interleave with — the events, and where the journals end — and
+  `vdp_latch_record`, which builds the record from what was taken and which the
+  bus may interrupt.
+- **Registers are journaled** as VRAM is (Phase 13): each write leaves its byte
+  in a ring of 256, and a latch records where the ring ends, so the render side
+  replays the writes before it. After a reset, or a ring that filled, the latch
+  copies the register file whole instead. The derived per-line state (geometry,
+  bases, scroll, palette base) is recomputed from the render side's registers.
+- **A `FONT` load** lands at the latch where vertical blank fires (§7). The
+  render side takes it from the record, at its place among the writes; the bus
+  copy's 2 KB are copied by the renderer in the vertical blank's lines, in steps
+  of 64 bytes, the bus served between the steps, and an access that reaches an unfinished copy
+  finishes it first, so no access after the latch sees the load unfinished
+  (Phase 13).
 - **The palette cache** — 256 entries of paired 12-bit pixels, `x × $10001`, the
   way pico9918 doubles horizontally — is updated from journal entries that fall
   in the palette window as it drains, and re-read whole when `PALBASE` changes.
@@ -307,13 +332,23 @@ pico9918 sets none:
 | 0 | Core 0's half of each row, posted by core 1 through the inter-core FIFO: `vdp_build_half`, `vdp_expand_half` | `$40` |
 | 0 | USB, the SDK's timer, the watchdog's feeder | default and below |
 | 0 | The debug link (debug builds) | thread |
-| 1 | The latch, from core 0's doorbell: `vdp_latch` for every line begun. From Phase 11, the bus PIO interrupts at the same priority, so they never preempt one another | highest on core 1 (`$00`) |
-| 1 | The renderer: `vdp_catch_up`, `vdp_split_choose`, post to core 0, `vdp_build_half` and `vdp_expand_half` for the rest, wait for core 0, `vdp_publish` with interrupts held off — into a buffer no line start can be sending. A row not finished when its line starts is late (SPEC §18): the line sends the last finished row again, and the build finishes for its status | thread |
+| 1 | The bus: the PIO's interrupt for every access, and RST. Restaging happens here only; anything else that moves what a port reads asks for one | highest on core 1 (`$00`) |
+| 1 | Horizontal blanking, from the VGA timing: `STAT3` b1 (§6), restaged only when a port selects `STAT3` (Phase 13) | `$20` |
+| 1 | The latch, from core 0's doorbell: `vdp_latch_take` for every line begun with the bus held off, then its record, the bus served meanwhile (Phase 13) | `$40` |
+| 1 | The renderer: a `FONT` load's copy, a chunk at a time (Phase 13); `vdp_catch_up`, `vdp_split_choose`, post to core 0, `vdp_build_half` and `vdp_expand_half` for the rest, wait for core 0, `vdp_publish` with interrupts held off — into a buffer no line start can be sending. A row not finished when its line starts is late (SPEC §18): the line sends the last finished row again, and the build finishes for its status | thread |
 
 Phase 1 put the sprites in core 0's thread and the debug link in its lowest
 interrupt. Phase 8 swapped them: a USB write blocks, and a sprite build that USB
 could preempt is a late line waiting to happen; in an interrupt above USB it
 cannot be.
+
+Phase 11 put the bus beside the latch at one priority, so that neither could
+split the other's writes to status and the journals. A read landing in a latch
+then waited for all of it, and at 2 µs that was stale about once in 170. Phase
+13 put the bus above everything on core 1 and made what holds it off short:
+the latch's moment, a `FONT` copy step and a row's publication each mask
+core 1's interrupts for under 200 cycles, and nothing else does for long. The
+bus's code and the latch's moment run from core 1's own scratch bank.
 
 The clock is 352 MHz (PLL 1056 MHz ÷ 3, VREG 1.30 V), pico9918's VGA preset 2.
 A display line is 2 × 1,598 PIO ticks at a divider of 7: **22,372 cycles**.
@@ -585,12 +620,10 @@ instead, from Timer 1's count inside its pin-change interrupt. That is good to a
 few µs, against a 63.6 µs line. `D11`–`D13` stay free; `D13`'s on-board LED is
 the harness's status light.
 
-**Where that tap comes from is now open.** It was to be the VGA dongle's VSYNC
-pin. The HDMI dongle has no analogue sync to clip onto, so if Phase 13 wants a
-raster reference independent of `/INT`, this repo's firmware must bring one out
-on a spare PRO GPIO. The tap is optional either way: Phase 13's latch and
-interrupt measurements are all relative to `/INT`, which the input capture
-already timestamps. Decided in Phase 13, not before.
+**Phase 13 did without the tap.** It was to be the VGA dongle's VSYNC pin, and
+the HDMI dongle has none. Every interval the Nano measures is between `/INT`
+edges, and where `/INT` falls against the raster the card measures itself, on a
+timer both its cores read (docs/BENCH.md section 4).
 
 The socket side of the PRO is 5 V logic, so the Nano needs no level shifting: a
 74HC245 drives out and a 5 V-tolerant 74LVC245 receives. The 220 Ω resistors
@@ -1041,12 +1074,21 @@ listed, with its Phase 10 injection result standing for it.
    handler (Phase 11) and the PRO's thermals at 1.30 V (Phases 10, 13; the Pico 2
    ran 21 minutes clean). If the margin erodes, a late line is specified; the
    renderer has evaluation, the split's choice and the judged layer's contest
-   left to optimise (docs/results/phase-08.md, "For later phases").
+   left to optimise (docs/results/phase-08.md, "For later phases"). Phase 13
+   measured the real bus: about 150 cycles an access on core 1 in the debug
+   build, where the stand-in cost about 100, and at first 250 — which made 1,472
+   late rows in 20,000 bursts until the interrupt was trimmed. The heaviest
+   reset-state scene ran an hour under 2 µs bursts with no late row, its worst
+   row 3.6% short of the line; at `SPRLIMIT` 32 all four of Full mode's sprite
+   cases make late lines under the same bursts, as §18 now says
+   (docs/results/phase-13.md, "The real bus's cost").
 
 2. **The §3 latch cannot be exact while the bus is served on the render core.**
    The dual VRAM and journal design exists for this. Phase 3 unit-tests it; Phase
-   13 tests it on the pins. What remains is a journal overflow under traffic no
-   6502 can produce, which falls back to page copies and is counted.
+   13 tested it on the pins: a handler's writes showed from line N + 2 in every
+   frame, across picture, borders and blanking. What remains is a journal
+   overflow under traffic no 6502 can produce, which falls back to page copies
+   and is counted.
 
 3. **The debug link disturbs the raster.** TinyUSB interrupts share core 0 with
    the VGA interrupts and core 0's half of each row. Since Phase 8 that half runs
@@ -1070,12 +1112,16 @@ listed, with its Phase 10 injection result standing for it.
    reads 4 µs apart are always right; 2 µs apart, about 1 in 170 is stale,
    because a read landing in core 1's latch interrupt (up to 1.6 µs) waits for
    it before its restage. The AC6502 runs its bus at 1 or 2 MHz and both are to
-   work, so making 2 µs safe is a goal of Phase 13, with criteria of its own
-   (docs/results/phase-11.md, "Back to back").
+   work, so making 2 µs safe was a goal of Phase 13. It is met: the bus is above
+   the latch, nothing holds it off for more than about 300 cycles, and under the
+   load run's traffic tens of millions of accesses 2 µs apart were right
+   (docs/results/phase-13.md, "2 MHz"). Phase 13 also gave the read program a
+   second glitch check, about 120 ns after `/CSR` falls: the harness had, once
+   in millions of bus turnarounds, made a strobe the first check let through.
 
 6. **Status is stale.** The status byte is staged before the read arrives (§6).
-   Phase 13 measures by how much. If it is more than a line, §6 says so rather
-   than the firmware pretending.
+   Phase 13 measured by how much: 1.35 µs after a line start on average, 3.2 µs
+   at most, and §6 says so. Well inside a line.
 
 7. **Emulator timing is not the PRO's.** 60 Hz against 59.94, and no odd VGA
    line. Injection is addressed by frame and line count, and the bus replay is
@@ -1115,7 +1161,7 @@ listed, with its Phase 10 injection result standing for it.
 | 1. Time Full mode first | Resolved in draft 0.4 by Phase 1. Phase 8 re-measured it with the firmware, recorded in §18; Phase 13 measures under bus load on the PRO |
 | 2. Does the 4bpp table earn its 8 KB | Resolved in draft 0.4 by Phase 1: yes |
 | 3. Are the hue ramps usable | **Resolved in Phase 10: yes.** The palette test card went on the PRO and was captured off its DAC (`docs/results/phase-10/shots/`) — all 256 entries reach the monitor and not one step of the sixteen families fails to brighten — and the owner judged the ramps good as they stand on 2026-09-23. SPEC.md's measurement item 3 is struck through with it |
-| 4. How fresh the status byte can be | Phase 13 |
+| 4. How fresh the status byte can be | **Resolved in Phase 13.** The byte is restaged, with `/INT`, within 3.2 µs of each line start, 1.35 µs on average; a read inside a line never showed another line; `STAT3` b1, driven from the VGA timing for the first time, follows the horizontal blanking a few tenths of a microsecond late. SPEC.md's item 4 is struck through with it |
 
 ### Found while planning — settled in draft 0.3
 
@@ -1173,12 +1219,21 @@ proves it.
   the same). RST does not zero it.
 - `STAT5` reads the firmware version; the first release's value is set in Phase 14.
 - `OVF` and `COL` are published when core 1 finishes the row's build, not at its
-  latch (Phase 8). Their lag is measured in Phase 13.
+  latch (Phase 8): 41 µs after the latch's line start on average and 60 µs at
+  most under the load run (Phase 13), so always before the row is shown.
+  SPEC.md §14 now gives the figure.
 - A status read served a byte staged before a flag set acknowledges only what it
   showed: a `STAT0` read clears the flags in the byte it returned, with what
   details each and its `STAT1` latch, and a `STAT1` read the latches in its
-  byte. A flag the CPU never saw stays set (Phase 11). §6 says a read clears the
-  flags; it does not say which read, when the read and the card disagree.
+  byte. A flag the CPU never saw stays set (Phase 11). SPEC.md §6 states it
+  since Phase 13.
+- A `FONT` load belongs to the line start where vertical blank fires, and every
+  access after that line start finds it whole; the copy into VRAM is done behind
+  it in chunks, and an access reaching an unfinished chunk copies that chunk
+  first (Phase 13). SPEC.md §4 and §18 say so.
+- `STAT3` b1 is set from the start of each VGA line's front porch to the end of
+  its back porch, 160 pixels, on every VGA line, the blanking lines' included
+  (Phase 13).
 - RST acts on its falling edge, taking any accesses already waiting first
   (Phase 11).
 

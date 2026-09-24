@@ -1,0 +1,18 @@
+  STAT2 sampled 7.81-9.38 us after /INT: 9667 reads, line + 0: 9667 (357 edges served late, left out)
+  STAT2 sampled 21.44-22.50 us after /INT: 972 reads, line + 0: 972 (36 edges served late, left out)
+  STAT2 sampled 37.06-38.00 us after /INT: 972 reads, line + 0: 972 (36 edges served late, left out)
+  STAT2 sampled 56.19-56.69 us after /INT: 972 reads, line + 0: 972 (36 edges served late, left out)
+  STAT2 sampled 65.19-65.69 us after /INT: 972 reads, line + 1: 972 (36 edges served late, left out)
+  STAT2 sampled 67.69-68.75 us after /INT: 972 reads, line + 1: 972 (36 edges served late, left out)
+  STAT2 sampled 68.56-69.06 us after /INT: 972 reads, line + 1: 972 (36 edges served late, left out)
+  STAT2 sampled 68.63-69.69 us after /INT: 972 reads, line + 1: 972 (36 edges served late, left out)
+  STAT2 sampled 68.94-70.00 us after /INT: 972 reads, line + 1: 972 (36 edges served late, left out)
+  STAT2 sampled 69.38-70.19 us after /INT: 972 reads, line + 1: 972 (36 edges served late, left out)
+  STAT2 sampled 69.69-70.19 us after /INT: 972 reads, line + 1: 972 (36 edges served late, left out)
+  STAT2 sampled 69.88-70.94 us after /INT: 972 reads, line + 1: 972 (36 edges served late, left out)
+  STAT2 sampled 70.19-71.25 us after /INT: 972 reads, line + 1: 972 (36 edges served late, left out)
+  STAT2 sampled 70.81-71.31 us after /INT: 972 reads, line + 1: 972 (36 edges served late, left out)
+  STAT2 sampled 73.31-74.38 us after /INT: 972 reads, line + 1: 972 (36 edges served late, left out)
+  STAT2 sampled 80.94-81.44 us after /INT: 972 reads, line + 1: 972 (36 edges served late, left out)
+  STAT3 b1 set, against /INT: 26.25-32.94 us (6.69 us), 58.00-64.31 us (6.31 us); 542 instants sampled, 7 of them read both ways
+every read inside the line showed the handler's line

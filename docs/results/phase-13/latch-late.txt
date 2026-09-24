@@ -1,0 +1,18 @@
+§3's latch in compact: 3 IRQLINE values, 10 snapshots each
+  negative control: every handler held 69 us, past the next line start
+  IRQLINE 100 (then 231): new from screen line 126, old from 257; 10 frames, 20 trials, 10 rows wrong, 0 late
+      frame 345612 row 126: old, expected new
+      frame 345620 row 126: old, expected new
+      frame 345628 row 126: old, expected new
+      frame 345636 row 126: old, expected new
+  IRQLINE 200 (then  69): new from screen line 226, old from  95; 10 frames, 20 trials, 20 rows wrong, 0 late
+      frame 345819 row 95: new, expected old
+      frame 345819 row 226: old, expected new
+      frame 345827 row 95: new, expected old
+      frame 345827 row 226: old, expected new
+  IRQLINE 250 (then 119): new from screen line  14, old from 145; 10 frames, 20 trials, 20 rows wrong, 0 late
+      frame 346027 row 14: old, expected new
+      frame 346027 row 145: new, expected old
+      frame 346035 row 14: old, expected new
+      frame 346035 row 145: new, expected old
+60 trials over 30 frames: 50 rows wrong

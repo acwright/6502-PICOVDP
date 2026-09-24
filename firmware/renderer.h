@@ -2,13 +2,14 @@
 //
 // Core 0 owns the raster: pico9918's VGA driver, cut down to SPEC §3's 262
 // line starts (vga/). At each line start it hands the row its buffer and rings
-// core 1. Core 1's doorbell interrupt is §3's latch: vdp_latch, as the line
-// begins. Core 1's thread is the renderer: it catches up with each latch in
-// turn, sends core 0 the sprites left of the line's split through the
-// inter-core FIFO, builds the layers and the rest of the sprites, merges,
-// publishes status with interrupts held off, and expands the row into a buffer
-// that no line start is sending. A row whose build has not finished when its
-// line starts shows the last completed row again (§18).
+// core 1. Core 1's doorbell interrupt is §3's latch, as the line begins: its
+// moment with the bus held off (vdp_latch_take), then its record and any FONT
+// copy, below the bus (bus.h). Core 1's thread is the renderer: it catches up
+// with each latch in turn, sends core 0 the sprites left of the line's split
+// through the inter-core FIFO, builds the layers and the rest of the sprites,
+// merges, publishes status with interrupts held off, and expands the row into
+// a buffer that no line start is sending. A row whose build has not finished
+// when its line starts shows the last completed row again (§18).
 //
 // Debug builds add what the debug link reads and drives (docs/DEBUGLINK.md):
 // statistics, snapshots, the injection executor, worst-case scenes, and knobs
@@ -42,7 +43,19 @@ uint32_t renderer_heartbeat(void);
 #define RENDERER_HISTOGRAM_BINS 512
 #define RENDERER_HISTOGRAM_SHIFT 7    // 128 cycles a bin: 0 to 65,535
 
-// Cycles are the M33's DWT cycle counter, on the core that did the work.
+// What holds core 1's interrupts off: the latch's own part, a step of a FONT
+// copy, a row's publication, the thread's own card accesses (debug).
+enum {
+    RENDERER_MASKED_LATCH,
+    RENDERER_MASKED_COPY,
+    RENDERER_MASKED_PUBLISH,
+    RENDERER_MASKED_THREAD,
+    RENDERER_MASKED_KINDS
+};
+
+// Cycles are the M33's DWT cycle counter, on the core that did the work, or
+// the shared timer where one core's moment is set against the other's; both
+// run at clk_sys.
 typedef struct renderer_timing {
     uint32_t max;
     uint32_t p999;                    // 99.9th percentile, to the top of its bin
@@ -72,6 +85,16 @@ typedef struct renderer_stats {
     uint32_t line_isr_max;            // core 0's line-start interrupt
     uint32_t bus_standins;            // bus stand-in interrupts taken
     uint16_t histogram[RENDERER_HISTOGRAM_BINS];  // latency, saturating
+    // Phase 13. The longest core 1 held its interrupts off, and so the bus,
+    // for each thing that does (RENDERER_MASKED_*), in cycles.
+    uint32_t masked_max[RENDERER_MASKED_KINDS];
+    // Core 0's line start to core 1's latch interrupt, on the shared timer.
+    uint32_t bell_max, bell_mean;
+    // Rows whose publication set OVF or COL (§6): their latch's line start to
+    // the flag, on the shared timer.
+    uint32_t flag_rows, flag_max, flag_mean;
+    // Screen line 0 to screen line 0: the raster's frame (§3), on the shared timer.
+    uint32_t frame_min, frame_max, frame_mean;
 } renderer_stats_t;
 
 void renderer_stats(renderer_stats_t *out, bool reset);
@@ -119,6 +142,7 @@ typedef struct renderer_load {
     uint16_t handicap_every;          // ... every this many rows ...
     uint32_t handicap_cycles;         // ... to at least this many cycles
     bool fonts;                       // a scene's program writes FONT for both layers every frame (scenes.h)
+    bool scene_pair_b;                // ... through port B instead of A, leaving A to the bus (Phase 13)
 } renderer_load_t;
 bool renderer_load(const renderer_load_t *load, uint32_t timeout_ms);
 

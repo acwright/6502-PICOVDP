@@ -78,6 +78,7 @@ void vdp_debug_save(const vdp_t *v, vdp_snapshot_t *s, uint8_t *vram) {
 
 void vdp_debug_restore(vdp_t *v, const vdp_snapshot_t *s, const uint8_t *vram) {
     memcpy(v->reg, s->registers, sizeof v->reg);
+    v->geometry = vdp_geometry(v->reg, NULL);
     // IRQEN b0 is the home of the vblank enable (§14); a snapshot whose two
     // copies disagree is settled in its favour.
     vdp_register_write(v, VDP_REG_IRQEN, v->reg[VDP_REG_IRQEN]);
@@ -98,10 +99,14 @@ void vdp_debug_restore(vdp_t *v, const vdp_snapshot_t *s, const uint8_t *vram) {
         v->font_pending |= (uint8_t)(1u << layer);
     }
     memcpy(v->vram, vram, VDP_VRAM_SIZE);
+    v->copies = 0;
+    v->copy_pending = 0;
 
     memcpy(v->render_vram, v->vram, VDP_VRAM_SIZE);
     vdp_render_guard(v);
     memcpy(v->render_reg, v->reg, sizeof v->render_reg);
+    v->reg_journal_head = v->reg_journal_tail = 0;
+    v->reg_whole = false;
     v->render_screen_line = (uint16_t)((v->screen_line + 1) % VDP_SCREEN_LINES);
     v->journal_head = v->journal_tail = 0;
     v->dirty_pages = 0;

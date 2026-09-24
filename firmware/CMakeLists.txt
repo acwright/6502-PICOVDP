@@ -34,7 +34,10 @@ target_compile_definitions(picovdp PRIVATE
     PICO_PANIC_FUNCTION=picovdp_panic
     # Flash is never touched after boot (copy_to_ram), but keep its clock in
     # range at 352 MHz, as pico9918 does.
-    PICO_FLASH_SPI_CLKDIV=4)
+    PICO_FLASH_SPI_CLKDIV=4
+    # Core 1 runs on a stack of its own (renderer.c), so the SDK's default one
+    # need not take half of SCRATCH_X, where the bus's code goes (Phase 13).
+    PICO_CORE1_STACK_SIZE=0x100)
 
 target_link_libraries(picovdp PRIVATE
     picovdp_warnings
@@ -51,6 +54,10 @@ if(PICOVDP_DEBUG)
     target_sources(picovdp PRIVATE link.c inject.c profile.c scenes.c)
     target_link_libraries(picovdp PRIVATE picovdp_core_debug hardware_pwm)
     pico_enable_stdio_usb(picovdp 1)
+    # A host busy for a second — a capture — must not cost the link half a
+    # packet: the SDK discards what it cannot send within its timeout, 500 ms
+    # by default (Phase 13).
+    target_compile_definitions(picovdp PRIVATE PICO_STDIO_USB_STDOUT_TIMEOUT_US=5000000)
 else()
     pico_enable_stdio_usb(picovdp 0)
 endif()

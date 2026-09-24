@@ -1,0 +1,55 @@
+  back to back, 4 us: 12000 data reads 4.05 us apart: all right
+  back to back, 2 us: 12000 data reads 1.98 us apart: all right
+  back to back, flat out: 12000 data reads 1.16 us apart: all right
+  6502-1mhz: script flip-flop, 31 accesses: ok
+  6502-1mhz: script prefetch, 38 accesses: ok
+  6502-1mhz: script read-orders, 126 accesses: ok
+  6502-1mhz: script registers, 274 accesses: ok
+  6502-1mhz: script status, 18 accesses: ok
+  6502-1mhz: script vbank-vinc, 108 accesses: ok
+  6502-1mhz: 1,000,000 accesses, 9,068 a second
+  6502-1mhz: 2,000,000 accesses, 11,044 a second
+  6502-1mhz: 3,000,000 accesses, 12,028 a second
+  6502-1mhz: 4,000,000 accesses, 12,548 a second
+  6502-1mhz: 5,000,000 accesses, 12,863 a second
+  6502-1mhz: 6,000,000 accesses, 13,085 a second
+  6502-1mhz: 7,000,000 accesses, 13,230 a second
+  6502-1mhz: 8,000,000 accesses, 13,357 a second
+  6502-1mhz: 9,000,000 accesses, 13,460 a second
+  6502-1mhz: 10,000,000 accesses, 13,542 a second
+6502-1mhz: 10,000,595 accesses (1,726,249 reads, 1,475,718 compared) in 743 s; 0 mismatching batches, 0 of 16 state checks differ
+  6502-2mhz: script flip-flop, 31 accesses: ok
+  6502-2mhz: script prefetch, 38 accesses: ok
+  6502-2mhz: script read-orders, 126 accesses: ok
+  6502-2mhz: script registers, 274 accesses: ok
+  6502-2mhz: script status, 18 accesses: ok
+  6502-2mhz: script vbank-vinc, 108 accesses: ok
+  6502-2mhz: 1,000,000 accesses, 9,381 a second
+  6502-2mhz: 2,000,000 accesses, 11,485 a second
+  6502-2mhz: 3,000,000 accesses, 12,388 a second
+  6502-2mhz: 4,000,000 accesses, 12,860 a second
+  6502-2mhz: 5,000,000 accesses, 13,160 a second
+  6502-2mhz: 6,000,000 accesses, 13,365 a second
+  6502-2mhz: 7,000,000 accesses, 13,519 a second
+  6502-2mhz: 8,000,000 accesses, 13,637 a second
+  6502-2mhz: 9,000,000 accesses, 13,729 a second
+  6502-2mhz: 10,000,000 accesses, 13,800 a second
+6502-2mhz: 10,000,595 accesses (1,726,249 reads, 1,475,718 compared) in 729 s; 0 mismatching batches, 0 of 16 state checks differ
+  fastest: script flip-flop, 31 accesses: ok
+  fastest: script prefetch, 38 accesses: ok
+  fastest: script read-orders, 126 accesses: ok
+  fastest: script registers, 274 accesses: ok
+  fastest: script status, 18 accesses: ok
+  fastest: script vbank-vinc, 108 accesses: ok
+  fastest: 1,000,000 accesses, 9,530 a second
+  fastest: 2,000,000 accesses, 11,565 a second
+  fastest: 3,000,000 accesses, 12,454 a second
+  fastest: 4,000,000 accesses, 12,942 a second
+  fastest: 5,000,000 accesses, 13,239 a second
+  fastest: 6,000,000 accesses, 13,431 a second
+  fastest: 7,000,000 accesses, 13,594 a second
+  fastest: 8,000,000 accesses, 13,725 a second
+  fastest: 9,000,000 accesses, 13,827 a second
+  fastest: 10,000,000 accesses, 13,909 a second
+fastest: 10,000,595 accesses (1,726,249 reads, 1,475,718 compared) in 723 s; 0 mismatching batches, 0 of 16 state checks differ
+wrote docs/results/phase-13/release-conformance.json

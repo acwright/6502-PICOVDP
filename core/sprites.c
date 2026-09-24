@@ -62,7 +62,7 @@ static inline unsigned sprite_shift(const uint8_t *reg) {
 // §6, §14: a line dropped `slot`. STAT0's index field keeps the first since
 // STAT0 was read; STAT7 follows the most recent line; the interrupt is the
 // frame's first.
-void vdp_report_overflow(vdp_t *v, unsigned slot) {
+void VDP_HOT(vdp_report_overflow)(vdp_t *v, unsigned slot) {
     if (!(v->stat0 & VDP_STAT0_OVF)) v->stat0 |= (uint8_t)(VDP_STAT0_OVF | (slot & VDP_STAT0_SPRITE));
     vdp_frame_event(v, VDP_IRQ_OVERFLOW);
     v->overflow_sprite = (uint8_t)slot;
@@ -418,13 +418,14 @@ void VDP_HOT(vdp_draw_sprites)(const vdp_t *v, vdp_half_t *h, int x0, int x1, ui
 // §6, §10, §14: COL, the frame's collision interrupt, and with SPRCTRL b3 the
 // map. Every one of them only ever sets, so the order the halves of a line are
 // published in, or publishing one twice, changes nothing.
-void vdp_publish_collisions(vdp_t *v, const vdp_half_t *s) {
-    if (!s->collided) return;
+void VDP_HOT(vdp_publish_collisions)(vdp_t *v, uint64_t collisions) {
     v->stat0 |= VDP_STAT0_COL;
     vdp_frame_event(v, VDP_IRQ_COLLISION);
-    for (unsigned byte = 0; byte < sizeof v->collision_map; byte++) {
-        v->collision_map[byte] |= (uint8_t)(s->collisions >> (8 * byte));
-    }
+    // Bit s mod 8 of STAT(8 + s/8): the map is the 64 bits little-endian.
+    uint64_t map;
+    memcpy(&map, v->collision_map, sizeof map);
+    map |= collisions;
+    memcpy(v->collision_map, &map, sizeof map);
 }
 
 // PLAN.md section 3: the picture column the cores divide a row at, on an

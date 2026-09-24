@@ -1,0 +1,6 @@
+vertical blank: 585 periods, mean 16.68989 ms (59.9165 Hz), sd 0.025 us, 16.68981-16.68994 ms
+  one display line by the Nano's clock 63.5805 us; by the card's, 63.5568 us
+text: 256 of 256 IRQLINE values fired; each /INT within 0.086 us of where §3 puts its line against vertical blank's; largest spread over its frames 0.125 us; steps other than one line: 237->238: 1.500 lines
+compact: 256 of 256 IRQLINE values fired; each /INT within 0.085 us of where §3 puts its line against vertical blank's; largest spread over its frames 0.125 us; steps other than one line: 237->238: 1.501 lines
+graphics: 256 of 256 IRQLINE values fired; each /INT within 0.088 us of where §3 puts its line against vertical blank's; largest spread over its frames 0.125 us; steps other than one line: none
+full: 256 of 256 IRQLINE values fired; each /INT within 0.092 us of where §3 puts its line against vertical blank's; largest spread over its frames 0.125 us; steps other than one line: none
