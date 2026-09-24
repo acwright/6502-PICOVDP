@@ -1,0 +1,68 @@
+{
+ "at": "2026-09-24T13:51:10.361Z",
+ "results": {
+  "bios": {
+   "rom": "bios-2.0",
+   "checkpoints": {
+    "ok": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 4.232238642583471
+     },
+     "mae": 2.0849765951217827,
+     "settledRate": 0.9999507548865516,
+     "settledCount": 243679,
+     "worst": 11.844984590383262,
+     "bestWrong": 4.3092713252023165,
+     "mappingDecidable": true,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": []
+    },
+    "screenful": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 4.486874657909141
+     },
+     "mae": 2.5843607452018276,
+     "settledRate": 0.9999448904237926,
+     "settledCount": 217748,
+     "worst": 11.845385491485558,
+     "bestWrong": 5.148599305604108,
+     "mappingDecidable": true,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": []
+    },
+    "scroll": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 4.230465243568692
+     },
+     "mae": 1.8841458542354792,
+     "settledRate": 1,
+     "settledCount": 222591,
+     "worst": 4.820082572970165,
+     "bestWrong": 2.182319166618231,
+     "mappingDecidable": true,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": []
+    }
+   },
+   "restarts": 1,
+   "sidMissed": 0,
+   "problems": [],
+   "reference": "the oracle",
+   "scrollVram": {
+    "bytes": 960,
+    "differing": [],
+    "l0scryInGolden": 32
+   }
+  },
+  "replays": []
+ }
+}

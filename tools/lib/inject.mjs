@@ -119,7 +119,7 @@ function differences(a, b) {
 }
 
 /** The capture, the golden as it should look, and the difference, to look at later. */
-function writePictures(directory, name, capture, result) {
+export function writePictures(directory, name, capture, result) {
   mkdirSync(directory, { recursive: true })
   const rgba = (pick) => {
     const out = new Uint8Array(WIDTH * HEIGHT * 4)

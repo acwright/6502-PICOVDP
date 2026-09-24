@@ -1,0 +1,83 @@
+{
+ "at": "2026-09-24T13:35:45.492Z",
+ "results": {
+  "vdp-modes": {
+   "fixture": "vdp-modes",
+   "seconds": 12,
+   "frames": 540,
+   "checkpoints": {
+    "text": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 14.675632183908046
+     },
+     "mae": 22.11337510135655,
+     "settledRate": 0.9999101739257363,
+     "settledCount": 89061,
+     "worst": 9.986121871526258,
+     "bestWrong": 29.783159811165586,
+     "mappingDecidable": true,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": [],
+     "streamFrame": 539
+    },
+    "compact": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 12.025779967159277
+     },
+     "mae": 17.659817307789382,
+     "settledRate": 1,
+     "settledCount": 74308,
+     "worst": 2.9887495289874577,
+     "bestWrong": 39.42167965885747,
+     "mappingDecidable": true,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": [],
+     "streamFrame": 389
+    },
+    "graphics": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 12.27095785440613
+     },
+     "mae": 21.896344918164047,
+     "settledRate": 1,
+     "settledCount": 42504,
+     "worst": 5.972237907020515,
+     "bestWrong": 49.25868223159033,
+     "mappingDecidable": true,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": [],
+     "streamFrame": 264
+    },
+    "full": {
+     "offset": {
+      "dx": 0,
+      "dy": 0,
+      "mae": 15.432588943623426
+     },
+     "mae": 27.481581100426,
+     "settledRate": null,
+     "settledCount": 0,
+     "worst": null,
+     "bestWrong": 61.14326287923165,
+     "mappingDecidable": true,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": [],
+     "streamFrame": 295
+    }
+   },
+   "problems": [],
+   "backToBasic": true
+  },
+  "replays": []
+ }
+}

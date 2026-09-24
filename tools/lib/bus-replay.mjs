@@ -222,7 +222,14 @@ function differences(a, b) {
  * path; `names` picks checkpoints (all of them if empty). Returns the results,
  * one a fixture a profile.
  */
-export async function replayTraces({ nano, link, target, names = [], timings, out = null, version: releaseVersion = 0, device = '0', log = console.log }) {
+/** The STAT5 this source builds, from firmware/renderer.h: what a release build, with no link to ask, reports. */
+export function builtVersion() {
+  const m = /#define PICOVDP_VERSION_BCD (0x[0-9A-Fa-f]+)/.exec(readFileSync(join(REPO, 'firmware', 'renderer.h'), 'utf8'))
+  if (!m) throw new Error('no PICOVDP_VERSION_BCD in firmware/renderer.h')
+  return Number(m[1])
+}
+
+export async function replayTraces({ nano, link, target, names = [], timings, out = null, version: releaseVersion = builtVersion(), device = '0', log = console.log }) {
   const { CMD, decodeInfo, decodeSnapshot, decodeStats, packSnapshot, u8 } = await import('./link.mjs')
   const manifest = JSON.parse(readFileSync(join(ORACLE, 'manifest.json'), 'utf8'))
   const fixtures = target === 'all' ? manifest.fixtures.map((f) => f.name) : [target]

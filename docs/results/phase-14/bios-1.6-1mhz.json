@@ -1,0 +1,127 @@
+{
+ "at": "2026-09-24T12:41:55.945Z",
+ "results": {
+  "bios": {
+   "rom": "bios-1.6",
+   "checkpoints": {
+    "ok": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 3.650279146141215
+     },
+     "mae": 0.5735141855609003,
+     "settledRate": 1,
+     "settledCount": 276337,
+     "worst": 1.7417139217694455,
+     "bestWrong": 0.5735141855609003,
+     "mappingDecidable": false,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": []
+    },
+    "screenful": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 3.8598029556650246
+     },
+     "mae": 1.1998712622950942,
+     "settledRate": 1,
+     "settledCount": 240241,
+     "worst": 1.7949101110967831,
+     "bestWrong": 1.1998712622950942,
+     "mappingDecidable": false,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": []
+    },
+    "scroll": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 4.509666119321292
+     },
+     "mae": 0.9339109190984094,
+     "settledRate": 1,
+     "settledCount": 241042,
+     "worst": 1.1377477783954646,
+     "bestWrong": 0.9339109190984094,
+     "mappingDecidable": false,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": []
+    }
+   },
+   "restarts": 1,
+   "sidMissed": 0,
+   "problems": []
+  },
+  "graphics-1": {
+   "rom": "bios-1.6",
+   "drawn": {
+    "offset": {
+     "dx": -1,
+     "dy": 0,
+     "mae": 30.580744389709906
+    },
+    "mae": 46.88945007390624,
+    "settledRate": 0.9995155299563977,
+    "settledCount": 74308,
+    "worst": 9.971335522420198,
+    "bestWrong": 65.74205659938548,
+    "mappingDecidable": true,
+    "wrongCardPixels": 0,
+    "worstBlocks": [],
+    "problems": []
+   },
+   "backToBasic": true,
+   "problems": []
+  },
+  "probe": {
+   "runs": 10000,
+   "detectVdp": 10000,
+   "detectFont": 10000,
+   "statA": [
+    172,
+    16,
+    191
+   ],
+   "statB": [
+    172,
+    16,
+    191
+   ],
+   "done": true,
+   "problems": []
+  },
+  "bus": {
+   "passes": 64,
+   "seed": 49980,
+   "seconds": 59.329,
+   "clockCount": 10674,
+   "mhz": 0.9996598496745344,
+   "done": true,
+   "errors": {
+    "ErrTightA": 0,
+    "ErrLooseA": 0,
+    "ErrAddrA": 0,
+    "ErrStatA": 0,
+    "ErrTightB": 0,
+    "ErrLooseB": 0,
+    "ErrAddrB": 0,
+    "ErrStatB": 0,
+    "ErrCopy": 0
+   },
+   "trials": {
+    "writePairs": 131072,
+    "tightReads": 131072,
+    "looseReads": 131072,
+    "readsAfterAddress": 65536,
+    "statusReads": 131072,
+    "copied": 262144
+   },
+   "problems": []
+  }
+ }
+}

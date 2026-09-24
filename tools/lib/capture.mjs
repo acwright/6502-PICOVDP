@@ -5,7 +5,7 @@
 // fail. The first run also triggers macOS's camera permission prompt for
 // whatever is calling ffmpeg.
 
-import { execFile, execFileSync } from 'node:child_process'
+import { execFile, execFileSync, spawn } from 'node:child_process'
 
 export const DEFAULT_DEVICE = '0'
 export const WIDTH = 640
@@ -59,6 +59,73 @@ export function grabAsync({ device = DEFAULT_DEVICE, width = WIDTH, height = HEI
       resolve({ width, height, rgb: out.subarray(out.length - frame) })
     })
   })
+}
+
+/**
+ * Every frame the card delivers for `seconds`, at 60 a second: `onFrame` is
+ * called with { width, height, rgb, index } for each, and the buffer is the
+ * caller's to keep. For a picture that changes every frame, where one grab
+ * would land wherever it landed. Resolves to the number of frames.
+ */
+export function stream({ device = DEFAULT_DEVICE, width = WIDTH, height = HEIGHT, seconds, framerate = 60, onFrame }) {
+  const frame = width * height * 3
+  return new Promise((resolve, reject) => {
+    const ffmpeg = spawn('ffmpeg', [
+      '-hide_banner', '-loglevel', 'error',
+      '-f', 'avfoundation',
+      '-framerate', String(framerate),
+      '-video_size', `${width}x${height}`,
+      '-i', String(device),
+      '-t', String(seconds),
+      '-pix_fmt', 'rgb24',
+      '-f', 'rawvideo', '-',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] })
+    let pending = []
+    let have = 0
+    let index = 0
+    let err = ''
+    ffmpeg.stdout.on('data', (chunk) => {
+      pending.push(chunk)
+      have += chunk.length
+      while (have >= frame) {
+        const all = pending.length === 1 ? pending[0] : Buffer.concat(pending)
+        onFrame({ width, height, rgb: Buffer.from(all.subarray(0, frame)), index: index++ })
+        const rest = all.subarray(frame)
+        pending = rest.length ? [rest] : []
+        have = rest.length
+      }
+    })
+    ffmpeg.stderr.on('data', (chunk) => { err += chunk })
+    ffmpeg.on('error', reject)
+    ffmpeg.on('close', (code) => {
+      if (code !== 0 && index === 0) reject(new Error(`ffmpeg could not read the capture card: ${err.trim().split('\n').slice(-3).join('; ')}`))
+      else resolve(index)
+    })
+  })
+}
+
+/**
+ * A still picture, as the mean of `frames` consecutive frames: the card's
+ * compression noise moves from frame to frame and the picture does not, so a
+ * block that is wrong in the mean is wrong on the monitor.
+ */
+export async function grabMean({ device = DEFAULT_DEVICE, width = WIDTH, height = HEIGHT, frames = 8, framerate = 30 } = {}) {
+  const sum = new Float64Array(width * height * 3)
+  let n = 0
+  let skip = 4  // the first out of a capture card is often half a field
+  await stream({
+    device, width, height, framerate, seconds: (frames + skip + 4) / framerate,
+    onFrame({ rgb }) {
+      if (skip > 0) { skip--; return }
+      if (n >= frames) return
+      for (let i = 0; i < sum.length; i++) sum[i] += rgb[i]
+      n++
+    },
+  })
+  if (!n) throw new Error('the capture card gave no frames')
+  const rgb = Buffer.alloc(sum.length)
+  for (let i = 0; i < sum.length; i++) rgb[i] = Math.round(sum[i] / n)
+  return { width, height, rgb, frames: n }
 }
 
 /** Threshold to ink/paper on luminance. */

@@ -12,7 +12,8 @@ PRO running this firmware; every golden checkpoint the emulator holds reproduces
 byte for byte on the PRO; and the per-line budget, interrupt timing and status
 freshness are measured on the PRO and written back into SPEC.md.
 
-**Status:** Phases 0–12 done ([results](docs/results/)). Phase 1 measured
+**Status:** Phases 0–14 done ([results](docs/results/)); the plan is complete, and
+the first release, `v1.0.0`, is tagged. Phase 1 measured
 the line at 2.5–4× §18's estimates, and settled SPEC.md draft 0.4 from it: the
 sprites are built on core 0 (section 3), the clock is 352 MHz, `SPRLIMIT` resets
 to 16, and a late line is specified. Phase 2 exported the oracle: the fixtures'
@@ -70,7 +71,19 @@ right, with no late line, no FIFO overrun, no stale read and every capture
 stable. §3's latch held on 11,800 trials across picture, border and blanking;
 every `IRQLINE` fires within 0.1 µs of its line in every geometry; status is
 restaged within 3.2 µs of each line start; and the release build matches.
-**Part C, the machine, is next: Phase 14 puts the card in the AC6502.**
+Phase 14 put the card in an AC6502 ACE with the first release, `STAT5` `$10`,
+at both of its clocks and under both BIOSes. BIOS 1.6 boots unmodified to `OK`
+in its legacy text mode, and `graphics-1.asm` draws what it drew. BIOS 2.0
+finds the card by §16, and its boot, `screenful` and `scroll` match the `bios`
+goldens with no card pixel wrong. The scroll is done in hardware: the name
+table read back equals the `L0SCRY`-scrolled emulator's in all 960 bytes. The
+sample cartridges' own source, run from RAM, matches all eight of their
+goldens. And the ACE's own 6502 made 500 passes of its tightest accesses on
+both pairs, 2 µs apart at 2 MHz, over 7 million accesses a run, with none
+wrong. It also found three things about the ACE rather than the card: at
+2 MHz its SID and CF card are sometimes missed, under BIOS 1.6 at 2 MHz its
+serial input sometimes replays, and a legacy program run from BASIC 2.0 finds
+the card in Text mode (docs/results/phase-14.md).
 
 ---
 
@@ -1134,7 +1147,9 @@ listed, with its Phase 10 injection result standing for it.
 
 9. **The Nano is not a 6502.** Its strobes and spacing come from profiles, not
    from a PHI2. Margin sweeps bracket the 6502's timing from both sides, and
-   Phase 14 is the check that the real machine agrees.
+   Phase 14 is the check that the real machine agrees. It does: the ACE's
+   W65C02S, at 1 MHz and 2 MHz, made 500 passes of its tightest accesses on
+   both pairs with none wrong (docs/results/phase-14.md).
 
 10. **The data bus is wired bit-reversed.** CD0 is the MSB (section 5). Phase 9's
     readback test catches it before any firmware of ours is involved.
@@ -1217,7 +1232,7 @@ proves it.
 
 - Power-on VRAM is zeroed (§15 leaves it undefined; the emulator's cold start does
   the same). RST does not zero it.
-- `STAT5` reads the firmware version; the first release's value is set in Phase 14.
+- `STAT5` reads the firmware version: `$10`, 1.0, is the first release (Phase 14).
 - `OVF` and `COL` are published when core 1 finishes the row's build, not at its
   latch (Phase 8): 41 µs after the latch's line start on average and 60 µs at
   most under the load run (Phase 13), so always before the row is shown.

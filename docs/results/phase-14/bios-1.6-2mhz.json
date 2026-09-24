@@ -1,0 +1,93 @@
+{
+ "at": "2026-09-24T13:22:24.283Z",
+ "results": {
+  "bios": {
+   "rom": "bios-1.6",
+   "checkpoints": {
+    "ok": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 3.474198139025725
+     },
+     "mae": 0.41197601899857367,
+     "settledRate": 1,
+     "settledCount": 276337,
+     "worst": 1.839449657483442,
+     "bestWrong": 0.41197601899857367,
+     "mappingDecidable": false,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": []
+    },
+    "screenful": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 3.8173070607553368
+     },
+     "mae": 1.2107314391076178,
+     "settledRate": 1,
+     "settledCount": 240241,
+     "worst": 1.8323058928326077,
+     "bestWrong": 1.2107314391076178,
+     "mappingDecidable": false,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": []
+    },
+    "scroll": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 3.8573399014778325
+     },
+     "mae": 1.2096739388985187,
+     "settledRate": 1,
+     "settledCount": 241042,
+     "worst": 1.7295616531558835,
+     "bestWrong": 1.2096739388985187,
+     "mappingDecidable": false,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": []
+    }
+   },
+   "restarts": 1,
+   "sidMissed": 0,
+   "problems": []
+  },
+  "graphics-1": {
+   "rom": "bios-1.6",
+   "drawn": {
+    "offset": {
+     "dx": -1,
+     "dy": 0,
+     "mae": 30.57720853858785
+    },
+    "mae": 46.902684590242494,
+    "settledRate": 0.9995155299563977,
+    "settledCount": 74308,
+    "worst": 9.971039457393552,
+    "bestWrong": 65.75182946918004,
+    "mappingDecidable": true,
+    "wrongCardPixels": 0,
+    "worstBlocks": [],
+    "problems": []
+   },
+   "backToBasic": true,
+   "problems": []
+  },
+  "probe": {
+   "problems": [
+    "did not finish: timed out after 5080 ms waiting for #END#\r\n; had \"D\\r\\nXMODEM RX READY\\r\\n\\u0015\\u0015\\u0015\\u0015\\u0015\\u0015\\u0015\\u0015\\u0015\\u0015\\u0015\\u0015\""
+   ]
+  },
+  "bus": {
+   "problems": [
+    "did not finish: PEEK of 3 bytes at 2984 printed \" 0\\n 0\\n 0\\n#END#\\n 0\\n 0\\n 0\\n#END#\\n 0\\n 0\\n 0\\n\""
+   ]
+  },
+  "replays": []
+ }
+}

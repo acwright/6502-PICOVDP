@@ -1,0 +1,1 @@
+{"rom":"bios-1.6","note":"run by a replayed RUN after the ring replay; results read after a reset button press","passes":500,"seed":49980,"clock":21351,"done":165,"mhz":1.9996006605209842,"ErrTightA":0,"ErrLooseA":0,"ErrAddrA":0,"ErrStatA":0,"ErrTightB":0,"ErrLooseB":0,"ErrAddrB":0,"ErrStatB":0,"ErrCopy":0}

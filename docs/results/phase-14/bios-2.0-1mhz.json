@@ -1,0 +1,264 @@
+{
+ "at": "2026-09-24T13:47:50.265Z",
+ "results": {
+  "probe": {
+   "runs": 10000,
+   "detectVdp": 10000,
+   "detectFont": 10000,
+   "statA": [
+    172,
+    16,
+    191
+   ],
+   "statB": [
+    172,
+    16,
+    191
+   ],
+   "done": true,
+   "problems": []
+  },
+  "bus": {
+   "passes": 500,
+   "seed": 49980,
+   "seconds": 460.756,
+   "clockCount": 10674,
+   "mhz": 0.9996598496745344,
+   "done": true,
+   "errors": {
+    "ErrTightA": 0,
+    "ErrLooseA": 0,
+    "ErrAddrA": 0,
+    "ErrStatA": 0,
+    "ErrTightB": 0,
+    "ErrLooseB": 0,
+    "ErrAddrB": 0,
+    "ErrStatB": 0,
+    "ErrCopy": 0
+   },
+   "trials": {
+    "writePairs": 1024000,
+    "tightReads": 1024000,
+    "looseReads": 1024000,
+    "readsAfterAddress": 512000,
+    "statusReads": 1024000,
+    "copied": 2048000
+   },
+   "problems": []
+  },
+  "bios": {
+   "rom": "bios-2.0",
+   "checkpoints": {
+    "ok": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 4.201981390257252
+     },
+     "mae": 2.045919333979589,
+     "settledRate": 0.9999507548865516,
+     "settledCount": 243679,
+     "worst": 11.864571834257362,
+     "bestWrong": 4.272208525430799,
+     "mappingDecidable": true,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": []
+    },
+    "screenful": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 4.49584017515052
+     },
+     "mae": 2.587439198926629,
+     "settledRate": 0.9999448904237926,
+     "settledCount": 217748,
+     "worst": 11.841835516284874,
+     "bestWrong": 5.156526444358098,
+     "mappingDecidable": true,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": []
+    },
+    "scroll": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 4.265090311986864
+     },
+     "mae": 1.9426945589348852,
+     "settledRate": 1,
+     "settledCount": 222591,
+     "worst": 4.163950923442542,
+     "bestWrong": 2.2362640748110527,
+     "mappingDecidable": true,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": []
+    }
+   },
+   "restarts": 1,
+   "sidMissed": 0,
+   "problems": [],
+   "reference": "the oracle"
+  },
+  "vdp-modes": {
+   "fixture": "vdp-modes",
+   "seconds": 12,
+   "frames": 540,
+   "restreamed": false,
+   "checkpoints": {
+    "text": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 14.657285166940339
+     },
+     "mae": 22.107592147786082,
+     "settledRate": 0.9999101739257363,
+     "settledCount": 89061,
+     "worst": 9.986121871526258,
+     "bestWrong": 29.777683246128344,
+     "mappingDecidable": true,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": [],
+     "streamFrame": 173
+    },
+    "compact": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 12.014296661193212
+     },
+     "mae": 17.659693405908016,
+     "settledRate": 1,
+     "settledCount": 74308,
+     "worst": 2.9891801690262154,
+     "bestWrong": 39.43807756413612,
+     "mappingDecidable": true,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": [],
+     "streamFrame": 35
+    },
+    "graphics": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 12.271100164203613
+     },
+     "mae": 21.896698719757314,
+     "settledRate": 1,
+     "settledCount": 42504,
+     "worst": 5.971485036702428,
+     "bestWrong": 49.26355774759011,
+     "mappingDecidable": true,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": [],
+     "streamFrame": 286
+    },
+    "full": {
+     "offset": {
+      "dx": 0,
+      "dy": 0,
+      "mae": 15.434690749863163
+     },
+     "mae": 27.482547879656547,
+     "settledRate": null,
+     "settledCount": 0,
+     "worst": null,
+     "bestWrong": 61.14266561850906,
+     "mappingDecidable": true,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": [],
+     "streamFrame": 303
+    }
+   },
+   "problems": [],
+   "backToBasic": true
+  },
+  "vdp-layers": {
+   "fixture": "vdp-layers",
+   "seconds": 70,
+   "frames": 4200,
+   "restreamed": false,
+   "checkpoints": {
+    "parallax": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 13.277175697865353
+     },
+     "mae": 9.972347142717913,
+     "settledRate": 0.9997237214717752,
+     "settledCount": 101347,
+     "worst": 11.490525334966051,
+     "bestWrong": 21.34877471241647,
+     "mappingDecidable": true,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": [],
+     "streamFrame": 1962
+    },
+    "scroll-bit8-l1": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 13.088593322386426
+     },
+     "mae": 10.08684747241809,
+     "settledRate": 0.9984607491021037,
+     "settledCount": 93552,
+     "worst": 15.890703640376728,
+     "bestWrong": 20.987246611959304,
+     "mappingDecidable": true,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": [],
+     "streamFrame": 2052
+    },
+    "occluded": {
+     "offset": {
+      "dx": -1,
+      "dy": 0,
+      "mae": 13.525725232621784
+     },
+     "mae": 10.284247104902494,
+     "settledRate": 0.9977558638845133,
+     "settledCount": 92686,
+     "worst": 10.363352943784975,
+     "bestWrong": 21.456004566322292,
+     "mappingDecidable": true,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": [],
+     "streamFrame": 4034
+    },
+    "scroll-bit8-l0": {
+     "offset": {
+      "dx": 0,
+      "dy": 0,
+      "mae": 13.443798576902026
+     },
+     "mae": 10.234089270523514,
+     "settledRate": 0.9993998019346384,
+     "settledCount": 99967,
+     "worst": 12.379473676820197,
+     "bestWrong": 21.312412020664688,
+     "mappingDecidable": true,
+     "wrongCardPixels": 0,
+     "worstBlocks": [],
+     "problems": [],
+     "streamFrame": 4094
+    }
+   },
+   "problems": [],
+   "backToBasic": true
+  },
+  "replays": []
+ }
+}

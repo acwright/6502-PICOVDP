@@ -23,8 +23,10 @@
 #include "vdp.h"
 #include "vdp_debug.h"
 
-// STAT5 (§6): this firmware's version, BCD. Phase 14 sets the first release's.
-#define PICOVDP_VERSION_BCD 0x00
+// STAT5 (§6): this firmware's version, BCD — high nibble major, low minor.
+// $10 is 1.0, the first release (Phase 14). tools/lib/bus-replay.mjs reads
+// this line for a release build's expected STAT5.
+#define PICOVDP_VERSION_BCD 0x10
 
 // Core 0, once: the card at power-on, the VGA driver, the sprite job interrupt.
 void renderer_init(void);

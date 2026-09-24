@@ -18,7 +18,15 @@ package).
   and `vdpctl`.
 - `docs/results/` — what each phase measured and checked.
 
-Status: Phase 13 (raster timing, interrupts and load) done. A 2 MHz 6502's
+Status: the plan is complete, and `v1.0.0`, the first release (`STAT5` `$10`),
+is tagged. Phase 14 put it in an AC6502 ACE at 1 MHz and 2 MHz: BIOS 1.6 boots
+unmodified to `OK` and `graphics-1.asm` draws what it drew; BIOS 2.0 finds the
+card, and its boot and hardware scroll match the `bios` goldens with no card
+pixel wrong; the VDP Modes and VDP Layers cartridges match their goldens; and
+the ACE's own 6502 made its tightest accesses, 2 µs apart at 2 MHz, over
+7 million a run with none wrong. See `docs/results/phase-14.md`.
+
+Phase 13 (raster timing, interrupts and load) before it. A 2 MHz 6502's
 accesses work: 33.6 million trials of reads and writes exactly 2 µs apart, on
 both pairs, all right under an hour of the heaviest load — the worst reset-state
 scene with `FONT` loads for both layers every frame, a scanline interrupt every
@@ -57,8 +65,9 @@ Layout
 | `fonts/` | `cp437-6x8.bin`, the card's built-in font (§7), from 6502-BIOS v1.6. Checked by `tools/font.mjs` |
 | `tests/unit/` | C unit tests, run by CTest |
 | `tests/bench/` | port conformance scripts for the Nano, played by `vdpctl conformance` |
+| `tests/machine/` | the programs Phase 14 runs on the AC6502 itself, as `.prg` files: §16's probe, the bus test, the sample cartridges from RAM, `graphics-1.asm`. Built by `make -C tests/machine`, run by `acectl` |
 | `tests/oracle/` | the emulator's goldens and traces, pinned. Written by `tools/sync-oracle.mjs` only |
-| `tools/` | Node ESM host tools: `vdpctl`, `sync-oracle`, `replay`, `card`, `fuzz`, `font`, `check-spec` |
+| `tools/` | Node ESM host tools: `vdpctl`, `acectl`, `sync-oracle`, `replay`, `card`, `fuzz`, `font`, `check-spec` |
 | `bench/nano/` | Arduino Nano bus harness (PlatformIO) |
 | `bench/hardware/` | the bench's schematic |
 | `bench/cards/` | the bench cards: pictures this repo draws itself, for the capture card to judge. Written by `tools/card.mjs` |
@@ -205,6 +214,18 @@ With the Nano wired to the PRO (`docs/BENCH.md`), and the board on `pro-debug`:
 node tools/vdpctl.mjs bus                          # the wiring check
 node tools/vdpctl.mjs conformance --timing all     # all four ports, against Video.ts
 node tools/vdpctl.mjs replay all --timing all      # every golden checkpoint through the pins
+```
+
+### In the AC6502
+
+With the release on the PRO, the PRO in an ACE, the ACE's serial port on the
+Mac and the capture card attached (`docs/results/phase-14.md`):
+
+```sh
+make -C tests/machine                              # the .prg files, into build/machine/
+node tools/acectl.mjs info                         # STAT4-STAT6, through BASIC
+node tools/acectl.mjs all --version '$10'          # on BIOS 2.0: probe, bus, bios, both cartridges
+node tools/acectl.mjs all-1.6 --version '$10'      # on BIOS 1.6: bios, graphics-1, probe, bus
 ```
 
 Licence

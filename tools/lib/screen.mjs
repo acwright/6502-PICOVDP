@@ -240,6 +240,95 @@ export function measure(expected, capture, offset, mask, fit) {
   return { n, mae: n ? sum / n : 0, worst, within, rates }
 }
 
+/** A picture as its brightness, BT.601, in all three channels. */
+export function luma(rgb) {
+  const out = new Uint8Array(rgb.length)
+  for (let i = 0; i < rgb.length; i += 3) {
+    out[i] = out[i + 1] = out[i + 2] = Math.round(0.299 * rgb[i] + 0.587 * rgb[i + 1] + 0.114 * rgb[i + 2])
+  }
+  return out
+}
+
+/**
+ * Where the capture is wrong in one place, which the rates above average away:
+ * one glyph that differs is a twentieth of a percent of a text screen, and its
+ * pixels are all near an edge, so none of them is settled.
+ *
+ * So the capture is also read back at the card's own resolution: a card pixel
+ * is the mean of its 2 x 2 capture pixels, and it is wrong if it is more than
+ * `levels`, in its worst channel, from the golden's colour there, through the
+ * calibration, and from every even blend of that colour with a neighbour's.
+ * Once a block is aligned the path is within half a card pixel of it, so a
+ * pixel at an edge reads as some mix of the two sides; a stroke where the
+ * golden has none, or none where it has one, is a whole colour away from
+ * anything that mix can make. Each 8 x 8 block is read at the alignment's
+ * offset and every other within `reach` capture pixels of it, and keeps its
+ * fewest wrong: the dongle's scale is not exactly 2, so a line of text drifts
+ * by a pixel from one side of the screen to the other. The blocks with
+ * `least` or more wrong are returned, worst first, as { bx, by, count }, with
+ * the total over the frame.
+ *
+ * Call it with both pictures as brightness (`luma`): the path carries
+ * brightness at full resolution and colour at half, smearing a saturated
+ * edge across four card pixels, so brightness is what can be read back a card
+ * pixel at a time — every checker of graphics-1.asm's colour pairs included.
+ * Colour is judged by the settled rate above.
+ */
+export function wrongBlocks(expected, capture, offset, fit, {
+  least = BLOCK_TOLERANCE.least, reach = BLOCK_TOLERANCE.reach, levels = BLOCK_TOLERANCE.levels,
+} = {}) {
+  const CW = WIDTH / 2
+  const CH = HEIGHT / 2
+  // The golden at card resolution, through the calibration.
+  const want = new Float64Array(CW * CH * 3)
+  for (let cy = 0; cy < CH; cy++) {
+    for (let cx = 0; cx < CW; cx++) {
+      for (let c = 0; c < 3; c++) {
+        want[(cy * CW + cx) * 3 + c] = fit.gain[c] * pixel(expected, 3, cx * 2, cy * 2, c) + fit.black[c]
+      }
+    }
+  }
+  const wrongAt = (cx, cy, x, y) => {
+    const seen = [0, 1, 2].map((c) =>
+      (pixel(capture.rgb, 3, x, y, c) + pixel(capture.rgb, 3, x + 1, y, c) +
+       pixel(capture.rgb, 3, x, y + 1, c) + pixel(capture.rgb, 3, x + 1, y + 1, c)) / 4)
+    const here = (cy * CW + cx) * 3
+    const near = (i) =>
+      Math.abs((want[here] + want[i]) / 2 - seen[0]) <= levels &&
+      Math.abs((want[here + 1] + want[i + 1]) / 2 - seen[1]) <= levels &&
+      Math.abs((want[here + 2] + want[i + 2]) / 2 - seen[2]) <= levels
+    if (near(here)) return false
+    for (const [nx, ny] of [[cx - 1, cy], [cx + 1, cy], [cx, cy - 1], [cx, cy + 1]]) {
+      if (nx >= 0 && ny >= 0 && nx < CW && ny < CH && near((ny * CW + nx) * 3)) return false
+    }
+    return true
+  }
+  const blocks = []
+  let total = 0
+  for (let by = 0; by < CH / 8; by++) {
+    for (let bx = 0; bx < CW / 8; bx++) {
+      let fewest = Infinity
+      for (let sy = -reach; sy <= reach && fewest; sy++) {
+        for (let sx = -reach; sx <= reach && fewest; sx++) {
+          let wrong = 0
+          for (let cy = by * 8; cy < by * 8 + 8; cy++) {
+            for (let cx = bx * 8; cx < bx * 8 + 8; cx++) {
+              const x = cx * 2 + offset.dx + sx
+              const y = cy * 2 + offset.dy + sy
+              if (x < 0 || y < 0 || x + 1 >= WIDTH || y + 1 >= HEIGHT) continue
+              if (wrongAt(cx, cy, x, y)) wrong++
+            }
+          }
+          if (wrong < fewest) fewest = wrong
+        }
+      }
+      total += fewest
+      if (fewest >= least) blocks.push({ bx, by, count: fewest })
+    }
+  }
+  return { total, blocks: blocks.sort((a, b) => b.count - a.count) }
+}
+
 /**
  * The capture tolerance: what this bench was measured to deliver in Phase 10,
  * with margin. A level is 1/255 and a step of the DAC is 17 of them.
@@ -255,7 +344,11 @@ export function measure(expected, capture, offset, mask, fit) {
  *   levels, the worst pixel 15. The gate is 99% within 8. A settled pixel is
  *   one at least `SETTLES` from any colour change in the golden.
  * - **The whole picture, edges and all.** 4 to 27 levels, worst on the frames
- *   whose detail is two pixels wide everywhere. The gate is 32.
+ *   whose detail is two pixels wide everywhere. The gate is 32. A picture whose
+ *   colour changes every card pixel — graphics-1.asm's checkerboards of colour
+ *   pairs — measures 47 however right it is, because the path carries colour
+ *   at half resolution; Phase 14 records that figure and judges such a picture
+ *   by `wrongBlocks` instead.
  * - **The mapping.** The golden's own 0x0BGR beat all five wrong mappings on
  *   all twenty pictures. Only that ordering is required here — by how much is
  *   a property of the picture, and a picture with three colours in it cannot
@@ -276,6 +369,13 @@ export const TOLERANCE = {
  * the instrument that measures the curve; it is not measured by it.
  */
 export const CARD_TOLERANCE = { ...TOLERANCE, settledLevels: 32 }
+
+/**
+ * wrongBlocks' reading and its gate: a block with `gate` or more card pixels
+ * wrong in brightness is wrong. See docs/results/phase-14.md, "A wrong glyph".
+ * Set in Phase 14.
+ */
+export const BLOCK_TOLERANCE = { least: 1, reach: 2, levels: 64, gate: 3 }
 
 /**
  * Compare one capture with one golden. `golden` is { indices, vram, registers }.
