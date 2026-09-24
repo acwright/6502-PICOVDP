@@ -5,8 +5,8 @@ Phase 14 — In the AC6502
 an AC6502 ACE with the PICO9918 PRO running this repository's `pro-release`
 build, the first release: `STAT5` = `$10`, firmware 1.0. It was run at both
 settings of the ACE's J1 PHI2 SELECT jumper, 1 MHz and 2 MHz, and under both
-BIOS 1.6 and BIOS 2.0. The release is tagged `v1.0.0` in this repository and
-not pushed.
+BIOS 1.6 and BIOS 2.0. It is published as the GitHub release `v1.0.0`, with
+the tested image attached as `picovdp-v1.0.0.uf2`.
 
 The card was driven through the machine itself this time, not the Nano: the
 ACE's own W65C02S, its serial console, and the capture card. There is no USB on
@@ -390,12 +390,12 @@ Found on the way
 For 6502-ACE
 ------------
 
-6502-ACE's `VDP-PLAN.md` section 7 lists what this gate hands over. From this
-phase:
+6502-ACE's plan for its README listed what this gate hands over; that work
+now lives in 6502-ACE's `TODO.md`, with these values. From this phase:
 
-1. **The release:** tag `v1.0.0`, `STAT5` `$10`, SPEC.md draft 0.5, the
-   image's SHA-256 above ([The machine](#the-machine)). The tag is local; the
-   GitHub release and its `.uf2` asset wait for the owner's push.
+1. **The release:** `v1.0.0`, `STAT5` `$10`, SPEC.md draft 0.5, published on
+   GitHub with the asset `picovdp-v1.0.0.uf2`, whose SHA-256 is the image's
+   above ([The machine](#the-machine)).
 2. **Phase 14 in an ACE with that image:** `OK` at both J1 settings with `VDP`
    in the hardware line — header text above, captures in
    `docs/results/phase-14/shots/`. The BIOS in U8 was **v2.0.2**, not the
@@ -429,7 +429,7 @@ PLAN.md's Phase 14:
 | the `screenful` and `scroll` inputs show what the `bios` goldens show, the scroll in hardware through `L0SCRY` | ✅ 0 card pixels wrong at both clocks; the name table equals the `L0SCRY`-scrolled emulator's in all 960 bytes |
 | `graphics-1.asm` draws what it drew | ✅ under BIOS 1.6 at both clocks, every cell right; under 2.0 it draws nothing, as in the emulator ([Found on the way](#found-on-the-way) 1) |
 | `VdpModes.crt` and `VdpLayers.crt` match their goldens' pictures within the capture tolerance, at matching visual states | ✅ all eight checkpoints at both clocks, from the cartridges' own source run from RAM |
-| the release is tagged, and 6502-EMULATOR's plan is told its merge condition is met | ✅ `v1.0.0`, local; the emulator's `VDP-PLAN.md` §9.4 records that the PICOVDP part of its gate is met |
+| the release is tagged, and 6502-EMULATOR's plan is told its merge condition is met | ✅ `v1.0.0`, tagged and released; the emulator's plan was told, and the owner then retired it, keeping the emulator's default card as it is |
 | the host suite passes, the firmware presets build | ✅ 28 of 28; `pro-release` and `pro-debug` build |
 
 ---
@@ -455,8 +455,8 @@ Differences from the plan
    which Phase 10's tolerance cannot do for text.
 6. **Beyond the plan:** the probe and the bus test on the real CPU at both
    clocks; BIOS 1.6 at 2 MHz; the VRAM check of the hardware scroll.
-7. **The tag is local.** Pushing, and a GitHub release with the image as an
-   asset, are the owner's.
+7. **The release was published on the owner's word,** after this phase's
+   commit: the tag points at it, and the asset is the image tested here.
 
 ---
 
@@ -466,10 +466,13 @@ After this plan
 - **6502-BIOS:** hardware `VideoScroll` is already in 2.0, and proven above.
   What is left is SPEC §17's list, and [Found on the way](#found-on-the-way) 1:
   whether a legacy program started from BASIC 2.0 should find `VMODE` 0.
-- **6502-EMULATOR:** §9.4's default flip. Its gate — the firmware proven on the
-  PRO, BIOS 2.0 released, the DOCS rewrite published — is met.
-- **6502-ACE:** D3, with section [For 6502-ACE](#for-6502-ace)'s records; and
-  the ACE at 2 MHz, [Found on the way](#found-on-the-way) 2 and 3.
+- **6502-EMULATOR:** its plan's gate for making the PICOVDP the default card —
+  the firmware proven on the PRO, BIOS 2.0 released, the DOCS rewrite
+  published — is met. The owner keeps the TMS9918A and BIOS 1.6 as the default
+  for now.
+- **6502-ACE:** its `TODO.md` holds the README work, with section
+  [For 6502-ACE](#for-6502-ace)'s records, and the ACE at 2 MHz,
+  [Found on the way](#found-on-the-way) 2 and 3, as Rev 1.1 items.
 
 ---
 

@@ -13,7 +13,7 @@ byte for byte on the PRO; and the per-line budget, interrupt timing and status
 freshness are measured on the PRO and written back into SPEC.md.
 
 **Status:** Phases 0–14 done ([results](docs/results/)); the plan is complete, and
-the first release, `v1.0.0`, is tagged. Phase 1 measured
+the first release, `v1.0.0`, is published. Phase 1 measured
 the line at 2.5–4× §18's estimates, and settled SPEC.md draft 0.4 from it: the
 sprites are built on core 0 (section 3), the clock is 352 MHz, `SPRLIMIT` resets
 to 16, and a late line is specified. Phase 2 exported the oracle: the fixtures'

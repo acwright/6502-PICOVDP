@@ -19,7 +19,7 @@ package).
 - `docs/results/` — what each phase measured and checked.
 
 Status: the plan is complete, and `v1.0.0`, the first release (`STAT5` `$10`),
-is tagged. Phase 14 put it in an AC6502 ACE at 1 MHz and 2 MHz: BIOS 1.6 boots
+is published on GitHub with its firmware image. Phase 14 put it in an AC6502 ACE at 1 MHz and 2 MHz: BIOS 1.6 boots
 unmodified to `OK` and `graphics-1.asm` draws what it drew; BIOS 2.0 finds the
 card, and its boot and hardware scroll match the `bios` goldens with no card
 pixel wrong; the VDP Modes and VDP Layers cartridges match their goldens; and
