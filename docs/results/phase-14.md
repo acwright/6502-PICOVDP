@@ -400,18 +400,22 @@ now lives in 6502-ACE's `TODO.md`, with these values. From this phase:
    in the hardware line — header text above, captures in
    `docs/results/phase-14/shots/`. The BIOS in U8 was **v2.0.2**, not the
    `v2.0` (`4702fad7…`) the plan names. Detection held at every power-on and
-   every restart; the restarts were through the reset vector — the button was
-   pressed only under BIOS 1.6.
+   every restart. The restarts were mostly through the reset vector; the reset
+   button (SW17) was pressed three times under BIOS 1.6, and once under BIOS 2.0
+   at 1 MHz, whose boot matches the `ok` golden with no card pixel wrong
+   (`shots/bios-2.0-1mhz-reset-button.png`).
 3. **`MDE1` in the machine:** port B answers in every run; the BASIC line in
    [The probe and the bus](#the-probe-and-the-bus) is the builder's check.
 4. **Flashing:** BOOTSEL and `picotool load -v -x -f` with picotool 2.3.0; the
-   release build has no USB, so going back to it means BOOTSEL again. Whether
-   the PRO may be flashed in the ACE's socket is for the owner to record.
-5. **Stock firmware:** saved in Phase 9 (`~/Developer/Backups/pico9918-pro/`);
-   a restore was not tried.
+   release build has no USB, so going back to it means BOOTSEL again. The PRO
+   was flashed in the ACE's socket, with the ACE switched off.
+5. **Stock firmware:** saved in Phase 9 (`~/Developer/Backups/pico9918-pro/`)
+   with `picotool save -a`. A restore, `picotool load -v -x stock.bin` from
+   BOOTSEL, was not tried; it is picotool's ordinary load of a flash image.
 6. **Board-level findings:** the diode on `/INT`, found before this phase and
    fitted; and [Found on the way](#found-on-the-way) 2 and 3, the ACE at 2 MHz.
-7. **Enclosure access:** not checked.
+7. **Enclosure access:** the ACE has no enclosure, so BOOT and USB-C are in
+   reach.
 
 ---
 
