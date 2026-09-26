@@ -8,7 +8,9 @@ package).
 - [SPEC.md](SPEC.md) — what the VDP does (draft 0.5). `6502-EMULATOR`'s
   `Video.ts`, released in 3.0.0, is the reference implementation.
   [docs/SPEC.html](docs/SPEC.html) is the same document, rendered, and is kept in
-  step with it. SPEC.md is canonical; the emulator's `docs/VDP-SPEC.md` is a
+  step with it; it prints as a paged datasheet, and
+  [docs/SPEC.pdf](docs/SPEC.pdf) is that print, saved from Chrome with
+  background graphics on. SPEC.md is canonical; the emulator's `docs/VDP-SPEC.md` is a
   byte-identical copy, checked by `node tools/check-spec.mjs` (CTest
   `spec_in_step`, registered when the emulator checkout is found).
 - [PLAN.md](PLAN.md) — how the firmware is built, proven and delivered.

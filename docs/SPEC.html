@@ -395,6 +395,46 @@ footer {
 }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ---- print: light paper, one column, nothing scrolls ------------------ */
+@page {
+  size: letter;
+  margin: 0.55in 0.55in 0.65in;
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 7.5pt; color: #78829A;
+  @bottom-left   { content: "6502-PICOVDP \00b7  draft 0.5"; }   /* keep in step with the draft */
+  @bottom-center { content: "A.C. Wright Design"; }
+  @bottom-right  { content: counter(page) " / " counter(pages); }
+}
+@media print {
+  :root, :root:not([data-theme="light"]), :root[data-theme="dark"] {
+    --ground: #FFFFFF; --panel: #FAFBFD; --panel-2: #E2E6F0; --panel-3: #D8DDEA;
+    --ink: #161B26; --ink-2: #4A5365; --ink-3: #78829A;
+    --rule: #C7CFDE; --rule-2: #AFB9CD;
+    --accent: #3B3BB8; --accent-2: #6A6ACF; --accent-soft: #E1E2F8;
+    --green: #1C7F3E; --green-soft: #DCEFE1; --red: #AF3A2C; --amber: #86660C; --cyan: #0E7C86;
+    --shadow: none;
+  }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { zoom: .8; }
+  .shell { max-width: none; padding: 0; }
+  .mast { padding-top: 0; }
+  .facts { grid-template-columns: repeat(6, 1fr); }
+  /* contents: three columns on the first page */
+  .cols { display: block; }
+  nav.idx { position: static; max-height: none; overflow: visible; break-after: page; }
+  nav.idx ol { columns: 3; column-gap: 32px; }
+  nav.idx li { break-inside: avoid; }
+  .tw, .figframe, .palwrap, pre { overflow: visible; }
+  pre, pre code { white-space: pre-wrap; word-break: break-word; }
+  .figframe > svg, .palgrid { min-width: 0; }
+  /* headings stay with what follows; small blocks stay whole */
+  h2, h3, h4, .sec-num { break-after: avoid; }
+  h3, h4 { break-inside: avoid; }
+  figure, .note, .reg, .stk, .lgi, tr, pre, .palwrap, .tagline, .fact, canvas { break-inside: avoid; }
+  thead { display: table-header-group; }
+  p, li { orphans: 3; widows: 3; }
+  a { text-decoration: none; }
+}
 </style>
 
 <div class="shell">
@@ -1785,5 +1825,17 @@ var FONT00 = "AAAAAAAAAABwiNiIqIhwAHD4qPiI+HAAAFD4+PhwIAAAIHD4+HAgACBwcCD4+CAAAC
   if (window.MutationObserver) {
     new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   }
+  /* the canvas keeps the colors it was drawn in, so print draws it light */
+  var saved = null;
+  window.addEventListener("beforeprint", function () {
+    saved = document.documentElement.getAttribute("data-theme");
+    document.documentElement.setAttribute("data-theme", "light");
+    draw();
+  });
+  window.addEventListener("afterprint", function () {
+    if (saved === null) document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", saved);
+    draw();
+  });
 })();
 </script>
