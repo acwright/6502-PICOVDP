@@ -1,4 +1,4 @@
-// Phase 1 timing spike, RP2350 side (PLAN.md section 6, Phase 1).
+// Phase 1 timing spike, RP2350 side (docs/results/phase-01.md).
 //
 // Core 1 builds every scene's lines and times each stage with the M33's DWT
 // cycle counter, interrupts off. Core 0 owns USB and the clock: send 'r' over
@@ -70,7 +70,7 @@ static void dwt_start(void) {    // per core: the DWT is in each core's private 
 // ---------------------------------------------------------------------------
 // Stand-ins for what the spike has no real code for yet: the bus interrupt
 // (Phase 11) and vdp_line_start's journal drain (Phase 3). Shaped like the
-// work PLAN.md section 3 describes, so the cost is the right order.
+// work DESIGN.md section 3 describes, so the cost is the right order.
 
 typedef struct { uint16_t ptr; uint8_t prefetch, flip, payload, statsel; } port_t;
 static port_t ports[2];

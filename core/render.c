@@ -1,7 +1,7 @@
 // The render side: building a line from the latched card, and colouring it.
 //
 // Reads only render_reg, render_vram, render_screen_line, the palette cache and
-// the sprites the latch evaluated (PLAN.md section 3).
+// the sprites the latch evaluated (DESIGN.md section 3).
 //
 // Phase 5: the backdrop and border (§3, §11), display off, and both layers
 // through the tile engine (tiles.c).
@@ -98,7 +98,7 @@ void vdp_copy_half(const vdp_t *v, const vdp_half_t *h, uint8_t *indices) {
 }
 
 // A whole line on one thread, divided as the firmware divides it between its
-// two cores (PLAN.md section 3): the half left of the split, the half right of
+// two cores (DESIGN.md section 3): the half left of the split, the half right of
 // it, then the status. Any split gives the same row and the same status
 // (tests/unit/test_sprites, test_render).
 void vdp_build_line(vdp_t *v, uint8_t *indices) {

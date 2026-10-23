@@ -1,4 +1,4 @@
-// Phase 13's load run (PLAN.md): everything at once, for as long as it takes.
+// Phase 13's load run (docs/results/phase-13.md): everything at once, for as long as it takes.
 //
 //   - a worst-case scene (firmware/scenes.h), its program on one port pair,
 //     with FONT written for both layers every frame (LOAD's fonts);

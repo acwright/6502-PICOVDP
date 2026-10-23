@@ -4,7 +4,7 @@
 //
 //   node tools/replay.mjs [fixture | path.vdpt.gz ...] [--classes] [--reference] [--out DIR]
 //
-// The host executor of PLAN.md section 4, on the Node path: the adapter
+// The host executor of DESIGN.md section 4, on the Node path: the adapter
 // (host/node/Video.cjs, or PICOVDP_ADDON) with no CPU, ticked to each event of a
 // docs/TRACE.md trace, as the emulator's scripts/replay-trace.mjs ticks
 // Video.ts. Resets, writes, reads and checkpoints are fed in at their ticks.

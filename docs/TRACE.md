@@ -3,7 +3,7 @@ VDP Port Traces
 
 **Format version 1.** How a golden fixture's traffic to the video card is
 recorded, so the card can be held to the fixture's goldens with no 6502
-attached (PLAN.md section 4).
+attached (DESIGN.md section 4).
 
 A **trace** is everything a program did to the card's four ports, in order,
 with the tick each thing happened on. It also holds what the card did by itself

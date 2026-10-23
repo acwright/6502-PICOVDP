@@ -7,7 +7,7 @@
 ;
 ; https://github.com/visrealm/pico9918
 ;
-; The bus (SPEC.md §2, PLAN.md section 3): tmsWrite is pico9918's src/tms9918.pio
+; The bus (SPEC.md §2, DESIGN.md section 3): tmsWrite is pico9918's src/tms9918.pio
 ; program, unchanged. tmsRead is rewritten for four ports by 6502-PICOVDP.
 ;
 ; Pins: CD7..CD0 on GPIO 14..21 (CD7, GPIO 14, is the bus's bit 0), /CSR 26,

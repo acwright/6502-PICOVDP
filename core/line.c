@@ -44,7 +44,7 @@ void vdp_reset(vdp_t *v, bool power_on) {
     if (power_on) {
         // §15 leaves VRAM undefined but for the palette and the font; power-on
         // zeroes the rest, as the emulator's cold start does, so VRAM goldens
-        // compare exactly (PLAN.md section 4). Nothing is being built at
+        // compare exactly (DESIGN.md section 4). Nothing is being built at
         // power-on, so the render side is loaded directly.
         memset(v->vram, 0, sizeof v->vram);
         memcpy(v->vram + base, v->reset_palette, VDP_PALETTE_BYTES);

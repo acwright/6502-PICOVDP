@@ -3,7 +3,7 @@
 //
 // Evaluation runs at the latch's catch-up, on the render side just brought up
 // to date, and leaves the list of sprites the line draws for the build and the
-// slot it dropped, if any, for vdp_publish. Drawing is the build's (PLAN.md
+// slot it dropped, if any, for vdp_publish. Drawing is the build's (DESIGN.md
 // section 3): each core draws the sprites over its half of the row straight
 // into its own line, after its layers, reading only the render side and
 // writing no status. vdp_publish, on core 1, reports the row's overflow and both
@@ -428,7 +428,7 @@ void VDP_HOT(vdp_publish_collisions)(vdp_t *v, uint64_t collisions) {
     memcpy(v->collision_map, &map, sizeof map);
 }
 
-// PLAN.md section 3: the picture column the cores divide a row at, on an
+// DESIGN.md section 3: the picture column the cores divide a row at, on an
 // 8-pixel boundary: core 0 builds the columns left of it, core 1 the rest. The
 // row's cost-weighted mean column — both layers and the expansion, the same for
 // every column, and each sprite at its centre — in one pass and one division.

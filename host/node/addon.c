@@ -1,4 +1,4 @@
-// The core behind Node-API, for host/node/Video.cjs (PLAN.md section 4).
+// The core behind Node-API, for host/node/Video.cjs (DESIGN.md section 4).
 //
 // A thin binding: one function per core entry point, each taking the card as an
 // external. Everything that makes the core look like the emulator's Video — the

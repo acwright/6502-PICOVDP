@@ -151,7 +151,7 @@ void inject_after_line(vdp_t *v, uint32_t frame, uint16_t screen_line) {
                 const bool asserted = vdp_int_asserted(v);
                 restore_interrupts(irq);
                 reads++;
-                // Not compared on silicon (PLAN.md section 4): STAT5 is the
+                // Not compared on silicon (DESIGN.md section 4): STAT5 is the
                 // firmware's version, STAT3 b1 is advisory.
                 if (select == 5) {
                     stat5_reads++;

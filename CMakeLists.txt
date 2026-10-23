@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-# Two platforms from one tree (PLAN.md section 3). Pick one with a preset:
+# Two platforms from one tree (DESIGN.md section 3). Pick one with a preset:
 #   host, host-asan          macOS — the core and its unit tests
 #   pico2, pro-debug, pro-release   RP2350 firmware
 set(PICOVDP_PLATFORM host CACHE STRING "host or rp2350")

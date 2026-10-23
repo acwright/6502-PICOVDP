@@ -1,4 +1,4 @@
-// The AC6502 itself, from the Mac (PLAN.md Phase 14): its serial console at
+// The AC6502 itself, from the Mac (docs/results/phase-14.md): its serial console at
 // 19200 8-N-1 through a USB serial bridge, BASIC typed at it, and XMODEM for
 // .prg files.
 //

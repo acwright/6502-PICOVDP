@@ -591,7 +591,7 @@ void renderer_init(void) {
 
 void renderer_start(void) {
     cycle_counter_start();
-    // PLAN.md section 3: core 1 takes its launch handshake off the FIFO before
+    // DESIGN.md section 3: core 1 takes its launch handshake off the FIFO before
     // anything else can use it, and the raster starts only once its latch is
     // in place.
     // Its own stack: the SDK's 2 KB in scratch RAM is no margin.

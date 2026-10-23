@@ -1,4 +1,4 @@
-# The core as a Node-API addon, for host/node/Video.cjs (PLAN.md section 4).
+# The core as a Node-API addon, for host/node/Video.cjs (DESIGN.md section 4).
 #
 # Built with CMake against the headers of the Node on PATH, rather than with
 # node-gyp: nothing to install, and the core is compiled by the same toolchain
@@ -39,7 +39,7 @@ endif()
 add_test(NAME node_addon_loads
     COMMAND ${PICOVDP_NODE} ${CMAKE_CURRENT_SOURCE_DIR}/smoke.cjs $<TARGET_FILE:picovdp_node>)
 
-# The host executor (PLAN.md section 4): every fixture, replayed from
+# The host executor (DESIGN.md section 4): every fixture, replayed from
 # tests/oracle through the addon. Needs no emulator.
 foreach(fixture bios wizardslab vdp-modes vdp-layers vdp-font)
     add_test(NAME replay_${fixture}

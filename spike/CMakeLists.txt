@@ -1,4 +1,4 @@
-# Phase 1 timing spike (PLAN.md section 6). Disposable.
+# Phase 1 timing spike (docs/results/phase-01.md). Disposable.
 #   host:   spike_host, the renderer checked against a per-pixel reference (CTest)
 #   rp2350: picovdp_spike, the renderer timed on core 1 at both clock presets
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// Fuzz the core against Video.ts (PLAN.md section 4).
+// Fuzz the core against Video.ts (DESIGN.md section 4).
 //
 //   node tools/fuzz.mjs [--seed N] [--ops N] [--check-every N] [--scope bus|status|tiles|frames|all] [--out DIR] [--self]
 //

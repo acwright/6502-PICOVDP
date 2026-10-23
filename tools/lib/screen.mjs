@@ -1,4 +1,4 @@
-// The picture on the monitor, against the golden (PLAN.md Phase 10).
+// The picture on the monitor, against the golden (docs/results/phase-10.md).
 //
 // The injection proves the frame digitally: all 76,800 indices of the golden,
 // as they went to VGA (docs/DEBUGLINK.md's SNAPSHOT). What it cannot prove is

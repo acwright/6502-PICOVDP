@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// Check that the spec's copies are in step (PLAN.md ground rule 2).
+// Check that the spec's copies are in step (DESIGN.md ground rule 2).
 //
 //   node tools/check-spec.mjs            (CTest spec_in_step)
 //

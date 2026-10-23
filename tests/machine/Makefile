@@ -1,4 +1,4 @@
-# Phase 14's programs for the AC6502 (PLAN.md Phase 14, docs/results/phase-14.md).
+# Phase 14's programs for the AC6502 (docs/results/phase-14.md).
 # Each is a .prg that BASIC's LOAD takes over XMODEM; tools/acectl.mjs sends
 # them and reads their results. Needs cc65 (`brew install cc65`).
 #

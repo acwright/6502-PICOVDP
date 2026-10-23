@@ -1,5 +1,5 @@
 // Bench cards: pictures this repository authors itself, as a program of port
-// operations (PLAN.md Phase 10).
+// operations (docs/results/phase-10.md).
 //
 // The oracle's fixtures are the emulator's programs, and they are what proves
 // the card draws what SPEC.md says. A bench card proves something else: what
@@ -104,8 +104,8 @@ function setup(w, { color }) {
 /**
  * The palette test card: every one of §11's 256 entries, 16 to a row, as a
  * swatch of 16 x 8 pixels, with the family down the side and the step across
- * the top. PLAN.md's Still Open 3 — are the hue ramps usable — is judged on
- * this, on a real monitor.
+ * the top. The plan's Still Open 3 — are the hue ramps usable — was judged on
+ * this, on a real monitor (docs/results/phase-10.md).
  */
 function palette(w) {
   const GRID_X = 4, GRID_Y = 8   // cells; a swatch is two cells wide and one tall

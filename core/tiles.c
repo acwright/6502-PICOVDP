@@ -6,7 +6,7 @@
 // table of pixels and a source of colour: Graphics I is the per-pattern-group
 // source, Text is no attribute fetch at all (§9).
 //
-// Reads only the render side (PLAN.md section 3): render_reg and render_vram,
+// Reads only the render side (DESIGN.md section 3): render_reg and render_vram,
 // as they stood at the latch.
 //
 // Phase 5: 1bpp, with all four attribute sources, COLOR, LxPAL, transparency

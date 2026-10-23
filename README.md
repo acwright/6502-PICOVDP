@@ -13,7 +13,8 @@ package).
   background graphics on. SPEC.md is canonical; the emulator's `docs/VDP-SPEC.md` is a
   byte-identical copy, checked by `node tools/check-spec.mjs` (CTest
   `spec_in_step`, registered when the emulator checkout is found).
-- [PLAN.md](PLAN.md) — how the firmware is built, proven and delivered.
+- [DESIGN.md](DESIGN.md) — how the firmware is built and checked: the ground rules, the
+  architecture, the oracle and the bench.
 - [docs/TRACE.md](docs/TRACE.md) — the format of the port traces the goldens
   are replayed from.
 - [docs/DEBUGLINK.md](docs/DEBUGLINK.md) — the firmware's debug link over USB,
@@ -112,7 +113,7 @@ node tools/sync-oracle.mjs --check    # tests/oracle matches its manifest (CTest
 node tools/sync-oracle.mjs            # re-sync; the emulator's HEAD must be on origin/main, clean
 ```
 
-A re-sync is a commit of its own (PLAN.md ground rule 4).
+A re-sync is a commit of its own (DESIGN.md ground rule 4).
 
 ### The font
 

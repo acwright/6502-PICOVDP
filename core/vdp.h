@@ -1,6 +1,6 @@
 // 6502-PICOVDP core: all of SPEC.md's behaviour, in portable C11.
 //
-// PLAN.md section 3. One state structure and no globals, so the host can run
+// DESIGN.md section 3. One state structure and no globals, so the host can run
 // many instances; nothing here includes a pico-sdk header or touches hardware
 // (ground rule 5). The same interface is built for the RP2350 and for macOS.
 //
@@ -10,7 +10,7 @@
 // and the palette that the build functions read, and nothing else writes: it
 // catches up with the bus side at vdp_line_start, which is §3's latch. So a
 // line is built from the card as it stood when the line before it began, however
-// the bus interrupts the build (PLAN.md section 3, "Why the split exists").
+// the bus interrupts the build (DESIGN.md section 3, "Why the split exists").
 //
 // Phase 3: the bus side (§4, §5, §7), the palette (§11) and reset (§15).
 // Phase 4: the raster's line numbering (§3), status (§6) and interrupts (§14).
@@ -63,7 +63,7 @@
 #define VDP_PALETTE_ENTRIES 256
 
 // VRAM writes the journal holds for the render side before a write falls back
-// to marking its 1 KB page for a whole copy (PLAN.md section 3). No 6502 comes
+// to marking its 1 KB page for a whole copy (DESIGN.md section 3). No 6502 comes
 // near it: at 2 MHz back-to-back `sta` is 2 µs (§4), 32 writes in a 63.56 µs
 // line. A power of two: the journal is a ring.
 #define VDP_JOURNAL_ENTRIES 1024
@@ -118,7 +118,7 @@ typedef struct vdp_sprite {
     uint8_t attributes;
 } vdp_sprite_t;
 
-// One core's part of a line (PLAN.md section 3): picture columns [x0, x1),
+// One core's part of a line (DESIGN.md section 3): picture columns [x0, x1),
 // built into a line of its own, so the two cores never write a byte the other
 // reads. A half's frame columns are its picture columns and the border beside
 // them: the left border goes with the half that starts at column 0, the right

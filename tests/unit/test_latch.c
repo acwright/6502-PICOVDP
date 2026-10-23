@@ -1,5 +1,5 @@
 // §3's latch: a line is built from the card as it stood when the line before
-// it began, however the bus writes during the build (PLAN.md section 3). Jest
+// it began, however the bus writes during the build (DESIGN.md section 3). Jest
 // cannot see this — the adapter builds each line the instant its latch falls —
 // so it is tested here, inside the struct.
 
@@ -31,7 +31,7 @@ static void write_entry(vdp_t *v, unsigned entry, uint16_t rgb) {
     store(v, (uint16_t)(base + 2 * entry), bytes, 2);
 }
 
-// The one PLAN.md names: an operation between vdp_line_start and vdp_build_line
+// The one the plan's Phase 3 named: an operation between vdp_line_start and vdp_build_line
 // does not reach that line — not the backdrop register, not the palette entry
 // it names, not VRAM.
 TEST(operations_after_the_latch_wait_for_the_next) {

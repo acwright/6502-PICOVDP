@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// Pin a copy of 6502-EMULATOR's oracle in tests/oracle/ (PLAN.md section 4).
+// Pin a copy of 6502-EMULATOR's oracle in tests/oracle/ (DESIGN.md section 4).
 //
 //   node tools/sync-oracle.mjs           copy the goldens and traces, write the manifest
 //   node tools/sync-oracle.mjs --check   check tests/oracle against its manifest (CTest)
@@ -140,7 +140,7 @@ function sync() {
   if (before && moved.length + gone.length === 0 && before.emulator.commit === commit) {
     console.log('Nothing changed.')
   } else {
-    console.log('Commit tests/oracle on its own (PLAN.md ground rule 4).')
+    console.log('Commit tests/oracle on its own (DESIGN.md ground rule 4).')
   }
 }
 
@@ -191,7 +191,7 @@ function readme(manifest) {
 ======
 
 **Written by \`tools/sync-oracle.mjs\`. Do not edit anything here by hand**
-(PLAN.md ground rule 4). A golden that needs to move is re-captured in
+(DESIGN.md ground rule 4). A golden that needs to move is re-captured in
 6502-EMULATOR, in a commit of its own, and re-synced here in a commit of its own.
 
 A pinned copy of 6502-EMULATOR's golden checkpoints and the traces of the

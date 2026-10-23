@@ -1,4 +1,4 @@
-# vdp-replay: the host executor in pure C (PLAN.md section 4). A trace from
+# vdp-replay: the host executor in pure C (DESIGN.md section 4). A trace from
 # tests/oracle into the core, each checkpoint against its golden. Needs zlib,
 # which macOS has, and nothing of Node or the emulator.
 

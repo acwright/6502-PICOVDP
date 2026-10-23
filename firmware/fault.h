@@ -1,4 +1,4 @@
-// Crashes and hangs (PLAN.md section 3, "The debug link").
+// Crashes and hangs (DESIGN.md section 3, "The debug link").
 //
 // A HardFault on either core, or a panic, writes a record to RAM that a reset
 // does not clear, and reboots through the watchdog. The watchdog, 250 ms, is

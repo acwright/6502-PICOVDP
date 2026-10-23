@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// acectl: the AC6502 with the PRO fitted, from the Mac (PLAN.md Phase 14,
+// acectl: the AC6502 with the PRO fitted, from the Mac (docs/results/phase-14.md,
 // docs/results/phase-14.md). Everything goes over the machine's own serial
 // console (tools/lib/ace.mjs) and the capture card; nothing touches the PRO's
 // USB, which a release build does not have.

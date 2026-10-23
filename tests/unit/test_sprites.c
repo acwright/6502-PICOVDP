@@ -135,7 +135,7 @@ static void build_at(vdp_t *v, int split, uint8_t *row) {
     vdp_copy_half(v, &v->half, row);
 }
 
-// PLAN.md section 3: priority among sprites and collision are exact within
+// DESIGN.md section 3: priority among sprites and collision are exact within
 // each core's columns, so every split — the 32-pixel boundaries the firmware
 // uses, and any column at all — builds the same row and publishes the same
 // status as core 1 building the whole line.
@@ -195,7 +195,7 @@ TEST(every_split_builds_the_same_line) {
     free(w);
 }
 
-// Core 0 writes no status (PLAN.md section 3): what its half found waits in the
+// Core 0 writes no status (DESIGN.md section 3): what its half found waits in the
 // half until core 1 publishes it.
 TEST(core_0s_collisions_wait_for_the_publish) {
     vdp_t *v = graphics();
@@ -536,7 +536,7 @@ TEST(a_legacy_colour_0_sprite_collides_unseen) {
     free(w);
 }
 
-// PLAN.md section 3: the build reads the sprites as the latch took them. A
+// DESIGN.md section 3: the build reads the sprites as the latch took them. A
 // write to a slot, a pattern, SPRCTRL or MODE1 between the latch and the build
 // waits for the next line.
 TEST(a_write_during_the_build_waits_for_the_next_line) {
@@ -617,7 +617,7 @@ TEST(a_restored_card_evaluates_without_reporting) {
     free(w);
 }
 
-// PLAN.md section 3: the split is on an 8-pixel boundary within the picture,
+// DESIGN.md section 3: the split is on an 8-pixel boundary within the picture,
 // on every picture row, sprites or none.
 TEST(the_split_is_a_word_boundary_in_the_picture) {
     vdp_t *v = graphics();

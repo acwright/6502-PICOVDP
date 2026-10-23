@@ -2,7 +2,7 @@
 //
 //   vdp-replay [--classes] trace.vdpt.gz ...
 //
-// The host executor of PLAN.md section 4 without Node: tools/replay.mjs's
+// The host executor of DESIGN.md section 4 without Node: tools/replay.mjs's
 // replay, on vdp.h and vdp_debug.h alone. A card with no CPU is ticked to each
 // event of the trace, as the adapter (host/node/Video.cjs) ticks it — the same
 // accumulator deciding when a line starts and what STAT3 b1 reads, the same

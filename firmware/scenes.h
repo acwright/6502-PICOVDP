@@ -1,5 +1,5 @@
 // Phase 1's worst-case scenes, as a program would make them: port writes into
-// the card (PLAN.md Phase 8). Portable C11 on vdp.h's port numbers alone, so
+// the card (docs/results/phase-08.md). Portable C11 on vdp.h's port numbers alone, so
 // the firmware runs them and host/scene draws the same frames on the host.
 //
 // Each is the worst a line can be at its settings (docs/results/phase-01.md):

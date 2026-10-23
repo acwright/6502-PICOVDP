@@ -2,7 +2,7 @@ Oracle
 ======
 
 **Written by `tools/sync-oracle.mjs`. Do not edit anything here by hand**
-(PLAN.md ground rule 4). A golden that needs to move is re-captured in
+(DESIGN.md ground rule 4). A golden that needs to move is re-captured in
 6502-EMULATOR, in a commit of its own, and re-synced here in a commit of its own.
 
 A pinned copy of 6502-EMULATOR's golden checkpoints and the traces of the

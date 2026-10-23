@@ -1,4 +1,4 @@
-// Phase 14's checks, on an AC6502 with the PRO fitted (PLAN.md Phase 14,
+// Phase 14's checks, on an AC6502 with the PRO fitted (docs/results/phase-14.md,
 // docs/results/phase-14.md): each drives the machine over its serial console
 // (lib/ace.mjs), runs one of tests/machine's programs or types at BASIC, and
 // judges what it reads back or what the capture card sees against a golden —

@@ -1,4 +1,4 @@
-// Port conformance through the bus (PLAN.md Phase 11): accesses on all four
+// Port conformance through the bus (docs/results/phase-11.md): accesses on all four
 // ports played through the Nano to the card, every read the reference can
 // answer independently of time compared with what Video.ts returns.
 //
@@ -6,7 +6,7 @@
 //
 //   - every data-port read (§4), which is VRAM and the prefetch alone
 //   - status reads of STAT4 and STAT6, which are constant (§6); STAT5 is this
-//     firmware's version where the emulator reports the spec's (PLAN.md
+//     firmware's version where the emulator reports the spec's (DESIGN.md
 //     section 4), and the rest move with the raster, so those are read — each
 //     still resets its pair's flip-flop — but not compared
 //   - no FONT load (§7), whose copy lands at the next vertical blank: a FONT
@@ -326,7 +326,7 @@ const BACK_TO_BACK = [
 /**
  * §4 at the bus's tightest: runs of data reads on one port back to back, each
  * returning the prefetch the read before it fetched, which the card has to have
- * restaged in between (PLAN.md risk 5). VRAM is filled with random bytes first,
+ * restaged in between (the plan's risk 5). VRAM is filled with random bytes first,
  * through the other pair, so every read is of a byte this run wrote.
  */
 async function runBackToBack({ nano, start, seed, log, trials = 100 }) {

@@ -2,7 +2,7 @@
 //
 //   test_palette <SPEC.md> <picovdp-default.pal>
 //
-// The core's table is a transcription (PLAN.md Phase 3). It is checked against
+// The core's table is a transcription (docs/results/phase-03.md). It is checked against
 // the table printed in SPEC.md §11, which is normative, and against the JASC
 // palette file shipped beside it, so the three cannot drift apart.
 

@@ -208,7 +208,7 @@ TEST(the_row_built_is_the_one_after_the_latch) {
     }
 }
 
-// The one Jest cannot see (PLAN.md section 3): the bus, between the latch and
+// The one Jest cannot see (DESIGN.md section 3): the bus, between the latch and
 // the build, reaches nothing the build reads — not VRAM, not the layer's
 // registers, not the mode. The next latch takes all of it.
 TEST(a_write_during_the_build_waits_for_the_next_line) {

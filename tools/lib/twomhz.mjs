@@ -1,5 +1,5 @@
 // A 2 MHz 6502's tightest accesses, through the Nano's PACED runs (Phase 13,
-// PLAN.md's "2 MHz"). Every access in a batch is exactly 2 us after the one
+// docs/results/phase-13.md). Every access in a batch is exactly 2 us after the one
 // before it — the spacing of back-to-back `lda abs` or `sta abs` at 2 MHz —
 // so each of these is a trial:
 //

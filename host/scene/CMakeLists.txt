@@ -1,5 +1,5 @@
 # vdp-scene: the firmware's worst-case scenes drawn by the core on the host, the
-# reference for the firmware's snapshots of them (PLAN.md Phase 8).
+# reference for the firmware's snapshots of them (docs/results/phase-08.md).
 
 add_executable(vdp-scene scene.c ${CMAKE_SOURCE_DIR}/firmware/scenes.c)
 target_include_directories(vdp-scene PRIVATE ${CMAKE_SOURCE_DIR}/firmware)

@@ -1,4 +1,4 @@
-# The firmware (PLAN.md section 3): pico, pro-debug and pro-release presets.
+# The firmware (DESIGN.md section 3): pico, pro-debug and pro-release presets.
 add_executable(picovdp
     main.c
     renderer.c

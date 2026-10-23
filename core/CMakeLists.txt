@@ -1,4 +1,4 @@
-# The portable core (PLAN.md section 3): no pico-sdk, no hardware (rule 5).
+# The portable core (DESIGN.md section 3): no pico-sdk, no hardware (rule 5).
 # Built on both platforms from the start, so the RP2350 toolchain keeps it honest.
 
 # §7's built-in font: fonts/cp437-6x8.bin, turned into C in the build tree, so no

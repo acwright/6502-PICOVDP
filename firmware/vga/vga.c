@@ -9,7 +9,7 @@
  *
  */
 
-// 6502-PICOVDP (PLAN.md Appendix A). Changed from pico9918's src/vga/vga.c:
+// 6502-PICOVDP (DESIGN.md Appendix A). Changed from pico9918's src/vga/vga.c:
 //
 // - VGA 640 x 480 at 60 Hz only. vga-modes.c's table, the interlaced and SCART
 //   paths, pixel scaling options and the scanline effect are gone.
@@ -23,7 +23,7 @@
 //   what lets a late row show the last completed one (§18).
 // - The sync buffers are one table of 525 lines, built once.
 // - Interrupt priorities are set explicitly: both VGA interrupts are the
-//   highest on core 0 (PLAN.md section 3).
+//   highest on core 0 (DESIGN.md section 3).
 // - Phase 13: the sync program also marks each VGA line's front porch, and a
 //   third state machine, vga_hblank, times the blank out for STAT3 b1 (§6),
 //   with interrupts at either end for whichever core asks for them.

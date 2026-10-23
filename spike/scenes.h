@@ -1,4 +1,4 @@
-// Phase 1 timing spike: the synthetic worst-case scenes (PLAN.md Phase 1).
+// Phase 1 timing spike: the synthetic worst-case scenes (docs/results/phase-01.md).
 
 #pragma once
 

@@ -1,4 +1,4 @@
-// vdpctl inject: the injection executor's host side (PLAN.md section 4,
+// vdpctl inject: the injection executor's host side (DESIGN.md section 4,
 // docs/DEBUGLINK.md's INJECT, docs/TRACE.md section 5).
 //
 // Each checkpoint is replayed on the board from the trace's cold reset: the

@@ -1,4 +1,4 @@
-// The bus (SPEC.md §2, §4, §14's /INT, §15's RST; PLAN.md section 3).
+// The bus (SPEC.md §2, §4, §14's /INT, §15's RST; DESIGN.md section 3).
 //
 // Two PIO programs on pio1 watch the pins (bus.pio). tmsWrite is pico9918's
 // and hands every write to core 1: port from MODE1:MODE, byte from CD0-7.

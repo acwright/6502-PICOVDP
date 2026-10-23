@@ -12,7 +12,7 @@
 
 #include "bus.pio.h"
 
-// PLAN.md section 5's pin map, which the stock firmware reports of itself
+// DESIGN.md section 5's pin map, which the stock firmware reports of itself
 // (docs/results/phase-09.md). CD7, the bus's bit 0, is GPIO 14.
 #define BUS_PIO pio1
 #define WRITE_SM 0

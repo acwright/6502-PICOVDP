@@ -1,4 +1,4 @@
-// 6502-PICOVDP firmware: SPEC.md on an RP2350 (PLAN.md section 3).
+// 6502-PICOVDP firmware: SPEC.md on an RP2350 (DESIGN.md section 3).
 //
 // Phase 8: everything but the bus. Core 0 runs the raster and, in debug
 // builds, the debug link; core 1 latches and renders (renderer.h). A Pico 2

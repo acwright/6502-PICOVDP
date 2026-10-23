@@ -3,7 +3,7 @@
 ; =============================================================================
 ;   probe — §16's detection, run by a 6502 on the AC6502's bus
 ; =============================================================================
-;   PLAN.md Phase 14: "§16's detection probe returns carry set." DetectVdp and
+;   Phase 14 (docs/results/phase-14.md): "§16's detection probe returns carry set." DetectVdp and
 ;   DetectFont are SPEC.md §16's listings, copied as they stand, and each is run
 ;   RUNS times with interrupts off. The counts of carry set, and one plain read
 ;   of STAT4-STAT6 through each port pair, are left in RESULTS for BASIC to PEEK

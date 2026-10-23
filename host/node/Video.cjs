@@ -1,7 +1,7 @@
 'use strict'
 
 /**
- * The core, presented as 6502-EMULATOR's `Video` (PLAN.md section 4).
+ * The core, presented as 6502-EMULATOR's `Video` (DESIGN.md section 4).
  *
  * `jest.picovdp.cjs` in the emulator maps `src/core/IO/Video` here and runs
  * `Video.test.ts` unchanged, so this class has that module's public surface and
@@ -27,7 +27,7 @@
  * Phase 5: the picture, through the tile engine.
  * Phase 6: sprites. With PICOVDP_SPLIT_CHECK set, every row is built a second
  * time with the two cores' division at another column, and a row or status
- * that differs throws (PLAN.md section 3: "the reference check builds each line
+ * that differs throws (DESIGN.md section 3: "the reference check builds each line
  * both ways"). Publishing a line's collisions twice changes nothing.
  *
  *   PICOVDP_NODE_BINARY   the addon, if not build/host/host/node/picovdp.node
@@ -70,7 +70,7 @@ const CHANNEL_EXPAND = 0xff / 0x0f
 
 /**
  * `STAT5` (§6). The firmware reports its own version; the adapter reports the
- * spec revision, `$05`, as `Video.ts` does (PLAN.md section 4's known differences).
+ * spec revision, `$05`, as `Video.ts` does (DESIGN.md section 4's known differences).
  */
 const STAT5_SPEC_REVISION = 0x05
 

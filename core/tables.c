@@ -1,6 +1,6 @@
 // The renderer's lookup tables (§18's unpacking tables, and the word
 // renderer's own), const and built by macros: no initialisation and no global
-// state (PLAN.md section 3). Every word here is little-endian: byte 0 is the
+// state (DESIGN.md section 3). Every word here is little-endian: byte 0 is the
 // leftmost pixel.
 
 #include "vdp_internal.h"

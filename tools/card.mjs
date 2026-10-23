@@ -2,7 +2,7 @@
 
 // Draw a bench card (tools/lib/cards.mjs) into a trace and a golden of the
 // oracle's shape, so that `vdpctl inject` replays it on the board like any
-// other checkpoint (PLAN.md Phase 10).
+// other checkpoint (docs/results/phase-10.md).
 //
 //   node tools/card.mjs [palette|dac|all] [--out DIR] [--png]
 //   node tools/card.mjs [palette|dac|all] --check

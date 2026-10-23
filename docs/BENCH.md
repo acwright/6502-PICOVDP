@@ -2,7 +2,7 @@ The Bench
 =========
 
 How the PICO9918 PRO is mounted, wired, driven and watched while this repo's
-firmware is brought up (PLAN.md section 5, Phases 9 to 13). The PRO sits in the
+firmware is brought up (DESIGN.md section 5, Phases 9 to 13). The PRO sits in the
 TMS9918A's 40-pin DIP position on a breadboard, an Arduino Nano drives its four
 ports, and the Mac drives the Nano. Nothing here is fabricated: every connection
 is a jumper wire.
@@ -356,7 +356,7 @@ near 6. The block commands keep Phase 9's pause.
 18 cycles a read with `extra` 0, 1.125 µs, and 16 + 3 × `extra` otherwise — 2 µs
 at 5 or 6, 4 µs exactly at 16. `/CSR` is low for 5 cycles and sampled 3 cycles
 after it falls. It exists for §4's tightest case, reads back to back on one
-port (PLAN.md risk 5), at the spacing a 1 MHz and a 2 MHz 6502 give them.
+port (the plan's risk 5), at the spacing a 1 MHz and a 2 MHz 6502 give them.
 
 `$0D` PACED (Phase 13) plays up to 100 accesses — SCRIPT's ops, less its
 controls — each an exact number of cycles after the last, whatever the mix of
@@ -439,7 +439,7 @@ whole card with `Video.ts` after its own reset.
 
 ### Trace replay (Phase 12)
 
-`vdpctl replay` (`tools/lib/bus-replay.mjs`) is PLAN.md's bus executor: a
+`vdpctl replay` (`tools/lib/bus-replay.mjs`) is the bus executor of DESIGN.md section 4: a
 fixture's trace (docs/TRACE.md) played through the Nano with no timing, its reads
 and writes in order, 120 to a SCRIPT. It starts from the trace's cold reset,
 which is `RESET` with power-on over the debug link: RST performs §15 and leaves
@@ -474,7 +474,7 @@ exactly to 1M, 500k, 250k and 200k. The two sets do not intersect. 460800 and
 921600 are 8–13% off on a 16 MHz AVR, and 230400 is 3.5% off, outside what a
 UART tolerates.
 
-So `tools/` carries one dependency, `serialport`, exactly as PLAN.md section 5
+So `tools/` carries one dependency, `serialport`, exactly as DESIGN.md section 5
 anticipated. 115200 is the only `stty`-settable rate the Nano can hit, and at
 nine times the transfer cost it is the fallback of last resort, not the plan.
 
@@ -534,11 +534,12 @@ have settled. What the path was measured to do, on this bench:
 capture is good at: flat colour, and a lot of it (`tools/card.mjs`,
 `tools/lib/cards.mjs`). Each is a trace and a golden of the oracle's shape, so
 `vdpctl card <name>` injects it like any checkpoint and then measures what each
-palette entry became, and PLAN.md's Phase 10 is what they were built for.
+palette entry became, and Phase 10 (docs/results/phase-10.md) is what they
+were built for.
 
 - **`palette`** — all 256 entries of §11 as swatches, with the family down the
-  side and the step across the top. This is the picture PLAN.md's Still Open 3
-  is judged on.
+  side and the step across the top. This is the picture the plan's Still Open 3
+  was judged on (docs/results/phase-10.md).
 - **`dac`** — each channel's sixteen levels on its own, over a palette the card
   writes, and bands of one-pixel stripes. Each channel's ramp is measured with
   the other two dark, so a swapped channel or a reversed nibble is arithmetic

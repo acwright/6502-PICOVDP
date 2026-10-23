@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// vdpctl: the firmware's debug link from the Mac (PLAN.md section 5,
+// vdpctl: the firmware's debug link from the Mac (DESIGN.md section 5,
 // docs/DEBUGLINK.md). The Nano and capture commands arrive in Phase 9.
 //
 //   vdpctl flash [file.uf2]              picotool load -x -f, then wait for INFO
@@ -956,7 +956,7 @@ async function main() {
         }
 
         // A walking one and its complements through VRAM. A reversed data bus
-        // shows up as $01 coming back $80 -- the mistake PLAN.md section 5 warns
+        // shows up as $01 coming back $80 -- the mistake DESIGN.md section 5 warns
         // about, and the whole reason this test exists.
         const pattern = Buffer.from([0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80,
                                      0xff, 0x00, 0xaa, 0x55, 0x5a, 0xa5])
@@ -975,7 +975,7 @@ async function main() {
         if (!wrong) {
           console.log(`VRAM readback ${pattern.length}/${pattern.length}: the data bus is right way round`)
         } else if (reversed === wrong) {
-          console.log(`VRAM readback ${pattern.length - wrong}/${pattern.length}: the data bus is REVERSED -- CD0 is the MSB (PLAN.md section 5)`)
+          console.log(`VRAM readback ${pattern.length - wrong}/${pattern.length}: the data bus is REVERSED -- CD0 is the MSB (DESIGN.md section 5)`)
         } else {
           console.log(`VRAM readback ${pattern.length - wrong}/${pattern.length}: ${wrong} wrong`)
         }

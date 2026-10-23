@@ -1,4 +1,4 @@
-// The card on two cores (PLAN.md section 3, "Firmware shape").
+// The card on two cores (DESIGN.md section 3, "Firmware shape").
 //
 // Core 0 owns the raster: pico9918's VGA driver, cut down to SPEC §3's 262
 // line starts (vga/). At each line start it hands the row its buffer and rings

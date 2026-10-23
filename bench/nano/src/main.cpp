@@ -4,7 +4,7 @@
 // because USB serial latency is milliseconds. The wire format and the command
 // set are specified in docs/BENCH.md section 5.
 //
-// Pin map (PLAN.md section 5, bench/hardware/picovdp-bench.kicad_sch):
+// Pin map (DESIGN.md section 5, bench/hardware/picovdp-bench.kicad_sch):
 //   data bits 0-5  PD2-PD7  (D2-D7)   = CD7..CD2   -- CD7 is the LSB
 //   data bits 6-7  PB1-PB2  (D9-D10)  = CD1, CD0   -- CD0 is the MSB
 //   control        PC0-PC4  (A0-A4)   = /CSW /CSR MODE MODE1 /RESET
@@ -349,7 +349,7 @@ static uint8_t runScript(const uint8_t *p, uint8_t length, uint8_t *entries) {
 }
 
 // Back-to-back reads of one port at a set spacing (Phase 11): the prefetch
-// restaged between one read and the next is the bus's tightest case (PLAN.md
+// restaged between one read and the next is the bus's tightest case (the plan's
 // risk 5). Each iteration is 18 cycles with `extra` 0 and 16 + 3 x extra
 // otherwise: 1.125 us flat out, 2 us at 5 or 6, 4 us exactly at 16. /CSR is low
 // for 5 cycles and sampled 3 cycles after it falls, as SCRIPT's flat reads are.

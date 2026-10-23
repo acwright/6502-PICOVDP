@@ -12,7 +12,7 @@ following third-party code, each under its own licence.
 | [pico9918](https://github.com/visrealm/pico9918) firmware files, below | `firmware/vga/`, `firmware/pio-utils/` | pico9918 `7d80992` (v1.2.0+16) | MIT |
 
 Files taken from pico9918's firmware keep their original MIT headers and are
-listed here as they arrive (PLAN.md, Appendix A):
+listed here as they arrive (DESIGN.md, Appendix A):
 
 | pico9918 | Here | Licence |
 |---|---|---|

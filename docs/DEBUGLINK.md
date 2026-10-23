@@ -2,7 +2,7 @@ The Debug Link
 ==============
 
 **Protocol version 2.** How the firmware's debug builds (`pico2`, `pro-debug`)
-are driven and inspected over their USB-C port, with no SWD (PLAN.md section 3,
+are driven and inspected over their USB-C port, with no SWD (DESIGN.md section 3,
 "The debug link"). `tools/vdpctl.mjs` is the host side; `firmware/link.c` the
 board's.
 
@@ -283,7 +283,7 @@ them (TRACE.md section 6):
    row it starts built and its status published, then the line's records.
 3. A read is compared with its value, except where the port selects `STAT5`,
    which is the firmware's version, and in `STAT3`'s bit 1, which is advisory
-   (PLAN.md section 4). `/INT` is compared after every operation and at each
+   (DESIGN.md section 4). `/INT` is compared after every operation and at each
    LINE.
 4. END records the card's state, and the injection stops applying records. The
    card stays in thread order, frozen, until ABORT.

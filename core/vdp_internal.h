@@ -7,7 +7,7 @@
 
 #include "vdp.h"
 
-// Hot functions: in RAM on the RP2350 (PLAN.md section 3). The image is
+// Hot functions: in RAM on the RP2350 (DESIGN.md section 3). The image is
 // copy_to_ram already, so this only names the section the SDK's linker script
 // keeps there, without including an SDK header (rule 5).
 //
@@ -28,7 +28,7 @@
 
 // ---- words ----
 //
-// The renderer works in 32-bit words of byte-wide pixels (PLAN.md section 3,
+// The renderer works in 32-bit words of byte-wide pixels (DESIGN.md section 3,
 // Phase 8), which assumes a little-endian machine: byte 0 of a word is the
 // leftmost pixel. Both of this core's platforms are.
 #if defined(__BYTE_ORDER__) && __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__

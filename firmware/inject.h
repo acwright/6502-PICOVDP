@@ -1,4 +1,4 @@
-// The injection executor (PLAN.md section 4, docs/DEBUGLINK.md's INJECT).
+// The injection executor (DESIGN.md section 4, docs/DEBUGLINK.md's INJECT).
 //
 // A trace's program side, streamed from the host: each operation addressed by
 // the (frame, screen line) it fell in, and applied after that line's latch as

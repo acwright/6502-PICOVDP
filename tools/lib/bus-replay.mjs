@@ -1,4 +1,4 @@
-// vdpctl replay: the bus executor (PLAN.md section 4 and Phase 12,
+// vdpctl replay: the bus executor (DESIGN.md section 4 and Phase 12,
 // docs/TRACE.md section 6).
 //
 // A fixture's trace is played through the Nano to the card's pins with no
@@ -10,7 +10,7 @@
 //   - every data-port read, against the value the trace recorded (§4)
 //   - status reads of STAT4 and STAT6, which are constant, against the trace;
 //     and of STAT5 against the version the board reports in INFO, since the
-//     trace holds the emulator's (PLAN.md section 4). The rest move with the
+//     trace holds the emulator's (DESIGN.md section 4). The rest move with the
 //     raster: they are read, which moves the card as the program moved it, but
 //     not compared
 //   - at each checkpoint's settle point, the next complete frame (SNAPSHOT)
@@ -27,7 +27,7 @@
 //
 // Each fixture starts from the trace's cold reset, which is RESET with
 // power-on over the debug link: the RST pin performs §15, which leaves VRAM as
-// it was, and a cold start's VRAM is zeroed (PLAN.md section 4).
+// it was, and a cold start's VRAM is zeroed (DESIGN.md section 4).
 //
 // Phase 13's release parity runs it with no debug link at all, as a release
 // build has none (`link` null): the cold start is RST, 64 KB of zeros through
@@ -190,7 +190,7 @@ async function busVram(nano) {
 /**
  * A cold start through the bus alone: RST, all 64 KB zeroed through pair B,
  * RST again. The second RST writes §11's palette and the built-in font over
- * the zeros (§15), which is the VRAM a cold start leaves (PLAN.md section 4).
+ * the zeros (§15), which is the VRAM a cold start leaves (DESIGN.md section 4).
  * A block written twice, after a lost answer, writes zeros past the end and
  * wraps onto zeros: harmless.
  */

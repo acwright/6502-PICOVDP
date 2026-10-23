@@ -1,5 +1,5 @@
 // Phase 1 timing spike: a scanline renderer for SPEC.md's worst cases.
-// Disposable (PLAN.md section 6, Phase 1). It implements the rules that cost
+// Disposable (docs/results/phase-01.md). It implements the rules that cost
 // time — §8's tile engine, §10's sprites, §12's priority, §11's expansion —
 // for the Graphics and Full geometries, and nothing of the bus, the legacy
 // submode or the status registers. Portable C11: built for the RP2350 to be
