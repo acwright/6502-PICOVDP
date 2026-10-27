@@ -391,7 +391,8 @@ For 6502-ACE
 ------------
 
 6502-ACE's plan for its README listed what this gate hands over; that work
-now lives in 6502-ACE's `TODO.md`, with these values. From this phase:
+went into 6502-ACE's `TODO.md`, with these values, and from there into its README
+(the retired file: `git show 735c58e:TODO.md` in 6502-ACE). From this phase:
 
 1. **The release:** `v1.0.0`, `STAT5` `$10`, SPEC.md draft 0.5, published on
    GitHub with the asset `picovdp-v1.0.0.uf2`, whose SHA-256 is the image's
@@ -474,9 +475,10 @@ After this plan
   the firmware proven on the PRO, BIOS 2.0 released, the DOCS rewrite
   published — is met. The owner keeps the TMS9918A and BIOS 1.6 as the default
   for now.
-- **6502-ACE:** its `TODO.md` holds the README work, with section
+- **6502-ACE:** its `TODO.md` held the README work, with section
   [For 6502-ACE](#for-6502-ace)'s records, and the ACE at 2 MHz,
-  [Found on the way](#found-on-the-way) 2 and 3, as Rev 1.1 items.
+  [Found on the way](#found-on-the-way) 2 and 3, as Rev 1.1 items. That work is
+  now in its README.
 
 ---
 
