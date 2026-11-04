@@ -402,7 +402,7 @@ went into 6502-ACE's `TODO.md`, with these values, and from there into its READM
    `docs/results/phase-14/shots/`. The BIOS in U8 was **v2.0.2**, not the
    `v2.0` (`4702fad7…`) the plan names. Detection held at every power-on and
    every restart. The restarts were mostly through the reset vector; the reset
-   button (SW17) was pressed three times under BIOS 1.6, and once under BIOS 2.0
+   button (SW70) was pressed three times under BIOS 1.6, and once under BIOS 2.0
    at 1 MHz, whose boot matches the `ok` golden with no card pixel wrong
    (`shots/bios-2.0-1mhz-reset-button.png`).
 3. **`MDE1` in the machine:** port B answers in every run; the BASIC line in
