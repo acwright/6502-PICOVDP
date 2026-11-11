@@ -3,9 +3,9 @@
   "emulator": {
     "repository": "https://github.com/acwright/6502-EMULATOR.git",
     "branch": "main",
-    "commit": "c0f76f24818632c081686b26734b0ba9b3907a6a",
-    "describe": "v3.2.0",
-    "committed": "2026-09-17T19:38:48-05:00"
+    "commit": "f4d7a5ff5c2e6971cc5613cae3d71649b03b2260",
+    "describe": "v3.5.0-4-gf4d7a5f",
+    "committed": "2026-11-11T15:54:17-06:00"
   },
   "traceFormat": 1,
   "fixtures": [
@@ -13,14 +13,14 @@
       "name": "bios",
       "description": "the bundled BIOS booting to the BASIC prompt on the video console",
       "trace": "bios/bios.vdpt.gz",
-      "events": 131818,
-      "recordedAt": "4d3c6beb6fcd166d91bfe7020611fc6284cc3923",
+      "events": 130945,
+      "recordedAt": "3657a5218f9646028fadb1f51a5025ac9c274347-dirty",
       "checkpoints": [
         {
           "name": "ok",
           "cycles": 1000000,
           "frame": 59,
-          "settle": 5027,
+          "settle": 4154,
           "window": 0,
           "class": "static"
         },
@@ -28,7 +28,7 @@
           "name": "screenful",
           "cycles": 4660000,
           "frame": 278,
-          "settle": 5555,
+          "settle": 4682,
           "window": 0,
           "class": "static"
         },
@@ -36,7 +36,7 @@
           "name": "scroll",
           "cycles": 8000000,
           "frame": 479,
-          "settle": 6055,
+          "settle": 5182,
           "window": 0,
           "class": "static"
         }
@@ -46,14 +46,14 @@
       "name": "wizardslab",
       "description": "the WL_DEBUG Wizards Lab cartridge playing itself from a cold start",
       "trace": "wizardslab/wizardslab.vdpt.gz",
-      "events": 1160636,
-      "recordedAt": "4d3c6beb6fcd166d91bfe7020611fc6284cc3923",
+      "events": 1169713,
+      "recordedAt": "3657a5218f9646028fadb1f51a5025ac9c274347-dirty",
       "checkpoints": [
         {
           "name": "frame-60",
           "cycles": 1000000,
           "frame": 59,
-          "settle": 91598,
+          "settle": 91658,
           "window": 1535,
           "class": "static"
         },
@@ -61,7 +61,7 @@
           "name": "frame-180",
           "cycles": 3000000,
           "frame": 179,
-          "settle": 293665,
+          "settle": 295725,
           "window": 1535,
           "class": "static"
         },
@@ -69,16 +69,16 @@
           "name": "frame-300",
           "cycles": 5000000,
           "frame": 299,
-          "settle": 495546,
-          "window": 1535,
+          "settle": 499607,
+          "window": 1534,
           "class": "static"
         },
         {
           "name": "frame-600",
           "cycles": 10000000,
           "frame": 599,
-          "settle": 1000323,
-          "window": 1576,
+          "settle": 1009383,
+          "window": 1593,
           "class": "static"
         }
       ]
@@ -87,14 +87,14 @@
       "name": "vdp-modes",
       "description": "the VDP Modes sample cartridge, one checkpoint per VMODE geometry",
       "trace": "vdp-modes/vdp-modes.vdpt.gz",
-      "events": 452601,
-      "recordedAt": "4d3c6beb6fcd166d91bfe7020611fc6284cc3923",
+      "events": 451728,
+      "recordedAt": "3657a5218f9646028fadb1f51a5025ac9c274347-dirty",
       "checkpoints": [
         {
           "name": "text",
           "cycles": 600000,
           "frame": 35,
-          "settle": 60144,
+          "settle": 59271,
           "window": 1687,
           "class": "static"
         },
@@ -102,7 +102,7 @@
           "name": "compact",
           "cycles": 1650000,
           "frame": 98,
-          "settle": 169284,
+          "settle": 168411,
           "window": 1687,
           "class": "static"
         },
@@ -110,7 +110,7 @@
           "name": "graphics",
           "cycles": 2716667,
           "frame": 162,
-          "settle": 279882,
+          "settle": 279009,
           "window": 1689,
           "class": "static"
         },
@@ -118,7 +118,7 @@
           "name": "full",
           "cycles": 3783334,
           "frame": 226,
-          "settle": 391095,
+          "settle": 390222,
           "window": 1690,
           "class": "static"
         }
@@ -128,14 +128,14 @@
       "name": "vdp-layers",
       "description": "the VDP Layers sample cartridge, two layers scrolling past four sprites",
       "trace": "vdp-layers/vdp-layers.vdpt.gz",
-      "events": 587743,
-      "recordedAt": "4d3c6beb6fcd166d91bfe7020611fc6284cc3923",
+      "events": 586887,
+      "recordedAt": "3657a5218f9646028fadb1f51a5025ac9c274347-dirty",
       "checkpoints": [
         {
           "name": "parallax",
           "cycles": 1500000,
           "frame": 89,
-          "settle": 121635,
+          "settle": 120778,
           "window": 1689,
           "class": "static"
         },
@@ -143,7 +143,7 @@
           "name": "scroll-bit8-l1",
           "cycles": 3000000,
           "frame": 179,
-          "settle": 286842,
+          "settle": 285986,
           "window": 1689,
           "class": "static"
         },
@@ -151,7 +151,7 @@
           "name": "occluded",
           "cycles": 4000000,
           "frame": 239,
-          "settle": 396991,
+          "settle": 396134,
           "window": 1689,
           "class": "static"
         },
@@ -159,8 +159,33 @@
           "name": "scroll-bit8-l0",
           "cycles": 5000000,
           "frame": 299,
-          "settle": 507127,
+          "settle": 506271,
           "window": 1689,
+          "class": "static"
+        }
+      ]
+    },
+    {
+      "name": "flash-cart",
+      "description": "the Flash Cart sample cartridge: three banks through one window, then a byte the cartridge programs into its own flash",
+      "trace": "flash-cart/flash-cart.vdpt.gz",
+      "events": 133549,
+      "recordedAt": "cc201af74413ad37720afaa60277a7bf2dd1d5d9",
+      "checkpoints": [
+        {
+          "name": "three-banks",
+          "cycles": 500000,
+          "frame": 29,
+          "settle": 52838,
+          "window": 1687,
+          "class": "static"
+        },
+        {
+          "name": "self-programmed",
+          "cycles": 1500000,
+          "frame": 89,
+          "settle": 109967,
+          "window": 0,
           "class": "static"
         }
       ]
@@ -200,19 +225,28 @@
     }
   ],
   "files": {
-    "bios/bios.vdpt.gz": "c04e761b072a533cb03f4666f11e92c5771be80ffb47d4ab2bf72dbb07710371",
-    "bios/ok.idx.bin": "5756e6b2a82a84cefb2f78c45496225915438c84579f727c2028c3b78f9cba6e",
-    "bios/ok.json": "c0d20da318689a33a43b7dcdf44831d9bc7b8cb49f0a9481796dd63bc8b5bc4e",
-    "bios/ok.png": "ccdcbf40328938a4ec7a088ea82e79db462a2a61d7cb1df949172bc60f97acd8",
-    "bios/ok.vram.bin": "bbc3d49f2865bd6c64a9eadff33b6fc0707da2789f0e3e7dd761dc6793a0d511",
-    "bios/screenful.idx.bin": "b201d1c1cace0b18895fe5ac188959e6a718b9e834c1f0f757da837f1ff46271",
-    "bios/screenful.json": "a91e7caf5e2d595dc16f5ce3151eae8d840d9d7ccb84d1508643986c417c9766",
-    "bios/screenful.png": "2d16ceac833bb1e6742fb77afcb0a2d28b8c49c0b44da31bb9d333ac0edc6a0f",
-    "bios/screenful.vram.bin": "3547dcb01489f0d34d734cc933019bf476f8c7dbf4c87a498d32dd06096dde50",
-    "bios/scroll.idx.bin": "62785fdc7c96e2288c8710c51adfbf1c6a9cceabe25fbc03e73543074dc895a7",
-    "bios/scroll.json": "08009c793aeb2e51e94345ba82ab5c188cf031816241bdc400afadbf7641239f",
-    "bios/scroll.png": "d2ef010c4c50c369efa5ea7186a677d3e9669da85150d93643af99cd42f50b81",
-    "bios/scroll.vram.bin": "2a37f1615049ef14d673b99a12dd9a9cb4c14d39685f75636ad2dd9ba6f4e5bd",
+    "bios/bios.vdpt.gz": "512269116462390b9964f7444f8f3cfce293e78cd1e0bae846aee15ec2608d04",
+    "bios/ok.idx.bin": "f22f281b80b48176290ce79190fce25688783458bba14ae106ec5e0e269dd4e6",
+    "bios/ok.json": "d10c6ec4eeee9317c14ce431fa10c8d16b102ee427f8b9681ca1b0d88ffc9175",
+    "bios/ok.png": "e4df7ac206ed73aa789f4096a1c6a9b554cf7dfc31350d69a7df6016683c3261",
+    "bios/ok.vram.bin": "f6aaad55249f8fba3650cecf0150f45fc26e327141208d730af7941b6c4d6df5",
+    "bios/screenful.idx.bin": "fd2228c047ac0f75747bf575a024a954b7a40192f89859954cc2655797f17f2f",
+    "bios/screenful.json": "1fdaa7b57478b5b86fe2b97a6e2208493f761edcd4f034dd3b22c9275c5b82b7",
+    "bios/screenful.png": "f57f874e93238361b241e45143976fb677ca317d75c37494e4aeb01efb969bbd",
+    "bios/screenful.vram.bin": "aa0b79933ca918df4064a67284ead6f16d02aa9589478c8cfe5632bce47d2836",
+    "bios/scroll.idx.bin": "851d880b76aee9d57a6fd9566f5c9d053ca25a7ac6d155f0fc610ba7f6440c27",
+    "bios/scroll.json": "7b59bfe9a2f6c38f523c38f9bdfe5b3a90617536e0d8065a2a16912cf5a90b71",
+    "bios/scroll.png": "c7a75347dabda1639013041bcbef7227135d82d545d2e0db08fb5401485b87c8",
+    "bios/scroll.vram.bin": "51d443ef344d68c6e8250f63b65b6147e8e9ddc2d54ffb8f9d6d079d46545476",
+    "flash-cart/flash-cart.vdpt.gz": "544e25208371cc5861f65a432209e71d2b46e3eddbda4d6de5089f28ec496ebb",
+    "flash-cart/self-programmed.idx.bin": "b546b16a0a0e58b49dcc390d76a457f3ebaf9476d13eb126ed24b08b89f8cd83",
+    "flash-cart/self-programmed.json": "a0e5b2e4f7c84cee1898b29f35d4d2ad73c009e4b6833b45d7687ebff7237a5c",
+    "flash-cart/self-programmed.png": "3cfce86eaa8f905cbd52fda6c4f7194825ec483f7ae6da2332fd1ec977d415a6",
+    "flash-cart/self-programmed.vram.bin": "78a106fdffb1d90126595213e801889941d451e91fe4dd6b9da69ef42141c8b1",
+    "flash-cart/three-banks.idx.bin": "cd5bff5aec2a4886e82ab8e67919914fe94523b0d892802d406d3a5b7f6691b9",
+    "flash-cart/three-banks.json": "78347d660e599d79c72db065c69326deebab122ccdc2f19bf621b3259748ed8c",
+    "flash-cart/three-banks.png": "0a0fc7f254bf398071d58003d656902429e0c69237f1951f57666f014c2f260f",
+    "flash-cart/three-banks.vram.bin": "27560d8251f62ec737abdb9d2ebb1444eb53c270c33eada988cfd0c18a9db426",
     "vdp-font/loaded.idx.bin": "689c2b54590436102db258967ee816b15ef572a952887bbff5abf09145013524",
     "vdp-font/loaded.json": "cbc0e24c0e94d09ea99e0cad74904a213a72cfd4c9d6519f87c99d5b7f51a8ee",
     "vdp-font/loaded.png": "103a8f7396c656d08cfe57860e99d126d10052b4534438e91ad980aa2fed5231",
@@ -226,23 +260,23 @@
     "vdp-font/reset.png": "5e42bae86b07cdc7c519e99f075e834b5cf1bbafa6ea452393022a43d5d3ccf4",
     "vdp-font/reset.vram.bin": "c395749192d8abb8bbb636b0507aecb46e575c4e51112b5b9e97a69a8eb75b36",
     "vdp-font/vdp-font.vdpt.gz": "7a5735359f0974fd34d8a2274456883e6903d01211b60fb0f6593ce8e065a847",
-    "vdp-layers/occluded.idx.bin": "e978fcd006f92cbc43507cbf0b002e864e8e9e283711e5db3953345805f0c822",
-    "vdp-layers/occluded.json": "4ea686db5594258fe85ea0ef38afc771a9eaed1de473b01583a3cad19c71f653",
-    "vdp-layers/occluded.png": "9da0771c12e30276c5ff386d11c8fab36066e4b6f96d3945e20390a33feebf46",
+    "vdp-layers/occluded.idx.bin": "57324865eb15761ec306e058f17d045968944e2d30d148f39dc2dd3bb73288a4",
+    "vdp-layers/occluded.json": "3bed7c10ba4e7824eef4f27fca723ce5ef8c1adbf6abd82757eccbb217e043c7",
+    "vdp-layers/occluded.png": "dfbe89ae9c49e6c8c2ff0216778c2023ca60845dcaddd510cf52fd8881500c57",
     "vdp-layers/occluded.vram.bin": "74383ff4d22419b36d88cec8318a8db0c51873a38f35e01b74a05802be6f54be",
-    "vdp-layers/parallax.idx.bin": "1a502d34b93121bca90ebd2fd50645477201138fb8711fdc8137bad41e1ab914",
-    "vdp-layers/parallax.json": "6198c4b67109582a8df9114bfde13698451411fce18fd6b152e0a5d9f6baef13",
-    "vdp-layers/parallax.png": "40156c3bb9760d918ab9c848e364d4a6b0f79a861503e77e3550059a1119fc0f",
+    "vdp-layers/parallax.idx.bin": "2be36d63770b49a36a134b2e1c05d30294c50360261a88d98242c6db0bc877d7",
+    "vdp-layers/parallax.json": "bfa5022d440e304fd866cb903327f6752f56bcd0bc6837e2fd58b40a4b29c961",
+    "vdp-layers/parallax.png": "12b39e97201934f249b8ca94f21a1256edaf2649337e85066bfb24507b522c04",
     "vdp-layers/parallax.vram.bin": "74383ff4d22419b36d88cec8318a8db0c51873a38f35e01b74a05802be6f54be",
-    "vdp-layers/scroll-bit8-l0.idx.bin": "3d96963028694f82d6a998d57b11004a6e0ac3e9a73560cda4d8f6a512be5fdb",
-    "vdp-layers/scroll-bit8-l0.json": "a7b53435afb03bf50fff1bcf6678a56533ed1160cef4b6e23c0a88bd4bf4d435",
-    "vdp-layers/scroll-bit8-l0.png": "9a86e902706f17229ffc400cd76c41d34687437addb803cd6d50ea0692ca2049",
+    "vdp-layers/scroll-bit8-l0.idx.bin": "a8efa6dcb7fced9df3612e3207b1f8ddb9f59f7bb2fee43f4dfe31a6d7bffa41",
+    "vdp-layers/scroll-bit8-l0.json": "4fdafb0e4027b30a84a1fe38e37e5ca6f38770279952499043953cb5e097b342",
+    "vdp-layers/scroll-bit8-l0.png": "b83d3fee783dab14185fe496c20ef30a78ef9223c357b66fca3fb0ddafdafbca",
     "vdp-layers/scroll-bit8-l0.vram.bin": "74383ff4d22419b36d88cec8318a8db0c51873a38f35e01b74a05802be6f54be",
-    "vdp-layers/scroll-bit8-l1.idx.bin": "afafd4ce7f787c6a3ead0fae4061ad6511a308307fed99ca3fb64d32b43f7e3d",
-    "vdp-layers/scroll-bit8-l1.json": "e812e3297ca225e72fe92ee9c52f89ef43bdceb3f57431f2ba3d5493d16e2398",
-    "vdp-layers/scroll-bit8-l1.png": "851ad6049d0d58cfdb9666d65cc9ae8be304109bcf2d28754b2906efade5763b",
+    "vdp-layers/scroll-bit8-l1.idx.bin": "ef8d4df88c30fd1708e03e87fdc9e2bc089886a81f3b9e8cd3f55ee3e808258e",
+    "vdp-layers/scroll-bit8-l1.json": "6f9c921378fd019274bfc780be57f65b05f79fd25fce7aa5ad102da991acc8e7",
+    "vdp-layers/scroll-bit8-l1.png": "7b5dbdc8aaf0979dcb3805f461b6c35d179f0515d4a3236fb61fdd08a44194d7",
     "vdp-layers/scroll-bit8-l1.vram.bin": "74383ff4d22419b36d88cec8318a8db0c51873a38f35e01b74a05802be6f54be",
-    "vdp-layers/vdp-layers.vdpt.gz": "cdf20eb34b89991b992b16cd61d7fe11f144120927aec4ebcbead361ddee88c3",
+    "vdp-layers/vdp-layers.vdpt.gz": "d424b734b88834f305472ac3b006376b99113032f3f792be02cc687cadf53898",
     "vdp-modes/compact.idx.bin": "e63ff961917f5cbd582c4249c1c0879b46491a3ec9c673d69b6f107d54b2e715",
     "vdp-modes/compact.json": "5fa3e30ef8ae099fa3005127dcb7a279e4d055fad2b70c0bd11d25bdee3461b7",
     "vdp-modes/compact.png": "d3d67436b1ab8bc0704a688a5181270cbd8ef65c7c4fcdbc4d5d3d8ae5467701",
@@ -259,7 +293,7 @@
     "vdp-modes/text.json": "192cb3b774a8fb928e3aa7a165f5602ae662b8c0527eb80980032492bafe0909",
     "vdp-modes/text.png": "4a8173288c873d866b5636d2022f532b9ba372a44e9b342f7c3ae3ff6e14cf72",
     "vdp-modes/text.vram.bin": "9c7125583928995d939aad49e14ddc4801b51bf9a62beb1ab7b1b6cd984ed4c5",
-    "vdp-modes/vdp-modes.vdpt.gz": "9ee071a4d82b62f85abe9683118db31c1f0bf9af078090c310bfc2322adfce80",
+    "vdp-modes/vdp-modes.vdpt.gz": "f1760f4d8093c7c962b5a8c386c726e65a6b3d564c54d4f0fff950eb67f45028",
     "wizardslab/frame-180.idx.bin": "2d59dfe318788557426062f0bf6b2c9b15935ccd557114d49a5b80a3cc81047e",
     "wizardslab/frame-180.json": "ed70ac8ea2a419cae0a594f4846e34c324687988c5e0ef62c64057687ab2cf4d",
     "wizardslab/frame-180.png": "c8f49e5a66560b8fb23ed78bea9136229a053924f365878d241b52f4e37888cc",
@@ -276,6 +310,6 @@
     "wizardslab/frame-600.json": "3401bb1af729187242c00e149081c7a33028672ea474be7970bd1744409937d2",
     "wizardslab/frame-600.png": "a3e8ae6ec25ee619387a74539036adf991c11aecd14979b53cadfffba77ab866",
     "wizardslab/frame-600.vram.bin": "dc3ddcbfc78f9a91167766c1e3582a7aacc147bd3def8b40a3b8d678f587bcbc",
-    "wizardslab/wizardslab.vdpt.gz": "41869efc93e25b170f9ad1721cc3443f38f4fbf2bf1252b9baa83db0949e59a7"
+    "wizardslab/wizardslab.vdpt.gz": "7889be19e6b201a7d641827a7427eb79785cf60f82ee166ce1e337261369da3c"
   }
 }

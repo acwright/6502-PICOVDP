@@ -7,7 +7,7 @@ Oracle
 
 A pinned copy of 6502-EMULATOR's golden checkpoints and the traces of the
 programs that produced them, from `main` at
-`c0f76f24818632c081686b26734b0ba9b3907a6a`, `v3.2.0` (2026-09-17T19:38:48-05:00).
+`f4d7a5ff5c2e6971cc5613cae3d71649b03b2260`, `v3.5.0-4-gf4d7a5f` (2026-11-11T15:54:17-06:00).
 
 - `<fixture>/<checkpoint>.idx.bin` — the frame as 76,800 palette indices, row-major. **The oracle**: compared exactly.
 - `<fixture>/<checkpoint>.vram.bin` — all 64 KB of VRAM at the checkpoint.
@@ -20,21 +20,23 @@ programs that produced them, from `main` at
 
 | Fixture | Checkpoint | Cycles | Frame | Settle | Window | Class |
 |---|---|--:|--:|--:|--:|---|
-| `bios` | `ok` | 1000000 | 59 | 5027 | 0 | static |
-| `bios` | `screenful` | 4660000 | 278 | 5555 | 0 | static |
-| `bios` | `scroll` | 8000000 | 479 | 6055 | 0 | static |
-| `wizardslab` | `frame-60` | 1000000 | 59 | 91598 | 1535 | static |
-| `wizardslab` | `frame-180` | 3000000 | 179 | 293665 | 1535 | static |
-| `wizardslab` | `frame-300` | 5000000 | 299 | 495546 | 1535 | static |
-| `wizardslab` | `frame-600` | 10000000 | 599 | 1000323 | 1576 | static |
-| `vdp-modes` | `text` | 600000 | 35 | 60144 | 1687 | static |
-| `vdp-modes` | `compact` | 1650000 | 98 | 169284 | 1687 | static |
-| `vdp-modes` | `graphics` | 2716667 | 162 | 279882 | 1689 | static |
-| `vdp-modes` | `full` | 3783334 | 226 | 391095 | 1690 | static |
-| `vdp-layers` | `parallax` | 1500000 | 89 | 121635 | 1689 | static |
-| `vdp-layers` | `scroll-bit8-l1` | 3000000 | 179 | 286842 | 1689 | static |
-| `vdp-layers` | `occluded` | 4000000 | 239 | 396991 | 1689 | static |
-| `vdp-layers` | `scroll-bit8-l0` | 5000000 | 299 | 507127 | 1689 | static |
+| `bios` | `ok` | 1000000 | 59 | 4154 | 0 | static |
+| `bios` | `screenful` | 4660000 | 278 | 4682 | 0 | static |
+| `bios` | `scroll` | 8000000 | 479 | 5182 | 0 | static |
+| `wizardslab` | `frame-60` | 1000000 | 59 | 91658 | 1535 | static |
+| `wizardslab` | `frame-180` | 3000000 | 179 | 295725 | 1535 | static |
+| `wizardslab` | `frame-300` | 5000000 | 299 | 499607 | 1534 | static |
+| `wizardslab` | `frame-600` | 10000000 | 599 | 1009383 | 1593 | static |
+| `vdp-modes` | `text` | 600000 | 35 | 59271 | 1687 | static |
+| `vdp-modes` | `compact` | 1650000 | 98 | 168411 | 1687 | static |
+| `vdp-modes` | `graphics` | 2716667 | 162 | 279009 | 1689 | static |
+| `vdp-modes` | `full` | 3783334 | 226 | 390222 | 1690 | static |
+| `vdp-layers` | `parallax` | 1500000 | 89 | 120778 | 1689 | static |
+| `vdp-layers` | `scroll-bit8-l1` | 3000000 | 179 | 285986 | 1689 | static |
+| `vdp-layers` | `occluded` | 4000000 | 239 | 396134 | 1689 | static |
+| `vdp-layers` | `scroll-bit8-l0` | 5000000 | 299 | 506271 | 1689 | static |
+| `flash-cart` | `three-banks` | 500000 | 29 | 52838 | 1687 | static |
+| `flash-cart` | `self-programmed` | 1500000 | 89 | 109967 | 0 | static |
 | `vdp-font` | `reset` | 550000 | 32 | 53590 | 1688 | static |
 | `vdp-font` | `loaded` | 1616667 | 96 | 166566 | 1687 | static |
 | `vdp-font` | `relocated` | 2683334 | 160 | 229219 | 0 | static |
