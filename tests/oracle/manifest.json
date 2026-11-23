@@ -3,9 +3,9 @@
   "emulator": {
     "repository": "https://github.com/acwright/6502-EMULATOR.git",
     "branch": "main",
-    "commit": "468f5391c791f1304a0c83ea4cd8ecd743d8686e",
-    "describe": "v3.7.0",
-    "committed": "2026-11-23T06:21:20-06:00"
+    "commit": "4088eacb0217c29579ac569125114565651593dc",
+    "describe": "v3.7.1",
+    "committed": "2026-11-23T11:10:30-06:00"
   },
   "traceFormat": 1,
   "fixtures": [
