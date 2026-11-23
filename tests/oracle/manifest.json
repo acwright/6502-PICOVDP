@@ -3,9 +3,9 @@
   "emulator": {
     "repository": "https://github.com/acwright/6502-EMULATOR.git",
     "branch": "main",
-    "commit": "f4d7a5ff5c2e6971cc5613cae3d71649b03b2260",
-    "describe": "v3.5.0-4-gf4d7a5f",
-    "committed": "2026-11-11T15:54:17-06:00"
+    "commit": "468f5391c791f1304a0c83ea4cd8ecd743d8686e",
+    "describe": "v3.7.0",
+    "committed": "2026-11-23T06:21:20-06:00"
   },
   "traceFormat": 1,
   "fixtures": [
@@ -14,7 +14,7 @@
       "description": "the bundled BIOS booting to the BASIC prompt on the video console",
       "trace": "bios/bios.vdpt.gz",
       "events": 130945,
-      "recordedAt": "3657a5218f9646028fadb1f51a5025ac9c274347-dirty",
+      "recordedAt": "ff66fdd82da9528610f8b8d0b50a9f27f89056c8",
       "checkpoints": [
         {
           "name": "ok",
@@ -225,19 +225,19 @@
     }
   ],
   "files": {
-    "bios/bios.vdpt.gz": "512269116462390b9964f7444f8f3cfce293e78cd1e0bae846aee15ec2608d04",
-    "bios/ok.idx.bin": "f22f281b80b48176290ce79190fce25688783458bba14ae106ec5e0e269dd4e6",
-    "bios/ok.json": "d10c6ec4eeee9317c14ce431fa10c8d16b102ee427f8b9681ca1b0d88ffc9175",
-    "bios/ok.png": "e4df7ac206ed73aa789f4096a1c6a9b554cf7dfc31350d69a7df6016683c3261",
-    "bios/ok.vram.bin": "f6aaad55249f8fba3650cecf0150f45fc26e327141208d730af7941b6c4d6df5",
-    "bios/screenful.idx.bin": "fd2228c047ac0f75747bf575a024a954b7a40192f89859954cc2655797f17f2f",
-    "bios/screenful.json": "1fdaa7b57478b5b86fe2b97a6e2208493f761edcd4f034dd3b22c9275c5b82b7",
-    "bios/screenful.png": "f57f874e93238361b241e45143976fb677ca317d75c37494e4aeb01efb969bbd",
-    "bios/screenful.vram.bin": "aa0b79933ca918df4064a67284ead6f16d02aa9589478c8cfe5632bce47d2836",
-    "bios/scroll.idx.bin": "851d880b76aee9d57a6fd9566f5c9d053ca25a7ac6d155f0fc610ba7f6440c27",
-    "bios/scroll.json": "7b59bfe9a2f6c38f523c38f9bdfe5b3a90617536e0d8065a2a16912cf5a90b71",
-    "bios/scroll.png": "c7a75347dabda1639013041bcbef7227135d82d545d2e0db08fb5401485b87c8",
-    "bios/scroll.vram.bin": "51d443ef344d68c6e8250f63b65b6147e8e9ddc2d54ffb8f9d6d079d46545476",
+    "bios/bios.vdpt.gz": "8814f78cb4625e84ae3cd5ee8590608a9e543321f17240ffe479df47df0245f7",
+    "bios/ok.idx.bin": "079c1f6f53c5d80b6cb93f77c69ab6e7264844c36920f37dc91aa57f28b3b425",
+    "bios/ok.json": "0bab41371374ba44608dabd5b75806cb757935fa7c59c425ff92de969f68ed4a",
+    "bios/ok.png": "61c94d8d1ef638ce8efa55a80572cd2cf2b38c8baf066ba99a47c2d638a78a39",
+    "bios/ok.vram.bin": "fe7c12c8cd9130a8508e5a842711bb36b2920dd80b5d33c493122c46cbec2847",
+    "bios/screenful.idx.bin": "b848f710555dba311eb95cc1b8c7f52427a3f7927173a1c6183753d77b89c806",
+    "bios/screenful.json": "cb08573642eb2b396844f7e6ec84b0786650406ca5956ec8a0186ebcbaabe48d",
+    "bios/screenful.png": "7298511819325986774a48b371fd52c66804c7200f3123c8750e9535f1003765",
+    "bios/screenful.vram.bin": "35c464e7cf4bec6fc3a1f7b9bb3c277e93b693ec810faaf31d17c709385cacb9",
+    "bios/scroll.idx.bin": "491df6bef3b93d336bdbf92e7493e7d1c8865d0e02d174ccf6a08402fa1a7a29",
+    "bios/scroll.json": "d3a661fc2401abaf7ae7b08e29138cacdceef3a8ee8f72815831dffbcf50db5d",
+    "bios/scroll.png": "da6e0a94e4d24fdab0c3c7205b84e74ba0c3ab522c1055475e4f8eb65af02ea7",
+    "bios/scroll.vram.bin": "2f82cecb6a13016e230dca831d87060f5193ff2dde4f0359b76f8744685bb34b",
     "flash-cart/flash-cart.vdpt.gz": "544e25208371cc5861f65a432209e71d2b46e3eddbda4d6de5089f28ec496ebb",
     "flash-cart/self-programmed.idx.bin": "b546b16a0a0e58b49dcc390d76a457f3ebaf9476d13eb126ed24b08b89f8cd83",
     "flash-cart/self-programmed.json": "a0e5b2e4f7c84cee1898b29f35d4d2ad73c009e4b6833b45d7687ebff7237a5c",
