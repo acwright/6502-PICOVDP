@@ -269,7 +269,9 @@ async function scrollVram(ace, problems) {
     ...BIOS_RUNS['bios-2.0'].inputs.flatMap(([, typed]) => [{ type: typed }, { run: 3_000_000 }]),
     { vramWhenSent: 'vram', typed: queryLine(statements) },
   ]).get('vram').subarray(0, NAME_TABLE)
-  const read = (await ace.query(statements, 120000)).trim().split(/\s+/).map(Number)
+  // Serial only: printed on the screen, the values would change the very
+  // name table they are read from
+  const read = (await ace.query(statements, 120000, { serialOnly: true })).trim().split(/\s+/).map(Number)
   const result = { bytes: read.length, differing: [], l0scryInGolden: oracle('bios', 'scroll').registers[0x14] }
   if (read.length !== NAME_TABLE) {
     problems.push(`scroll VRAM: read ${read.length} bytes back, not ${NAME_TABLE}`)

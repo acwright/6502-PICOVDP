@@ -2,10 +2,15 @@
 // 19200 8-N-1 through a USB serial bridge, BASIC typed at it, and XMODEM for
 // .prg files.
 //
-// BIOS 2.0 prints only to the video console while a card is fitted, so nothing
-// typed comes back on the wire. What does: output printed with IO_MODE ($0306)
-// set to serial for one line, which is how `query` reads a value back, XMODEM,
-// which switches it itself, and what a program sends with SerialChrout.
+// With a video card fitted, BASIC prints only to the screen unless told
+// otherwise. BIOS 1.8 and 2.2 have the serial mirror: bit 1 of IO_MODE ($0306)
+// copies everything the console prints to serial as well, the echo of each
+// typed line included, and every boot turns it off. `query` turns it on in the
+// line it types, so it holds after a reset too. Older BIOSes have no mirror:
+// there `query` sets IO_MODE to serial for its one line, the first query finds
+// out which, and `query(…, { serialOnly: true })` asks for that form anyway,
+// for a line whose output must stay off the screen. XMODEM switches IO_MODE
+// itself, and a program can send with SerialChrout.
 //
 // Like lib/link.mjs, no serialport dependency: the tty is opened non-blocking,
 // set raw with stty, and read through Node's tty stream on its descriptor.
@@ -31,9 +36,16 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 const QUERY_END = '#END#'
 
-/** The line `query` types: its statements, printing to the serial port. */
-export function queryLine(statements) {
-  return `POKE ${IO_MODE},1:${statements}:PRINT "${QUERY_END}":POKE ${IO_MODE},0\r`
+/**
+ * The line `query` types. With `mirror`, the statements print to the screen and
+ * through the serial mirror; the mirror bit is ORed in, so a serial console
+ * (bit 0 set) stays one. Without, they print to the serial port alone, and the
+ * screen shows only the line typed and OK.
+ */
+export function queryLine(statements, mirror = false) {
+  return mirror
+    ? `POKE ${IO_MODE},PEEK(${IO_MODE})OR2:${statements}:PRINT "${QUERY_END}"\r`
+    : `POKE ${IO_MODE},1:${statements}:PRINT "${QUERY_END}":POKE ${IO_MODE},0\r`
 }
 
 export class AceError extends Error {}
@@ -70,6 +82,8 @@ export class Ace {
     this.rx = Buffer.alloc(0)
     this.waiters = new Set()
     this.replays = []
+    // Whether this BIOS has the serial mirror: unknown until the first query
+    this.mirror = null
     this.stream = new ReadStream(this.fd)
     this.stream.on('data', (chunk) => {
       this.rx = Buffer.concat([this.rx, chunk])
@@ -139,18 +153,37 @@ export class Ace {
   }
 
   /**
-   * Run one line of BASIC with its PRINT output sent to the serial port, and
-   * return what it printed, up to the line that ends it. The screen shows the
-   * line typed and OK, and nothing it printed.
+   * Does this BIOS mirror the console to serial? Asked once: the mirror's own
+   * line, printing only the end marker, answers within a second if it does. On
+   * a BIOS without it the bit means nothing, and is cleared again.
    */
-  async query(statements, timeoutMs = 5000) {
-    const end = QUERY_END
+  async hasMirror() {
+    if (this.mirror !== null) return this.mirror
     this.drain()
-    await this.type(queryLine(statements))
+    await this.type(`POKE ${IO_MODE},PEEK(${IO_MODE})OR2:PRINT "${QUERY_END}"\r`)
+    this.mirror = await this.waitFor(`${QUERY_END}\r\n`, 1500).then(() => true, () => false)
+    if (!this.mirror) await this.type(`POKE ${IO_MODE},PEEK(${IO_MODE})AND253\r`)
+    await sleep(300)
+    this.drain()
+    return this.mirror
+  }
+
+  /**
+   * Run one line of BASIC and return what it printed over serial, up to the
+   * line that ends it: through the serial mirror where the BIOS has one (the
+   * screen shows it too), otherwise with IO_MODE set to serial for the line (the
+   * screen shows the line typed and OK, and nothing it printed). `serialOnly`
+   * asks for the second form whatever the BIOS.
+   */
+  async query(statements, timeoutMs = 5000, { serialOnly = false } = {}) {
+    const end = QUERY_END
+    const mirror = !serialOnly && (await this.hasMirror())
+    this.drain()
+    await this.type(queryLine(statements, mirror))
     const text = await this.waitFor(`${end}\r\n`, timeoutMs)
     let out = text.slice(0, text.lastIndexOf(`${end}\r\n`))
-    // With no video card the console is the serial port, and the line typed
-    // comes back first: what it printed starts after the echo.
+    // The line typed comes back first, from the mirror or a serial console:
+    // what it printed starts after the echo.
     const echo = out.lastIndexOf(`"${end}"`)
     if (echo >= 0) out = out.slice(out.indexOf('\n', echo) + 1)
     return out.replace(/\r/g, '')

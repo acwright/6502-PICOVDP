@@ -99,7 +99,11 @@ BASIC's `LOAD` takes over XMODEM (`make -C tests/machine`, into
 
 - `lib/ace.mjs` — the ACE's serial console. BIOS 2.0 prints only to the screen
   while a card is fitted, so a value comes back by running its `PRINT` with
-  `IO_MODE` (`$0306`) set to serial for one line; `.prg` files go by XMODEM
+  `IO_MODE` (`$0306`) set to serial for one line. Since BIOS 1.8 and 2.2 it
+  comes back through the serial mirror instead, `IO_MODE` bit 1, which the
+  query line sets (every boot clears it); the first query finds out which the
+  BIOS has, and the name-table read keeps the serial-only form, since printed
+  on the screen its values would change what it reads; `.prg` files go by XMODEM
   (`LOAD`), memory comes back by XMODEM (`BSAVE`), and a program says it has
   finished by sending one byte with `SerialChrout`. No serialport dependency:
   the tty is set raw with `stty` and read through Node's tty stream, as
